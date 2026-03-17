@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../providers/dashboard_provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../bloc/dashboard/dashboard_bloc.dart';
+import '../bloc/dashboard/dashboard_event.dart';
+import '../bloc/dashboard/dashboard_state.dart';
 import '../widgets/sidebar.dart';
 import '../widgets/header.dart';
 import '../widgets/map_section.dart';
@@ -23,10 +25,14 @@ class DashboardScreen extends StatelessWidget {
           child: Row(
             children: [
               // Sidebar
-              Consumer<DashboardProvider>(
-                builder: (context, provider, _) => Sidebar(
-                  selectedIndex: provider.selectedMenuIndex,
-                  onItemSelected: provider.selectMenuItem,
+              BlocBuilder<DashboardBloc, DashboardState>(
+                buildWhen: (previous, current) =>
+                    previous.selectedMenuIndex != current.selectedMenuIndex,
+                builder: (context, state) => Sidebar(
+                  selectedIndex: state.selectedMenuIndex,
+                  onItemSelected: (index) {
+                    context.read<DashboardBloc>().add(MenuItemSelected(index));
+                  },
                 ),
               ),
 
@@ -48,10 +54,14 @@ class DashboardScreen extends StatelessWidget {
                             // Left Section (Map)
                             Expanded(
                               flex: ResponsiveBreakpoints.isLarge(context) ? 3 : 2,
-                              child: Consumer<DashboardProvider>(
-                                builder: (context, provider, _) => MapSection(
-                                  vehicles: provider.vehicles,
-                                  onVehicleSelected: provider.selectVehicle,
+                              child: BlocBuilder<DashboardBloc, DashboardState>(
+                                buildWhen: (previous, current) =>
+                                    previous.vehicles != current.vehicles,
+                                builder: (context, state) => MapSection(
+                                  vehicles: state.vehicles,
+                                  onVehicleSelected: (vehicle) {
+                                    context.read<DashboardBloc>().add(VehicleSelected(vehicle));
+                                  },
                                 ),
                               ),
                             ),
@@ -60,9 +70,11 @@ class DashboardScreen extends StatelessWidget {
                             // Right Section (Driver Monitoring)
                             Expanded(
                               flex: 2,
-                              child: Consumer<DashboardProvider>(
-                                builder: (context, provider, _) => DriverMonitoring(
-                                  drivers: provider.driversHealth,
+                              child: BlocBuilder<DashboardBloc, DashboardState>(
+                                buildWhen: (previous, current) =>
+                                    previous.driversHealth != current.driversHealth,
+                                builder: (context, state) => DriverMonitoring(
+                                  drivers: state.driversHealth,
                                 ),
                               ),
                             ),
@@ -72,12 +84,17 @@ class DashboardScreen extends StatelessWidget {
                       SizedBox(height: ResponsiveBreakpoints.contentSpacing(context)),
 
                       // Bottom Statistics Cards
-                      Consumer<DashboardProvider>(
-                        builder: (context, provider, _) => StatisticsCards(
-                          aqiData: provider.aqiData,
-                          onlineDrivers: provider.onlineDrivers,
-                          highRiskAlerts: provider.highRiskAlerts,
-                          alertLog: provider.alertLog,
+                      BlocBuilder<DashboardBloc, DashboardState>(
+                        buildWhen: (previous, current) =>
+                            previous.aqiData != current.aqiData ||
+                            previous.onlineDrivers != current.onlineDrivers ||
+                            previous.highRiskAlerts != current.highRiskAlerts ||
+                            previous.alertLog != current.alertLog,
+                        builder: (context, state) => StatisticsCards(
+                          aqiData: state.aqiData,
+                          onlineDrivers: state.onlineDrivers,
+                          highRiskAlerts: state.highRiskAlerts,
+                          alertLog: state.alertLog,
                         ),
                       ),
                     ],

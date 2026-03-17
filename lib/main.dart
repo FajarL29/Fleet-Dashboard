@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'screens/dashboard_screen.dart';
-import 'providers/dashboard_provider.dart';
+import 'bloc/dashboard/dashboard_bloc.dart';
+import 'bloc/dashboard/dashboard_event.dart';
 import 'theme/app_theme.dart';
 
 void main() {
@@ -13,10 +14,8 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => DashboardProvider()),
-      ],
+    return BlocProvider(
+      create: (_) => DashboardBloc()..add(const DashboardInitialized()),
       child: MaterialApp(
         title: 'Fleet Management',
         debugShowCheckedModeBanner: false,
