@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
-import '../theme/app_theme.dart';
+import '../core/theme/app_theme.dart';
 
 enum VehicleStatus {
   active,

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
-import '../models/aqi_data.dart';
-import '../theme/app_theme.dart';
+import '../../../models/aqi_data.dart';
+import '../../../core/theme/app_theme.dart';
 
 class StatisticsCards extends StatelessWidget {
   final AQIData aqiData;
@@ -126,7 +126,7 @@ class StatisticsCards extends StatelessWidget {
                 const SizedBox(height: 12),
                 _buildAQIDetail('CO2', '${aqiData.co2} ppm'),
                 const SizedBox(height: 12),
-                _buildAQIDetail('NO2', '${aqiData.no2} ppb'),
+                _buildAQIDetail('O2', '${aqiData.o2} %'),
               ],
             ),
           ),

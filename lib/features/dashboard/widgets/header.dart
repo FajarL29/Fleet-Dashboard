@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'dart:async';
-import '../theme/app_theme.dart';
+import '../../../core/theme/app_theme.dart';
 
 class Header extends StatefulWidget {
   const Header({super.key});
@@ -61,16 +61,23 @@ class _HeaderState extends State<Header> {
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   const Icon(Icons.search, color: AppTheme.textSecondary),
                   const SizedBox(width: 8),
                   Expanded(
                     child: TextField(
-                      style: const TextStyle(color: AppTheme.textPrimary),
+                      textAlignVertical: TextAlignVertical.center,
+                      style: const TextStyle(
+                        color: AppTheme.textPrimary,
+                        fontSize: 14,
+                        height: 1.0),
                       decoration: const InputDecoration(
                         hintText: 'Search...',
                         hintStyle: TextStyle(color: AppTheme.textSecondary),
                         border: InputBorder.none,
+                        isDense: true,
+                        contentPadding: EdgeInsets.zero,
                       ),
                       onChanged: (value) {
                         // TODO: Implement search functionality

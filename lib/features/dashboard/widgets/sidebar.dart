@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../constants/menu_items.dart';
-import '../theme/app_theme.dart';
+import '../../../routes/menu_items.dart';
+import '../../../core/theme/app_theme.dart';
 
 class Sidebar extends StatelessWidget {
   final int selectedIndex;

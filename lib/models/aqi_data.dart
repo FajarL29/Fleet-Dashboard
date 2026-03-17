@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
-import '../theme/app_theme.dart';
+import '../core/theme/app_theme.dart';
 
 class AQIData {
   final int index;
   final double pm25;
   final double co2;
-  final double no2;
+  final double o2;
 
   const AQIData({
     required this.index,
     required this.pm25,
     required this.co2,
-    required this.no2,
+    required this.o2,
   });
 
   String getQualityText() {
@@ -39,7 +39,7 @@ class AQIData {
       case 'CO2':
         return co2 / 100;
       case 'NO2':
-        return no2 / 100;
+        return o2 / 100;
       default:
         return 0;
     }

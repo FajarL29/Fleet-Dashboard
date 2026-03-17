@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
-import '../models/driver_health.dart';
-import '../theme/app_theme.dart';
+import '../../../models/driver_health.dart';
+import '../../../core/theme/app_theme.dart';
 
 class DriverMonitoring extends StatelessWidget {
   final List<DriverHealth> drivers;
