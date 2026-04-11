@@ -63,3 +63,15 @@ class StreamImageReceived extends DashboardEvent {
 class DashboardDisposed extends DashboardEvent {
   const DashboardDisposed();
 }
+
+// Di dashboard_event.dart
+class DrowsinessDataRequested extends DashboardEvent {
+  final int userId;
+  final String token;
+  const DrowsinessDataRequested({required this.userId, required this.token});
+}
+
+class DrowsinessDataReceived extends DashboardEvent {
+  final Map<String, dynamic> data;
+  const DrowsinessDataReceived(this.data);
+}

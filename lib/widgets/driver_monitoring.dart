@@ -5,10 +5,12 @@ import '../theme/app_theme.dart';
 
 class DriverMonitoring extends StatelessWidget {
   final List<DriverHealth> drivers;
+  final Map<int, Map<String, dynamic>> driverAlerts;
 
   const DriverMonitoring({
     super.key,
     required this.drivers,
+    required this.driverAlerts,
   });
 
   @override
@@ -156,7 +158,7 @@ class DriverMonitoring extends StatelessWidget {
           height: 280,
           decoration: BoxDecoration(
             color: AppTheme.slateGrey,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(8),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -172,58 +174,76 @@ class DriverMonitoring extends StatelessWidget {
                   ),
                 ),
               ),
+              // Camera Feedswi
               // Camera Feeds
-              SizedBox(
-                height: 120,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  children: [
-                    _cameraFeed('Driver Budi', HealthStatus.normal),
-                    const SizedBox(width: 16),
-                    _cameraFeed('Driver Fajar', HealthStatus.warning),
-                  ],
-                ),
-              ),
+SizedBox(
+  height: 200,
+  child: ListView.builder(
+    scrollDirection: Axis.horizontal,
+    padding: const EdgeInsets.symmetric(horizontal: 16),
+    itemCount: drivers.length, // Berdasarkan jumlah driver di state
+    itemBuilder: (context, index) {
+      final driver = drivers[index];
+      
+      // Ambil angka dari ID Driver (misal 'D-101' jadi 101 atau '9' jadi 9)
+      final int driverIdInt = int.tryParse(driver.driverId.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+      debugPrint("Checking Driver: ${driver.name} with ID: $driverIdInt");
+      debugPrint("DriverAlerts keys: ${driverAlerts.keys.toList()}");
+      // Cari apakah ada alert untuk driver ini di Map driverAlerts
+      final alertData = driverAlerts[driverIdInt];
+      debugPrint("AlertData for driver $driverIdInt: $alertData");
+
+      return Padding(
+        padding: const EdgeInsets.only(right: 16),
+        child: _cameraFeed(
+          driver.name, 
+          alertData?['image'], // Gambar dari hasil polling drowsiness
+          alertData != null ? HealthStatus.warning : HealthStatus.normal, // Border jadi oranye jika ada alert
+          alertData?['type'], // Status type: drowsy, yawn, distraction
+        ),
+      );
+    },
+  ),
+),
               // Drowsiness Chart
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: LineChart(
-                    LineChartData(
-                      gridData: const FlGridData(show: false),
-                      titlesData: const FlTitlesData(show: false),
-                      borderData: FlBorderData(show: false),
-                      minX: 0,
-                      maxX: 11,
-                      minY: 0,
-                      maxY: 6,
-                      lineBarsData: [
-                        LineChartBarData(
-                          spots: const [
-                            FlSpot(0, 3),
-                            FlSpot(2.6, 2),
-                            FlSpot(4.9, 5),
-                            FlSpot(6.8, 3.1),
-                            FlSpot(8, 4),
-                            FlSpot(9.5, 3),
-                            FlSpot(11, 4),
-                          ],
-                          isCurved: true,
-                          color: AppTheme.accentBlue,
-                          barWidth: 2,
-                          isStrokeCapRound: true,
-                          dotData: const FlDotData(show: false),
-                          belowBarData: BarAreaData(
-                            show: true,
-                            color: AppTheme.accentBlue.withOpacity(0.1),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
+              // Expanded(
+              //   child: Padding(
+              //     padding: const EdgeInsets.all(16),
+              //     child: LineChart(
+              //       LineChartData(
+              //         gridData: const FlGridData(show: false),
+              //         titlesData: const FlTitlesData(show: false),
+              //         borderData: FlBorderData(show: false),
+              //         minX: 0,
+              //         maxX: 11,
+              //         minY: 0,
+              //         maxY: 6,
+              //         lineBarsData: [
+              //           LineChartBarData(
+              //             spots: const [
+              //               FlSpot(0, 3),
+              //               FlSpot(2.6, 2),
+              //               FlSpot(4.9, 5),
+              //               FlSpot(6.8, 3.1),
+              //               FlSpot(8, 4),
+              //               FlSpot(9.5, 3),
+              //               FlSpot(11, 4),
+              //             ],
+              //             isCurved: true,
+              //             color: AppTheme.accentBlue,
+              //             barWidth: 2,
+              //             isStrokeCapRound: true,
+              //             dotData: const FlDotData(show: false),
+              //             belowBarData: BarAreaData(
+              //               show: true,
+              //               color: AppTheme.accentBlue.withOpacity(0.1),
+              //             ),
+              //           ),
+              //         ],
+              //       ),
+              //     ),
+              //   ),
+              // ),
             ],
           ),
         ),
@@ -252,15 +272,40 @@ class DriverMonitoring extends StatelessWidget {
     );
   }
 
-  Widget _cameraFeed(String driverName, HealthStatus status) {
+  Widget _cameraFeed(String driverName, String? imageUrl, HealthStatus status, String? statusType) {
+    if (imageUrl != null) {
+      debugPrint("📸 Gambar terdeteksi untuk $driverName: $imageUrl");
+    } else {
+      debugPrint("📸 Tidak ada gambar untuk $driverName");
+    }
     return Container(
       width: 160,
       decoration: BoxDecoration(
         color: AppTheme.darkNavy,
         borderRadius: BorderRadius.circular(8),
+        image: imageUrl != null && imageUrl.isNotEmpty
+            ? DecorationImage(
+                image: NetworkImage(imageUrl),
+                fit: BoxFit.cover,
+                onError: (error, stackTrace) {
+                  debugPrint("❌ Failed to load image for $driverName: $error");
+                  debugPrint("❌ Image URL: $imageUrl");
+                },
+              )
+            : null,
       ),
       child: Stack(
         children: [
+          if (imageUrl == null) 
+          const Center(
+            child: Icon(
+              Icons.videocam_off_outlined,
+              color: Colors.white10,
+              size: 32,
+            ),
+          ),
+
+          
           // Placeholder for camera feed
           Container(
             decoration: BoxDecoration(
@@ -288,13 +333,35 @@ class DriverMonitoring extends StatelessWidget {
           Positioned(
             right: 8,
             top: 8,
-            child: Container(
-              width: 8,
-              height: 8,
-              decoration: BoxDecoration(
-                color: status.getStatusColor(),
-                shape: BoxShape.circle,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: status.getStatusColor(),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                if (statusType != null && statusType.isNotEmpty)
+                  Container(
+                    margin: const EdgeInsets.only(top: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: status.getStatusColor().withOpacity(0.8),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      statusType.toUpperCase(),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 8,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
         ],

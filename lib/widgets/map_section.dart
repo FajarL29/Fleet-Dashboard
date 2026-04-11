@@ -21,7 +21,7 @@ class MapSection extends StatefulWidget {
 class _MapSectionState extends State<MapSection> {
   final MapController _mapController = MapController();
   Vehicle? _selectedVehicle;
-  static final LatLng _jakartaCenter = LatLng(-6.2088, 106.8456);
+  static final LatLng _headoffice = LatLng(-6.140869, 106.889175); 
 
   List<Marker> _buildMarkers() {
     return widget.vehicles.map((vehicle) {
@@ -46,7 +46,7 @@ class _MapSectionState extends State<MapSection> {
               ),
             ),
             child: Icon(
-              Icons.local_shipping,
+              Icons.airport_shuttle,
               color: Colors.white,
               size: 16,
             ),
@@ -69,7 +69,7 @@ class _MapSectionState extends State<MapSection> {
             child: FlutterMap(
               mapController: _mapController,
               options: MapOptions(
-                center: _jakartaCenter,
+                center: _headoffice,
                 zoom: 12,
                 minZoom: 5,
                 maxZoom: 18,

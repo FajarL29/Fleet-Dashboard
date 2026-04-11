@@ -71,11 +71,39 @@ class DashboardScreen extends StatelessWidget {
                             Expanded(
                               flex: 2,
                               child: BlocBuilder<DashboardBloc, DashboardState>(
-                                buildWhen: (previous, current) =>
-                                    previous.driversHealth != current.driversHealth,
-                                builder: (context, state) => DriverMonitoring(
-                                  drivers: state.driversHealth,
-                                ),
+                                buildWhen: (previous, current) {
+                                  // Cek apakah driversHealth berubah
+                                  if (previous.driversHealth != current.driversHealth) {
+                                    debugPrint("🔄 Rebuild: driversHealth berubah");
+                                    return true;
+                                  }
+                                  // Cek apakah driverAlerts berubah (deep comparison)
+                                  if (previous.driverAlerts.length != current.driverAlerts.length) {
+                                    debugPrint("🔄 Rebuild: driverAlerts length berubah dari ${previous.driverAlerts.length} ke ${current.driverAlerts.length}");
+                                    return true;
+                                  }
+                                  for (final key in previous.driverAlerts.keys) {
+                                    if (!current.driverAlerts.containsKey(key)) {
+                                      debugPrint("🔄 Rebuild: driverAlerts key $key tidak ditemukan di current");
+                                      return true;
+                                    }
+                                    if (previous.driverAlerts[key]!.toString() != current.driverAlerts[key]!.toString()) {
+                                      debugPrint("🔄 Rebuild: driverAlerts[$key] berubah");
+                                      debugPrint("   Previous: ${previous.driverAlerts[key]}");
+                                      debugPrint("   Current: ${current.driverAlerts[key]}");
+                                      return true;
+                                    }
+                                  }
+                                  debugPrint("🔄 Tidak perlu rebuild");
+                                  return false;
+                                },
+                                builder: (context, state) {
+                                  debugPrint("🔄 DriverMonitoring rebuild dengan driverAlerts: ${state.driverAlerts}");
+                                  return DriverMonitoring(
+                                    drivers: state.driversHealth,
+                                    driverAlerts: state.driverAlerts,
+                                  );
+                                },
                               ),
                             ),
                           ],

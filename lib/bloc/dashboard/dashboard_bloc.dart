@@ -3,16 +3,19 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:http/http.dart' as http; // Tambahkan http
 import '../../models/vehicle.dart';
 import '../../services/gps_socket_service.dart';
 import 'dashboard_event.dart';
 import 'dashboard_state.dart';
 
-/// BLoC for managing dashboard state
 class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
-  // Service & Subscription
   final GpsSocketService _gpsSocketService = GpsSocketService();
   StreamSubscription? _gpsSubscription;
+  
+  // Tambahan untuk Drowsiness Polling
+  Timer? _drowsinessTimer;
+  int? _lastDrowsinessId; 
 
   DashboardBloc() : super(DashboardState.initial()) {
     on<DashboardInitialized>(_onDashboardInitialized);
@@ -22,43 +25,127 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     on<GpsDataReceived>(_onGpsDataReceived);
     on<StreamImageReceived>(_onStreamImageReceived);
     on<DashboardDisposed>(_onDashboardDisposed);
+    
+    // Event baru untuk menangani hasil polling
+    on<DrowsinessDataReceived>(_onDrowsinessDataReceived);
   }
 
-  /// Handle dashboard initialization
   Future<void> _onDashboardInitialized(
     DashboardInitialized event,
     Emitter<DashboardState> emit,
   ) async {
     emit(state.copyWith(status: DashboardStatus.loading));
+    
+    // 1. Jalankan GPS WebSocket
     _initRealtimeGps();
+    
+    // 2. Jalankan Polling Drowsiness (Misal setiap 10 detik)
+    // Asumsi: Token dan UserID didapat dari session/auth
+    _startDrowsinessPolling(userId: 1, token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6ImRyaXZlcl9wcm9fMDEiLCJmdWxsbmFtZSI6IlJlaW5lciBQcmFrb3NvIiwiZW1haWwiOiJyZWluZXJAZXhhbXBsZS5jb20iLCJjcmVhdGVkX2J5IjoiU1lTVEVNIiwiY3JlYXRlZF9kdCI6IjIwMjYtMDMtMzBUMTA6MTk6MzYuMDAwWiIsImFkZHJlc3MiOiJCZWthc2ssIEluZG9uZXNpYSIsImlhdCI6MTc3NDg0MDkwOSwiZXhwIjoxNzc0ODQ0NTA5fQ.XWOT48IaoQWCCaQjfzYBabv6QSjiRKLdd0E6QJoQot0");
+    // _startDrowsinessPolling(userId: event.userID, token: event.token);
+
   }
 
-  /// Initialize real-time GPS connection
+  /// --- LOGIKA DROWSINESS POLLING (HTTP) ---
+  void _startDrowsinessPolling({required int userId, required String token}) {
+    _drowsinessTimer?.cancel();
+    _drowsinessTimer = Timer.periodic(const Duration(seconds: 10), (timer) async {
+      try {
+        final response = await http.get(
+          Uri.parse('http://203.100.57.59:3000/api/v1/drowsiness/latest/$userId'),
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+        );
+
+        if (response.statusCode == 200) {
+          final decoded = json.decode(response.body);
+          if (decoded['status'] == 'success' && decoded['data'] != null) {
+            add(DrowsinessDataReceived(decoded['data']));
+          }
+        }
+      } catch (e) {
+        debugPrint("❌ Drowsiness Polling Error: $e");
+      }
+    });
+  }
+
+  void _onDrowsinessDataReceived(
+    DrowsinessDataReceived event,
+    Emitter<DashboardState> emit,
+  ) {
+    final data = event.data;
+    final int currentId = data['drowsiness_id'];
+    //final int userId = data['user_id']; // Ambil ID driver dari API
+    final int userId = 3034; // Hardcoded untuk testing, ganti dengan data sebenarnya nanti
+
+    debugPrint("📥 Drowsiness Data Received: $data");
+    debugPrint("📥 Current ID: $currentId, Last ID: $_lastDrowsinessId");
+    debugPrint("📥 User ID dari data: ${data['user_id']}");
+    debugPrint("📥 User ID yang digunakan: $userId");
+
+    // 1. Cek apakah ini benar-benar data baru (ID lebih besar dari sebelumnya)
+    if (_lastDrowsinessId == null || currentId > _lastDrowsinessId!) {
+      _lastDrowsinessId = currentId;
+
+      // 2. Siapkan data alert baru
+      final newAlertData = {
+        'vehicle_id': data['vehicle_identification_number'],
+        'image': data['img_path'], // URL Foto dari Server
+        'type': data['status'],
+        'time': DateTime.parse(data['time']),
+      };
+
+      debugPrint("📥 New Alert Data: $newAlertData");
+      debugPrint("📥 User ID untuk alert: $userId");
+
+      // 3. Update MAP driverAlerts (Agar Card Budi & Fajar punya data terpisah)
+      final updatedDriverAlerts = Map<int, Map<String, dynamic>>.from(state.driverAlerts);
+      updatedDriverAlerts[userId] = newAlertData; // Masukkan alert ke slot Driver yang bersangkutan
+
+      debugPrint("📥 Updated DriverAlerts: $updatedDriverAlerts");
+      debugPrint("📥 Updated DriverAlerts type: ${updatedDriverAlerts.runtimeType}");
+      debugPrint("📥 Updated DriverAlerts keys: ${updatedDriverAlerts.keys.toList()}");
+      debugPrint("📥 Updated DriverAlerts[3034]: ${updatedDriverAlerts[3034]}");
+
+      // 4. Update Alert Log (History)
+      final newAlertLog = List<String>.from(state.alertLog);
+      newAlertLog.insert(0, "Alert: ${data['status']} - Unit ${data['vehicle_identification_number']}");
+
+      // 5. EMIT State Baru
+      debugPrint("📥 Emitting state dengan driverAlerts: $updatedDriverAlerts");
+      emit(state.copyWith(
+        currentAlert: newAlertData, // Alert paling terakhir secara global
+        driverAlerts: updatedDriverAlerts, // Data per-driver untuk monitoring cards
+        alertLog: newAlertLog.take(20).toList(),
+      ));
+      
+      debugPrint("🔔 New Drowsiness for User $userId: ID $currentId");
+      debugPrint("img_path: ${data['img_path']}");
+      debugPrint("📥 State emitted, driverAlerts: ${state.driverAlerts}");
+    } else {
+      debugPrint("📥 Data drowsiness bukan data baru, diabaikan");
+    }
+  }
+
+  /// --- LOGIKA GPS WEBSOCKET (EXISTING) ---
   void _initRealtimeGps() {
     _gpsSubscription = _gpsSocketService.connect(
       vehicleId: '1210',
       deviceType: 'DASHBOARD',
     ).listen(
-      (message) {
-        // Handle incoming data
-        _handleIncomingWsData(message);
-      },
+      (message) => _handleIncomingWsData(message),
       onError: (err) {
         debugPrint("WS Error: $err");
         add(const DashboardDisposed());
       },
-      onDone: () {
-        debugPrint("Koneksi Selesai");
-      },
     );
   }
 
-  /// Handle incoming WebSocket data
   void _handleIncomingWsData(dynamic message) {
     try {
       Map<String, dynamic> data;
-
-      // 1. Parsing data mentah (String vs Map)
       if (message is String) {
         data = json.decode(message);
       } else if (message is Map<String, dynamic>) {
@@ -67,136 +154,92 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
         return;
       }
 
-      print("Data masuk: $data");
-
-      // 2. Cek pesan koneksi awal
-      if (data.containsKey('message') && data['message'] == 'Connected') {
-        debugPrint("✅ Dashboard Connected to Server");
-        // Update status to connected
-        return;
-      }
-
-      // 3. LOGIKA ALERT (STREAM_IMAGE)
       if (data['event'] == 'STREAM_IMAGE') {
         add(StreamImageReceived(data));
         return;
       }
 
-      // 4. LOGIKA PERGERAKAN (GPS)
-      // Menangani jika data berupa Map tunggal atau List (untuk fleksibilitas)
       if (data.containsKey('gps_lat') && data.containsKey('gps_lng')) {
         add(GpsDataReceived(data));
-      } else if (data.containsKey('data') && data['data'] is List) {
-        // Jika data datang dalam format { "data": [...] } seperti REST API sebelumnya
-        final dataList = List<Map<String, dynamic>>.from(data['data']);
-        for (var singleData in dataList) {
-          add(GpsDataReceived(singleData));
-        }
       }
     } catch (e) {
       debugPrint("❌ Error parsing WS data: $e");
     }
   }
 
-  /// Handle GPS data received event
-  void _onGpsDataReceived(
-    GpsDataReceived event,
-    Emitter<DashboardState> emit,
-  ) {
+  void _onGpsDataReceived(GpsDataReceived event, Emitter<DashboardState> emit) {
     final data = event.data;
     final String vId = data['vehicle_id']?.toString() ?? data['id']?.toString() ?? '1210';
     final double lat = (data['gps_lat'] as num).toDouble();
     final double lng = (data['gps_lng'] as num).toDouble();
+    final double speed = (data['gps_speed'] as num?)?.toDouble() ?? 0.0;
 
-    // Create updated vehicles list
     final updatedVehicles = state.vehicles.map((vehicle) {
-      if (vehicle.id == vId) {
-        return Vehicle(
-          id: vehicle.id,
-          plateNumber: vehicle.plateNumber,
-          type: vehicle.type,
-          driverName: vehicle.driverName,
-          activityTime: vehicle.activityTime,
-          position: LatLng(lat, lng),
-          status: vehicle.status,
-          heading: vehicle.heading,
-        );
+      if (vehicle.id.toString() == vId.toString()) {
+        return vehicle.copyWith(position: LatLng(lat, lng), speed: speed);
       }
       return vehicle;
     }).toList();
 
     emit(state.copyWith(
-      vehicles: updatedVehicles,
+      vehicles: updatedVehicles, 
       status: DashboardStatus.connected,
+      driverAlerts: state.driverAlerts, // Pastikan driverAlerts tetap terbawa
     ));
   }
 
-  /// Handle stream image (alert) received event
-  void _onStreamImageReceived(
-    StreamImageReceived event,
-    Emitter<DashboardState> emit,
-  ) {
+  void _onStreamImageReceived(StreamImageReceived event, Emitter<DashboardState> emit) {
     final data = event.data;
+    // Format alert dari WebSocket
     final newAlert = {
       'vehicle_id': data['vehicle_id'],
-      'image': data['data']['image'],
+      'image': data['data']['image'], // Biasanya Base64 kalau dari WS
       'type': data['data']['behavior_type'],
       'time': DateTime.now(),
     };
 
     final newAlertLog = List<String>.from(state.alertLog);
-    newAlertLog.insert(
-      0,
-      "Alert: ${data['data']['behavior_type']} - Unit ${data['vehicle_id']}",
-    );
-    if (newAlertLog.length > 20) {
-      newAlertLog.removeLast();
-    }
+    newAlertLog.insert(0, "WS Alert: ${data['data']['behavior_type']} - Unit ${data['vehicle_id']}");
 
     emit(state.copyWith(
       currentAlert: newAlert,
-      alertLog: newAlertLog,
+      alertLog: newAlertLog.take(20).toList(),
     ));
   }
 
-  /// Handle menu item selection
-  void _onMenuItemSelected(
-    MenuItemSelected event,
-    Emitter<DashboardState> emit,
-  ) {
+  // --- UI CONTROL EVENTS ---
+  void _onMenuItemSelected(MenuItemSelected event, Emitter<DashboardState> emit) {
     emit(state.copyWith(selectedMenuIndex: event.index));
   }
 
-  /// Handle vehicle selection
-  void _onVehicleSelected(
-    VehicleSelected event,
-    Emitter<DashboardState> emit,
-  ) {
+  void _onVehicleSelected(VehicleSelected event, Emitter<DashboardState> emit) {
     emit(state.copyWith(selectedVehicle: event.vehicle));
   }
 
-  /// Handle alert clear
-  void _onAlertCleared(
-    AlertCleared event,
-    Emitter<DashboardState> emit,
-  ) {
+  void _onAlertCleared(AlertCleared event, Emitter<DashboardState> emit) {
     emit(state.copyWith(clearCurrentAlert: true));
   }
 
-  /// Handle dispose/cleanup
-  void _onDashboardDisposed(
-    DashboardDisposed event,
-    Emitter<DashboardState> emit,
-  ) {
-    _gpsSubscription?.cancel();
-    _gpsSocketService.disconnect();
+  void _onDashboardDisposed(DashboardDisposed event, Emitter<DashboardState> emit) {
+    _cleanup();
     emit(state.copyWith(status: DashboardStatus.disconnected));
   }
 
   @override
   Future<void> close() {
-    _gpsSubscription?.cancel();
-    _gpsSocketService.disconnect();
+    _cleanup();
     return super.close();
   }
+
+  void _cleanup() {
+    _gpsSubscription?.cancel();
+    _drowsinessTimer?.cancel(); // Pastikan timer mati
+    _gpsSocketService.disconnect();
+  }
 }
+
+// Tambahkan class event ini di file dashboard_event.dart Anda
+// class DrowsinessDataReceived extends DashboardEvent {
+//   final Map<String, dynamic> data;
+//   const DrowsinessDataReceived(this.data);
+// }

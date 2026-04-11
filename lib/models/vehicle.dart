@@ -40,4 +40,27 @@ class Vehicle {
         return AppTheme.error;
     }
   }
+
+  // CopyWith method for immutable updates
+  Vehicle copyWith({
+    String? id,
+    String? plateNumber,
+    String? type,
+    String? driverName,
+    String? activityTime,
+    LatLng? position,
+    VehicleStatus? status,
+    double? heading, required double speed,
+  }) {
+    return Vehicle(
+      id: id ?? this.id,
+      plateNumber: plateNumber ?? this.plateNumber,
+      type: type ?? this.type,
+      driverName: driverName ?? this.driverName,
+      activityTime: activityTime ?? this.activityTime,
+      position: position ?? this.position,
+      status: status ?? this.status,
+      heading: heading ?? this.heading,
+    );
+  }
 }
