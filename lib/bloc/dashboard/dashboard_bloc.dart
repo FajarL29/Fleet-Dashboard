@@ -173,6 +173,7 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     final double lat = (data['gps_lat'] as num).toDouble();
     final double lng = (data['gps_lng'] as num).toDouble();
     final double speed = (data['gps_speed'] as num?)?.toDouble() ?? 0.0;
+    final LatLng newPos = LatLng(lat, lng);
 
     final updatedVehicles = state.vehicles.map((vehicle) {
       if (vehicle.id.toString() == vId.toString()) {
@@ -181,11 +182,21 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
       return vehicle;
     }).toList();
 
+    // 2. DEFINISIKAN updatedSelected (Ini yang tadi hilang)
+    // Cek: Apakah mobil yang dapet GPS ini adalah mobil yang lagi dipilih user?
+    Vehicle? updatedSelected = state.selectedVehicle;
+    if (state.selectedVehicle != null && state.selectedVehicle!.id.toString() == vId) {
+      // Jika iya, update objek selectedVehicle-nya dengan posisi baru
+      updatedSelected = state.selectedVehicle!.copyWith(position: newPos, speed: speed);
+    }
+
     emit(state.copyWith(
       vehicles: updatedVehicles, 
+      selectedVehicle: updatedSelected,
       status: DashboardStatus.connected,
       driverAlerts: state.driverAlerts, // Pastikan driverAlerts tetap terbawa
     ));
+    print("🚗 Update ID: $vId | Lat: $lat | Lng: $lng | Speed: $speed");
   }
 
   void _onStreamImageReceived(StreamImageReceived event, Emitter<DashboardState> emit) {

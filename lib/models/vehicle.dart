@@ -14,9 +14,11 @@ class Vehicle {
   final String type;
   final String driverName;
   final String activityTime;
-  LatLng position; // Using latlong2 LatLng - made mutable
+  final LatLng position; // Using latlong2 LatLng
+  //LatLng position; // Using latlong2 LatLng - made mutable
   final VehicleStatus status;
   double heading;
+  final double speed;
 
   Vehicle({
     required this.id,
@@ -27,6 +29,7 @@ class Vehicle {
     required this.position,
     required this.status,
     this.heading = 0.0,
+    this.speed = 0.0,
   });
 
   // Helper method to get status color

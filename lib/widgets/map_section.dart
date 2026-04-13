@@ -7,11 +7,13 @@ import '../theme/app_theme.dart';
 class MapSection extends StatefulWidget {
   final List<Vehicle> vehicles;
   final Function(Vehicle) onVehicleSelected;
+  final MapController mapController;
 
   const MapSection({
     super.key,
     required this.vehicles,
     required this.onVehicleSelected,
+    required this.mapController,
   });
 
   @override
@@ -19,7 +21,7 @@ class MapSection extends StatefulWidget {
 }
 
 class _MapSectionState extends State<MapSection> {
-  final MapController _mapController = MapController();
+  // final MapController _mapController = MapController();
   Vehicle? _selectedVehicle;
   static final LatLng _headoffice = LatLng(-6.140869, 106.889175); 
 
@@ -67,7 +69,7 @@ class _MapSectionState extends State<MapSection> {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(12),
             child: FlutterMap(
-              mapController: _mapController,
+              mapController: MapController(),
               options: MapOptions(
                 center: _headoffice,
                 zoom: 12,
@@ -130,7 +132,7 @@ class _MapSectionState extends State<MapSection> {
                             _selectedVehicle = vehicle;
                           });
                           widget.onVehicleSelected(vehicle);
-                          _mapController.move(vehicle.position, 14);
+                          MapController().move(vehicle.position, 14);
                         },
                         child: Container(
                           padding: const EdgeInsets.all(12),
