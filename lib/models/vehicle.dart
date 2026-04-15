@@ -18,7 +18,8 @@ class Vehicle {
   //LatLng position; // Using latlong2 LatLng - made mutable
   final VehicleStatus status;
   double heading;
-  final double speed;
+  final double speed; // Tambahkan atribut speed
+
 
   Vehicle({
     required this.id,
@@ -29,7 +30,7 @@ class Vehicle {
     required this.position,
     required this.status,
     this.heading = 0.0,
-    this.speed = 0.0,
+    this.speed = 0.0, // Inisialisasi speed
   });
 
   // Helper method to get status color
@@ -53,7 +54,8 @@ class Vehicle {
     String? activityTime,
     LatLng? position,
     VehicleStatus? status,
-    double? heading, required double speed,
+    double? heading,
+    double? speed,
   }) {
     return Vehicle(
       id: id ?? this.id,
@@ -64,6 +66,7 @@ class Vehicle {
       position: position ?? this.position,
       status: status ?? this.status,
       heading: heading ?? this.heading,
+      speed: speed ?? this.speed,
     );
   }
 }

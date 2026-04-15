@@ -168,36 +168,43 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
   }
 
   void _onGpsDataReceived(GpsDataReceived event, Emitter<DashboardState> emit) {
-    final data = event.data;
-    final String vId = data['vehicle_id']?.toString() ?? data['id']?.toString() ?? '1210';
-    final double lat = (data['gps_lat'] as num).toDouble();
-    final double lng = (data['gps_lng'] as num).toDouble();
-    final double speed = (data['gps_speed'] as num?)?.toDouble() ?? 0.0;
-    final LatLng newPos = LatLng(lat, lng);
+  final data = event.data;
+  final String vId = data['vehicle_id']?.toString() ?? data['id']?.toString() ?? '1210';
+  final double lat = (data['gps_lat'] as num).toDouble();
+  final double lng = (data['gps_lng'] as num).toDouble();
+  // Pastikan key 'speed_kmph' sesuai dengan JSON dari Postman/RasPi
+  final double speed = (data['speed_kmph'] as num?)?.toDouble() ?? 0.0;
+  final LatLng newPos = LatLng(lat, lng);
 
-    final updatedVehicles = state.vehicles.map((vehicle) {
-      if (vehicle.id.toString() == vId.toString()) {
-        return vehicle.copyWith(position: LatLng(lat, lng), speed: speed);
-      }
-      return vehicle;
-    }).toList();
-
-    // 2. DEFINISIKAN updatedSelected (Ini yang tadi hilang)
-    // Cek: Apakah mobil yang dapet GPS ini adalah mobil yang lagi dipilih user?
-    Vehicle? updatedSelected = state.selectedVehicle;
-    if (state.selectedVehicle != null && state.selectedVehicle!.id.toString() == vId) {
-      // Jika iya, update objek selectedVehicle-nya dengan posisi baru
-      updatedSelected = state.selectedVehicle!.copyWith(position: newPos, speed: speed);
+  // 1. Gunakan map untuk membuat list kendaraan yang diperbarui
+  final updatedVehicles = state.vehicles.map((vehicle) {
+    if (vehicle.id.toString() == vId) {
+      return vehicle.copyWith(position: newPos, speed: speed);
     }
+    return vehicle;
+  }).toList();
 
-    emit(state.copyWith(
-      vehicles: updatedVehicles, 
-      selectedVehicle: updatedSelected,
-      status: DashboardStatus.connected,
-      driverAlerts: state.driverAlerts, // Pastikan driverAlerts tetap terbawa
-    ));
-    print("🚗 Update ID: $vId | Lat: $lat | Lng: $lng | Speed: $speed");
+  // 2. Cari ulang objek selected dari LIST YANG BARU agar referensinya terupdate
+  Vehicle? updatedSelected;
+  if (state.selectedVehicle != null) {
+    try {
+      updatedSelected = updatedVehicles.firstWhere(
+        (v) => v.id.toString() == state.selectedVehicle!.id.toString()
+      );
+    } catch (_) {
+      updatedSelected = state.selectedVehicle;
+    }
   }
+
+  // 3. EMIT dengan referensi List baru agar BlocBuilder mendeteksi perubahan
+  emit(state.copyWith(
+    vehicles: List.from(updatedVehicles), // Pakai List.from untuk trigger rebuild
+    selectedVehicle: updatedSelected,
+    status: DashboardStatus.connected,
+  ));
+  
+  print("🚗 BLOC UPDATED: ID $vId | Speed: $speed");
+}
 
   void _onStreamImageReceived(StreamImageReceived event, Emitter<DashboardState> emit) {
     final data = event.data;
