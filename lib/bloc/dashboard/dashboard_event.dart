@@ -75,3 +75,7 @@ class DrowsinessDataReceived extends DashboardEvent {
   final Map<String, dynamic> data;
   const DrowsinessDataReceived(this.data);
 }
+
+class SelectionCleared extends DashboardEvent {
+  const SelectionCleared();
+}

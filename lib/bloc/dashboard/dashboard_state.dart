@@ -72,7 +72,7 @@ class DashboardState extends Equatable {
       vehicles: [
         Vehicle(
           id: '1210',
-          plateNumber: 'B 1234 SUF',
+          plateNumber: 'B 7041 UDB',
           type: 'HIACE Commuter',
           driverName: 'Budi',
           activityTime: '10.30 a.m. - 13.00 p.m.',

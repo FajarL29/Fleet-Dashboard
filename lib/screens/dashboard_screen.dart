@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_map/flutter_map.dart'; // Wajib untuk controller
+import 'package:flutter_map/flutter_map.dart';
 import '../bloc/dashboard/dashboard_bloc.dart';
 import '../bloc/dashboard/dashboard_event.dart';
 import '../bloc/dashboard/dashboard_state.dart';
@@ -20,8 +20,21 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  // Controller ini ditaruh di sini agar bisa diakses oleh BlocListener
   final MapController _mapController = MapController();
+  bool _isMapFullScreen = false;
+  bool _isMapFollowingVehicle = true;
+
+  void _toggleMapFullScreen() {
+    setState(() {
+      _isMapFullScreen = !_isMapFullScreen;
+    });
+  }
+
+  void _handleFollowModeChanged(bool isFollowing) {
+    setState(() {
+      _isMapFollowingVehicle = isFollowing;
+    });
+  }
 
   @override
   void dispose() {
@@ -34,65 +47,170 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Scaffold(
       backgroundColor: AppTheme.darkNavy,
       body: BlocListener<DashboardBloc, DashboardState>(
-        // Fokus Listener: Gerakkan kamera peta jika posisi kendaraan terpilih berubah
         listenWhen: (prev, curr) =>
             prev.selectedVehicle?.position != curr.selectedVehicle?.position,
         listener: (context, state) {
-          if (state.selectedVehicle != null) {
+          if (state.selectedVehicle != null && _isMapFollowingVehicle) {
             _mapController.move(state.selectedVehicle!.position, 15.0);
           }
         },
-        child: ResponsiveLayout(
-          child: SizedBox(
-            width: MediaQuery.of(context).size.width,
-            height: MediaQuery.of(context).size.height,
-            child: Row(
-              children: [
-                // 1. SIDEBAR SECTION
-                _buildSidebar(),
+        child: _isMapFullScreen
+            ? _buildFullScreenOverlay(context)
+            : _buildScrollableLayout(context),
+      ),
+    );
+  }
 
-                // 2. MAIN CONTENT SECTION
-                Expanded(
-                  child: Padding(
-                    padding: ResponsiveBreakpoints.screenPadding(context),
-                    child: Column(
+  Widget _buildScrollableLayout(BuildContext context) {
+    return ResponsiveLayout(child: _buildNormalLayout(context));
+  }
+
+  Widget _buildNormalLayout(BuildContext context) {
+    return SizedBox(
+      width: MediaQuery.of(context).size.width,
+      height: MediaQuery.of(context).size.height,
+      child: Row(
+        children: [
+          _buildSidebar(),
+          Expanded(
+            child: Padding(
+              padding: ResponsiveBreakpoints.screenPadding(context),
+              child: Column(
+                children: [
+                  const Header(),
+                  SizedBox(
+                    height: ResponsiveBreakpoints.contentSpacing(context),
+                  ),
+                  Expanded(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Header(),
-                        SizedBox(height: ResponsiveBreakpoints.contentSpacing(context)),
-                        
-                        // 3. MIDDLE SECTION (MAP & MONITORING)
-                        Expanded(
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _buildMapArea(context),
-                              SizedBox(width: ResponsiveBreakpoints.contentSpacing(context)),
-                              _buildDriverMonitoringArea(),
-                            ],
-                          ),
+                        _buildMapArea(context),
+                        SizedBox(
+                          width: ResponsiveBreakpoints.contentSpacing(context),
                         ),
-                        
-                        SizedBox(height: ResponsiveBreakpoints.contentSpacing(context)),
-
-                        // 4. BOTTOM SECTION (STATISTICS)
-                        _buildStatisticsArea(),
+                        _buildDriverMonitoringArea(),
                       ],
                     ),
                   ),
+                  SizedBox(
+                    height: ResponsiveBreakpoints.contentSpacing(context),
+                  ),
+                  _buildStatisticsArea(),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFullScreenOverlay(BuildContext context) {
+    final state = context.watch<DashboardBloc>().state;
+    return Stack(
+      children: [
+        // Full-screen map
+        Positioned.fill(
+          child: MapSection(
+            mapController: _mapController,
+            vehicles: state.vehicles,
+            onVehicleSelected: (vehicle) =>
+                context.read<DashboardBloc>().add(VehicleSelected(vehicle)),
+            isFullScreen: true,
+            showVehicleList: false,
+            selectedVehicleId: state.selectedVehicle?.id,
+            onClearSelection: () {
+              context.read<DashboardBloc>().add(const SelectionCleared());
+            },
+            onFollowModeChanged: _handleFollowModeChanged,
+          ),
+        ),
+        // Close button (top right)
+        Positioned(
+          top: 40,
+          right: 20,
+          child: FloatingActionButton.small(
+            backgroundColor: AppTheme.darkNavy,
+            onPressed: _toggleMapFullScreen,
+            child: const Icon(Icons.close, color: Colors.white),
+          ),
+        ),
+        // Driver monitoring panel (bottom)
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: 0,
+          child: Container(
+            margin: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppTheme.slateGrey.withOpacity(0.95),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white10),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppTheme.darkNavy.withOpacity(0.5),
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(12),
+                      topRight: Radius.circular(12),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Driver 1',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: _toggleMapFullScreen,
+                        child: const Text(
+                          'Exit Fullscreen',
+                          style: TextStyle(color: AppTheme.accentBlue),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Scrollable driver monitoring content
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final maxHeight = MediaQuery.of(context).size.height * 0.5;
+                    final panelHeight = constraints.maxWidth > 1200
+                        ? 400.0
+                        : 350.0;
+                    final finalHeight = panelHeight.clamp(200.0, maxHeight);
+                    return SizedBox(
+                      height: finalHeight,
+                      child: DriverMonitoring(
+                        drivers: state.driversHealth,
+                        driverAlerts: state.driverAlerts,
+                      ),
+                    );
+                  },
                 ),
               ],
             ),
           ),
         ),
-      ),
+      ],
     );
   }
 
-  // --- WIDGET BUILDERS (Untuk menjaga kode tetap bersih/clean) ---
+  // --- WIDGET BUILDERS ---
 
   Widget _buildSidebar() {
     return BlocBuilder<DashboardBloc, DashboardState>(
-      buildWhen: (prev, curr) => prev.selectedMenuIndex != curr.selectedMenuIndex,
+      buildWhen: (prev, curr) =>
+          prev.selectedMenuIndex != curr.selectedMenuIndex,
       builder: (context, state) => Sidebar(
         selectedIndex: state.selectedMenuIndex,
         onItemSelected: (index) =>
@@ -105,13 +223,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Expanded(
       flex: ResponsiveBreakpoints.isLarge(context) ? 3 : 2,
       child: BlocBuilder<DashboardBloc, DashboardState>(
-        // Rebuild peta hanya jika list kendaraan berubah (misal: GPS baru masuk)
-        buildWhen: (prev, curr) => prev.vehicles != curr.vehicles,
+        buildWhen: (prev, curr) =>
+            prev.vehicles != curr.vehicles ||
+            prev.selectedVehicle != curr.selectedVehicle,
         builder: (context, state) => MapSection(
-          mapController: _mapController, // Inject controller ke dalam MapSection
+          mapController: _mapController,
           vehicles: state.vehicles,
           onVehicleSelected: (vehicle) =>
               context.read<DashboardBloc>().add(VehicleSelected(vehicle)),
+          onFullScreenToggle: _toggleMapFullScreen,
+          isFullScreen: _isMapFullScreen,
+          selectedVehicleId: state.selectedVehicle?.id,
+          onClearSelection: () {
+            context.read<DashboardBloc>().add(const SelectionCleared());
+          },
+          onFollowModeChanged: _handleFollowModeChanged,
         ),
       ),
     );
@@ -121,7 +247,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Expanded(
       flex: 2,
       child: BlocBuilder<DashboardBloc, DashboardState>(
-        // Gunakan identitas objek untuk pengecekan cepat
         buildWhen: (prev, curr) =>
             prev.driversHealth != curr.driversHealth ||
             prev.driverAlerts != curr.driverAlerts,

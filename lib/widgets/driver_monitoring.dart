@@ -15,7 +15,8 @@ class DriverMonitoring extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return ListView(
+      padding: EdgeInsets.zero,
       children: [
         // Driver Health Cards
         Container(
@@ -75,7 +76,9 @@ class DriverMonitoring extends StatelessWidget {
                                     vertical: 4,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: driver.getStatusColor().withOpacity(0.2),
+                                    color: driver.getStatusColor().withOpacity(
+                                      0.2,
+                                    ),
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: Text(
@@ -104,20 +107,22 @@ class DriverMonitoring extends StatelessWidget {
                                     child: Image.network(
                                       driver.imageUrl,
                                       fit: BoxFit.cover,
-                                      errorBuilder: (context, error, stackTrace) {
-                                        return Icon(
-                                          Icons.person,
-                                          size: 12,
-                                          color: AppTheme.textSecondary,
-                                        );
-                                      },
+                                      errorBuilder:
+                                          (context, error, stackTrace) {
+                                            return Icon(
+                                              Icons.person,
+                                              size: 12,
+                                              color: AppTheme.textSecondary,
+                                            );
+                                          },
                                     ),
                                   ),
                                 ),
                                 const SizedBox(width: 5),
                                 Expanded(
                                   child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
                                     children: [
                                       _healthMetric(
                                         Icons.favorite,
@@ -155,7 +160,6 @@ class DriverMonitoring extends StatelessWidget {
 
         // Drowsiness Monitoring
         Container(
-          height: 280,
           decoration: BoxDecoration(
             color: AppTheme.slateGrey,
             borderRadius: BorderRadius.circular(8),
@@ -174,76 +178,37 @@ class DriverMonitoring extends StatelessWidget {
                   ),
                 ),
               ),
-              // Camera Feedswi
               // Camera Feeds
-SizedBox(
-  height: 200,
-  child: ListView.builder(
-    scrollDirection: Axis.horizontal,
-    padding: const EdgeInsets.symmetric(horizontal: 16),
-    itemCount: drivers.length, // Berdasarkan jumlah driver di state
-    itemBuilder: (context, index) {
-      final driver = drivers[index];
-      
-      // Ambil angka dari ID Driver (misal 'D-101' jadi 101 atau '9' jadi 9)
-      final int driverIdInt = int.tryParse(driver.driverId.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
-      debugPrint("Checking Driver: ${driver.name} with ID: $driverIdInt");
-      debugPrint("DriverAlerts keys: ${driverAlerts.keys.toList()}");
-      // Cari apakah ada alert untuk driver ini di Map driverAlerts
-      final alertData = driverAlerts[driverIdInt];
-      debugPrint("AlertData for driver $driverIdInt: $alertData");
-
-      return Padding(
-        padding: const EdgeInsets.only(right: 16),
-        child: _cameraFeed(
-          driver.name, 
-          alertData?['image'], // Gambar dari hasil polling drowsiness
-          alertData != null ? HealthStatus.warning : HealthStatus.normal, // Border jadi oranye jika ada alert
-          alertData?['type'], // Status type: drowsy, yawn, distraction
-        ),
-      );
-    },
-  ),
-),
-              // Drowsiness Chart
-              // Expanded(
-              //   child: Padding(
-              //     padding: const EdgeInsets.all(16),
-              //     child: LineChart(
-              //       LineChartData(
-              //         gridData: const FlGridData(show: false),
-              //         titlesData: const FlTitlesData(show: false),
-              //         borderData: FlBorderData(show: false),
-              //         minX: 0,
-              //         maxX: 11,
-              //         minY: 0,
-              //         maxY: 6,
-              //         lineBarsData: [
-              //           LineChartBarData(
-              //             spots: const [
-              //               FlSpot(0, 3),
-              //               FlSpot(2.6, 2),
-              //               FlSpot(4.9, 5),
-              //               FlSpot(6.8, 3.1),
-              //               FlSpot(8, 4),
-              //               FlSpot(9.5, 3),
-              //               FlSpot(11, 4),
-              //             ],
-              //             isCurved: true,
-              //             color: AppTheme.accentBlue,
-              //             barWidth: 2,
-              //             isStrokeCapRound: true,
-              //             dotData: const FlDotData(show: false),
-              //             belowBarData: BarAreaData(
-              //               show: true,
-              //               color: AppTheme.accentBlue.withOpacity(0.1),
-              //             ),
-              //           ),
-              //         ],
-              //       ),
-              //     ),
-              //   ),
-              // ),
+              SizedBox(
+                height: 200,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: drivers.length,
+                  itemBuilder: (context, index) {
+                    final driver = drivers[index];
+                    final int driverIdInt =
+                        int.tryParse(
+                          driver.driverId.replaceAll(RegExp(r'[^0-9]'), ''),
+                        ) ??
+                        0;
+                    final alertData = driverAlerts[driverIdInt];
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 16),
+                      child: _cameraFeed(
+                        driver.name,
+                        alertData?['image'],
+                        alertData != null
+                            ? HealthStatus.warning
+                            : HealthStatus.normal,
+                        alertData?['type'],
+                      ),
+                    );
+                  },
+                ),
+              ),
+              // Drowsiness Chart (commented out)
+              // Expanded(...),
             ],
           ),
         ),
@@ -272,7 +237,12 @@ SizedBox(
     );
   }
 
-  Widget _cameraFeed(String driverName, String? imageUrl, HealthStatus status, String? statusType) {
+  Widget _cameraFeed(
+    String driverName,
+    String? imageUrl,
+    HealthStatus status,
+    String? statusType,
+  ) {
     if (imageUrl != null) {
       debugPrint("📸 Gambar terdeteksi untuk $driverName: $imageUrl");
     } else {
@@ -296,24 +266,20 @@ SizedBox(
       ),
       child: Stack(
         children: [
-          if (imageUrl == null) 
-          const Center(
-            child: Icon(
-              Icons.videocam_off_outlined,
-              color: Colors.white10,
-              size: 32,
+          if (imageUrl == null)
+            const Center(
+              child: Icon(
+                Icons.videocam_off_outlined,
+                color: Colors.white10,
+                size: 32,
+              ),
             ),
-          ),
 
-          
           // Placeholder for camera feed
           Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: status.getStatusColor(),
-                width: 2,
-              ),
+              border: Border.all(color: status.getStatusColor(), width: 2),
             ),
           ),
           // Driver name overlay
@@ -347,7 +313,10 @@ SizedBox(
                 if (statusType != null && statusType.isNotEmpty)
                   Container(
                     margin: const EdgeInsets.only(top: 4),
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: status.getStatusColor().withOpacity(0.8),
                       borderRadius: BorderRadius.circular(4),
