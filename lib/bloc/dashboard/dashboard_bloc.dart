@@ -274,6 +274,7 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     SelectionCleared event,
     Emitter<DashboardState> emit,
   ) {
+    print('🔄 SelectionCleared event received, clearing selectedVehicle');
     emit(state.copyWith(selectedVehicle: null));
   }
 

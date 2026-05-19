@@ -3,7 +3,6 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import '../models/vehicle.dart';
 import '../theme/app_theme.dart';
-import 'package:flutter_map_animations/flutter_map_animations.dart';
 
 class MapSection extends StatefulWidget {
   final List<Vehicle> vehicles;
@@ -22,7 +21,7 @@ class MapSection extends StatefulWidget {
     required this.vehicles,
     required this.onVehicleSelected,
     required this.mapController,
-    this.isFullScreen = false,
+    this.isFullScreen = true,
     this.onFullScreenToggle,
     this.showVehicleList = true,
     this.selectedVehicleId,
@@ -58,9 +57,11 @@ class _MapSectionState extends State<MapSection> with TickerProviderStateMixin {
       _fitAllVehicles();
     }
 
-    if (oldWidget.selectedVehicleId != widget.selectedVehicleId &&
-        widget.selectedVehicleId != null) {
-      _setFollowingMode(true);
+    if (oldWidget.selectedVehicleId != widget.selectedVehicleId) {
+      print('🔄 MapSection selectedVehicleId changed: ${oldWidget.selectedVehicleId} -> ${widget.selectedVehicleId}');
+      if (widget.selectedVehicleId != null) {
+        _setFollowingMode(true);
+      }
     }
   }
 
@@ -140,11 +141,13 @@ class _MapSectionState extends State<MapSection> with TickerProviderStateMixin {
           )
         : null;
 
+    print('🏗️ MapSection build: selectedVehicleId=${widget.selectedVehicleId}, selectedVehicleData=${selectedVehicleData?.id}');
+
     return Stack(
       children: [
         // --- 1. LAYER PETA ---
         ClipRRect(
-  borderRadius: BorderRadius.circular(widget.isFullScreen ? 0 : 20),
+  borderRadius: BorderRadius.circular(widget.isFullScreen ? 0 : 0),
   child: Listener(
     onPointerDown: _onPointerDown,
     onPointerMove: _onPointerMove,
@@ -171,29 +174,10 @@ class _MapSectionState extends State<MapSection> with TickerProviderStateMixin {
           userAgentPackageName: 'com.example.fleet_dashboard',
         ),
 
-        // --- MASUKKAN ANIMATED MARKER LAYER DI SINI ---
-        AnimatedMarkerLayer(
-          markers: widget.vehicles.map((vehicle) {
-            final isSelected = widget.selectedVehicleId == vehicle.id;
-
-            return AnimatedMarker(
-              point: vehicle.position,
-              width: isSelected ? 80 : 40,
-              height: isSelected ? 80 : 40,
-              duration: const Duration(milliseconds: 500), // Sesuai interval RasPi lo
-              curve: Curves.linear, // Gerak lurus mengikuti jalan
-              builder: (context, animation) {
-                return GestureDetector(
-                  onTap: () => _handleVehicleTap(vehicle),
-                  child: _VehicleMarkerWidget(
-                    color: vehicle.getStatusColor(),
-                    isSelected: isSelected,
-                    heading: vehicle.heading,
-                  ),
-                );
-              },
-            );
-          }).toList(), // Pastikan toList() di sini
+        SmoothVehicleMarkerLayer(
+          vehicles: widget.vehicles,
+          selectedVehicleId: widget.selectedVehicleId,
+          onVehicleTap: _handleVehicleTap,
         ),
       ],
     ),
@@ -255,32 +239,12 @@ class _MapSectionState extends State<MapSection> with TickerProviderStateMixin {
 
   // --- WIDGET BUILDERS ---
 
-  List<Marker> _buildMarkers() {
-    return widget.vehicles.map((vehicle) {
-      final isSelected = widget.selectedVehicleId == vehicle.id;
-      return Marker(
-        point: vehicle.position,
-        width: isSelected ? 80 : 80,
-        height: isSelected ? 80 : 80,
-        rotate: true, // Marker ikut rotasi map
-        child: GestureDetector(
-          onTap: () => _handleVehicleTap(vehicle),
-          child: _VehicleMarkerWidget(
-            color: vehicle.getStatusColor(),
-            isSelected: isSelected,
-            heading: vehicle.heading,
-          ),
-        ),
-      );
-    }).toList();
-  }
-
   Widget _buildVehicleSidebar() {
     return Container(
       width: 220,
       decoration: BoxDecoration(
-        color: AppTheme.darkNavy.withOpacity(0.9),
-        borderRadius: BorderRadius.circular(15),
+        color: AppTheme.darkNavy.withOpacity(0.7),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: Colors.white10),
         boxShadow: [const BoxShadow(color: Colors.black38, blurRadius: 10)],
       ),
@@ -329,7 +293,7 @@ class _MapSectionState extends State<MapSection> with TickerProviderStateMixin {
       dense: true,
       onTap: () => _handleVehicleTap(vehicle),
       selected: isSelected,
-      selectedTileColor: Colors.white.withOpacity(0.1),
+      selectedTileColor: Colors.white.withOpacity(0.5),
       leading: CircleAvatar(
         radius: 4,
         backgroundColor: vehicle.getStatusColor(),
@@ -343,7 +307,7 @@ class _MapSectionState extends State<MapSection> with TickerProviderStateMixin {
         style: const TextStyle(color: Colors.white54, fontSize: 11),
       ),
       trailing: isSelected
-          ? const Icon(Icons.chevron_right, color: Colors.yellow, size: 16)
+          ? const Icon(Icons.chevron_right, color: Colors.white, size: 16)
           : null,
     );
   }
@@ -355,7 +319,7 @@ class _MapSectionState extends State<MapSection> with TickerProviderStateMixin {
       decoration: BoxDecoration(
         color: AppTheme.darkNavy,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.yellow.withOpacity(0.3)),
+        border: Border.all(color: Colors.white.withOpacity(0.3)),
         boxShadow: [const BoxShadow(color: Colors.black45, blurRadius: 10)],
       ),
       child: Column(
@@ -368,7 +332,7 @@ class _MapSectionState extends State<MapSection> with TickerProviderStateMixin {
               Text(
                 vehicle.id,
                 style: const TextStyle(
-                  color: Colors.yellow,
+                  color: Colors.white,
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
                 ),
@@ -377,7 +341,10 @@ class _MapSectionState extends State<MapSection> with TickerProviderStateMixin {
                 constraints: const BoxConstraints(),
                 padding: EdgeInsets.zero,
                 icon: const Icon(Icons.close, color: Colors.white54, size: 18),
-                onPressed: () => widget.onClearSelection?.call(),
+                onPressed: () {
+                  print('🗑️ Close button pressed for vehicle: ${vehicle.id}');
+                  widget.onClearSelection?.call();
+                },
               ),
             ],
           ),
@@ -409,6 +376,186 @@ class _MapSectionState extends State<MapSection> with TickerProviderStateMixin {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class LatLngTween extends Tween<LatLng> {
+  LatLngTween({LatLng? begin, LatLng? end}) : super(begin: begin, end: end);
+
+  @override
+  LatLng lerp(double t) {
+    final begin = this.begin!;
+    final end = this.end!;
+    return LatLng(
+      begin.latitude + (end.latitude - begin.latitude) * t,
+      begin.longitude + (end.longitude - begin.longitude) * t,
+    );
+  }
+}
+
+class SmoothVehicleMarkerLayer extends StatefulWidget {
+  final List<Vehicle> vehicles;
+  final String? selectedVehicleId;
+  final Function(Vehicle) onVehicleTap;
+
+  const SmoothVehicleMarkerLayer({
+    super.key,
+    required this.vehicles,
+    required this.onVehicleTap,
+    this.selectedVehicleId,
+  });
+
+  @override
+  State<SmoothVehicleMarkerLayer> createState() => _SmoothVehicleMarkerLayerState();
+}
+
+class _MarkerAnimationData {
+  Vehicle vehicle;
+  final AnimationController controller;
+  late LatLngTween tween;
+  late Animation<LatLng> animation;
+
+  _MarkerAnimationData({
+    required this.vehicle,
+    required TickerProvider vsync,
+    Duration duration = const Duration(milliseconds: 500),
+  }) : controller = AnimationController(vsync: vsync, duration: duration) {
+    tween = LatLngTween(begin: vehicle.position, end: vehicle.position);
+    animation = tween.animate(
+      CurvedAnimation(parent: controller, curve: Curves.easeInOut),
+    );
+    controller.value = 1.0;
+  }
+
+  void updateTarget(LatLng newPosition, Duration duration) {
+    final currentPos = animation.value;
+    tween = LatLngTween(begin: currentPos, end: newPosition);
+    animation = tween.animate(
+      CurvedAnimation(parent: controller, curve: Curves.easeInOut),
+    );
+    controller.duration = duration;
+    controller
+      ..reset()
+      ..forward();
+  }
+
+  void dispose() {
+    controller.dispose();
+  }
+}
+
+class _SmoothVehicleMarkerLayerState extends State<SmoothVehicleMarkerLayer>
+    with TickerProviderStateMixin {
+  final Map<String, _MarkerAnimationData> _markerData = {};
+
+  @override
+  void didUpdateWidget(SmoothVehicleMarkerLayer oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    final newIds = widget.vehicles.map((v) => v.id).toSet();
+
+    // Hapus marker yang sudah tidak ada
+    _markerData.keys
+        .where((id) => !newIds.contains(id))
+        .toList()
+        .forEach((id) {
+      _markerData[id]?.dispose();
+      _markerData.remove(id);
+    });
+
+    // Perbarui data marker yang ada dan tambahkan marker baru
+    for (final vehicle in widget.vehicles) {
+      final current = _markerData[vehicle.id];
+      if (current == null) {
+        final data = _MarkerAnimationData(
+          vehicle: vehicle,
+          vsync: this,
+          duration: const Duration(milliseconds: 500),
+        );
+        _markerData[vehicle.id] = data;
+        continue;
+      }
+
+      if (current.vehicle.position != vehicle.position) {
+        current.updateTarget(vehicle.position, const Duration(milliseconds: 500));
+      }
+      current.vehicle = vehicle;
+    }
+  }
+
+  @override
+  void dispose() {
+    for (final value in _markerData.values) {
+      value.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final map = MapCamera.maybeOf(context);
+    if (map == null) {
+      throw StateError('No FlutterMapState found.');
+    }
+
+    final worldWidth = map.getWorldWidthAtZoom();
+
+    return Stack(
+      children: _markerData.values.map((data) {
+          return AnimatedBuilder(
+            animation: data.animation,
+            builder: (context, _) {
+              final currentPosition = data.animation.value;
+              final pxPoint = map.projectAtZoom(currentPosition);
+              final marker = _buildMarkerWidget(data.vehicle);
+              final markerSize = widget.selectedVehicleId == data.vehicle.id ? 80.0 : 40.0;
+
+              final positions = <Widget>[];
+
+              Widget buildPositioned(double xShift) {
+                final shiftedLocalPoint = Offset(pxPoint.dx + xShift, pxPoint.dy) - map.pixelOrigin;
+                return Positioned(
+                  key: ValueKey('${data.vehicle.id}-$xShift'),
+                  width: markerSize,
+                  height: markerSize,
+                  left: shiftedLocalPoint.dx - markerSize / 2,
+                  top: shiftedLocalPoint.dy - markerSize / 2,
+                  child: marker,
+                );
+              }
+
+              positions.add(buildPositioned(0));
+
+              if (worldWidth != 0) {
+                        for (double shift = -worldWidth;
+                    shift.abs() <= worldWidth;
+                    shift -= worldWidth) {
+                  positions.add(buildPositioned(shift));
+                }
+                for (double shift = worldWidth;
+                    shift.abs() <= worldWidth;
+                    shift += worldWidth) {
+                  positions.add(buildPositioned(shift));
+                }
+              }
+
+              return Stack(children: positions);
+            },
+          );
+        }).toList(),
+      );
+  }
+
+  Widget _buildMarkerWidget(Vehicle vehicle) {
+    final isSelected = widget.selectedVehicleId == vehicle.id;
+    return GestureDetector(
+      onTap: () => widget.onVehicleTap(vehicle),
+      child: _VehicleMarkerWidget(
+        color: vehicle.getStatusColor(),
+        isSelected: isSelected,
+        heading: vehicle.heading,
       ),
     );
   }

@@ -1,9 +1,11 @@
+import 'package:fleet_dashboard/screens/report_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_map/flutter_map.dart';
 import '../bloc/dashboard/dashboard_bloc.dart';
 import '../bloc/dashboard/dashboard_event.dart';
 import '../bloc/dashboard/dashboard_state.dart';
+import '../constants/menu_items.dart';
 import '../widgets/sidebar.dart';
 import '../widgets/header.dart';
 import '../widgets/map_section.dart';
@@ -23,6 +25,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final MapController _mapController = MapController();
   bool _isMapFullScreen = false;
   bool _isMapFollowingVehicle = true;
+  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
 
   void _toggleMapFullScreen() {
     setState(() {
@@ -34,6 +37,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
     setState(() {
       _isMapFollowingVehicle = isFollowing;
     });
+  }
+
+  void _handleSidebarNavigation(int index) {
+    final route = MenuItems.items[index].route;
+
+    // Jika route adalah '/', kembali ke dashboard content
+    if (route == '/') {
+      _navigatorKey.currentState?.popUntil((route) => route.isFirst);
+      return;
+    }
+
+    // Navigasi ke route lain menggunakan nested navigator
+    _navigatorKey.currentState?.pushNamed(route);
   }
 
   @override
@@ -73,35 +89,69 @@ class _DashboardScreenState extends State<DashboardScreen> {
         children: [
           _buildSidebar(),
           Expanded(
-            child: Padding(
-              padding: ResponsiveBreakpoints.screenPadding(context),
-              child: Column(
-                children: [
-                  const Header(),
-                  SizedBox(
-                    height: ResponsiveBreakpoints.contentSpacing(context),
-                  ),
-                  Expanded(
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildMapArea(context),
-                        SizedBox(
-                          width: ResponsiveBreakpoints.contentSpacing(context),
-                        ),
-                        _buildDriverMonitoringArea(),
-                      ],
-                    ),
-                  ),
-                  SizedBox(
-                    height: ResponsiveBreakpoints.contentSpacing(context),
-                  ),
-                  _buildStatisticsArea(),
-                ],
-              ),
+            child: Navigator(
+              key: _navigatorKey,
+              initialRoute: '/',
+              onGenerateRoute: (settings) {
+                switch (settings.name) {
+                  case '/':
+                    return MaterialPageRoute(
+                      builder: (context) => _buildDashboardContent(),
+                      settings: settings,
+                    );
+                  case '/reports':
+                    return MaterialPageRoute(
+                      builder: (context) => const ReportScreen(),
+                      settings: settings,
+                    );
+                  case '/vehicles':
+                    return MaterialPageRoute(
+                      builder: (context) => _buildPlaceholderContent('Vehicles'),
+                      settings: settings,
+                    );
+                  case '/drivers':
+                    return MaterialPageRoute(
+                      builder: (context) => _buildPlaceholderContent('Drivers'),
+                      settings: settings,
+                    );
+                  case '/safety':
+                    return MaterialPageRoute(
+                      builder: (context) => _buildPlaceholderContent('Safety'),
+                      settings: settings,
+                    );
+                  case '/settings':
+                    return MaterialPageRoute(
+                      builder: (context) => _buildPlaceholderContent('Settings'),
+                      settings: settings,
+                    );
+                  default:
+                    return MaterialPageRoute(
+                      builder: (context) => _buildPlaceholderContent('Unknown'),
+                      settings: settings,
+                    );
+                }
+              },
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildDashboardContent() {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildMapArea(context),
+      ],
+    );
+  }
+
+  Widget _buildPlaceholderContent(String title) {
+    return Center(
+      child: Text(
+        '$title Screen - Coming Soon',
+        style: const TextStyle(color: Colors.white, fontSize: 24),
       ),
     );
   }
@@ -127,15 +177,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ),
         // Close button (top right)
-        Positioned(
-          top: 40,
-          right: 20,
-          child: FloatingActionButton.small(
-            backgroundColor: AppTheme.darkNavy,
-            onPressed: _toggleMapFullScreen,
-            child: const Icon(Icons.close, color: Colors.white),
-          ),
-        ),
+        // Positioned(
+        //   top: 40,
+        //   right: 20,
+        //   child: FloatingActionButton.small(
+        //     backgroundColor: AppTheme.darkNavy,
+        //     onPressed: _toggleMapFullScreen,
+        //     child: const Icon(Icons.close, color: Colors.white),
+        //   ),
+        // ),
         // Driver monitoring panel (bottom)
         Positioned(
           left: 0,
@@ -215,6 +265,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         selectedIndex: state.selectedMenuIndex,
         onItemSelected: (index) =>
             context.read<DashboardBloc>().add(MenuItemSelected(index)),
+        onItemTapped: _handleSidebarNavigation,
       ),
     );
   }
@@ -223,56 +274,65 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Expanded(
       flex: ResponsiveBreakpoints.isLarge(context) ? 3 : 2,
       child: BlocBuilder<DashboardBloc, DashboardState>(
-        buildWhen: (prev, curr) =>
-            prev.vehicles != curr.vehicles ||
-            prev.selectedVehicle != curr.selectedVehicle,
-        builder: (context, state) => MapSection(
-          mapController: _mapController,
-          vehicles: state.vehicles,
-          onVehicleSelected: (vehicle) =>
-              context.read<DashboardBloc>().add(VehicleSelected(vehicle)),
-          onFullScreenToggle: _toggleMapFullScreen,
-          isFullScreen: _isMapFullScreen,
-          selectedVehicleId: state.selectedVehicle?.id,
-          onClearSelection: () {
-            context.read<DashboardBloc>().add(const SelectionCleared());
-          },
-          onFollowModeChanged: _handleFollowModeChanged,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDriverMonitoringArea() {
-    return Expanded(
-      flex: 2,
-      child: BlocBuilder<DashboardBloc, DashboardState>(
-        buildWhen: (prev, curr) =>
-            prev.driversHealth != curr.driversHealth ||
-            prev.driverAlerts != curr.driverAlerts,
+        buildWhen: (prev, curr) {
+          final shouldRebuild = prev.vehicles != curr.vehicles ||
+              prev.selectedVehicle != curr.selectedVehicle;
+          if (shouldRebuild) {
+            print('🔄 BlocBuilder rebuild triggered: vehicles=${prev.vehicles.length != curr.vehicles.length}, selectedVehicle=${prev.selectedVehicle?.id} -> ${curr.selectedVehicle?.id}');
+          }
+          return shouldRebuild;
+        },
         builder: (context, state) {
-          return DriverMonitoring(
-            drivers: state.driversHealth,
-            driverAlerts: state.driverAlerts,
+          print('🏗️ Building MapSection with selectedVehicleId: ${state.selectedVehicle?.id}');
+          return MapSection(
+            mapController: _mapController,
+            vehicles: state.vehicles,
+            onVehicleSelected: (vehicle) =>
+                context.read<DashboardBloc>().add(VehicleSelected(vehicle)),
+            onFullScreenToggle: _toggleMapFullScreen,
+            isFullScreen: _isMapFullScreen,
+            selectedVehicleId: state.selectedVehicle?.id,
+            onClearSelection: () {
+              print('📤 Sending SelectionCleared event');
+              context.read<DashboardBloc>().add(const SelectionCleared());
+            },
+            onFollowModeChanged: _handleFollowModeChanged,
           );
         },
       ),
     );
   }
 
-  Widget _buildStatisticsArea() {
-    return BlocBuilder<DashboardBloc, DashboardState>(
-      buildWhen: (prev, curr) =>
-          prev.aqiData != curr.aqiData ||
-          prev.onlineDrivers != curr.onlineDrivers ||
-          prev.highRiskAlerts != curr.highRiskAlerts ||
-          prev.alertLog != curr.alertLog,
-      builder: (context, state) => StatisticsCards(
-        aqiData: state.aqiData,
-        onlineDrivers: state.onlineDrivers,
-        highRiskAlerts: state.highRiskAlerts,
-        alertLog: state.alertLog,
-      ),
-    );
-  }
+  // Widget _buildDriverMonitoringArea() {
+  //   return Expanded(
+  //     flex: 2,
+  //     child: BlocBuilder<DashboardBloc, DashboardState>(
+  //       buildWhen: (prev, curr) =>
+  //           prev.driversHealth != curr.driversHealth ||
+  //           prev.driverAlerts != curr.driverAlerts,
+  //       builder: (context, state) {
+  //         return DriverMonitoring(
+  //           drivers: state.driversHealth,
+  //           driverAlerts: state.driverAlerts,
+  //         );
+  //       },
+  //     ),
+  //   );
+  // }
+
+  // Widget _buildStatisticsArea() {
+  //   return BlocBuilder<DashboardBloc, DashboardState>(
+  //     buildWhen: (prev, curr) =>
+  //         prev.aqiData != curr.aqiData ||
+  //         prev.onlineDrivers != curr.onlineDrivers ||
+  //         prev.highRiskAlerts != curr.highRiskAlerts ||
+  //         prev.alertLog != curr.alertLog,
+  //     builder: (context, state) => StatisticsCards(
+  //       aqiData: state.aqiData,
+  //       onlineDrivers: state.onlineDrivers,
+  //       highRiskAlerts: state.highRiskAlerts,
+  //       alertLog: state.alertLog,
+  //     ),
+  //   );
+  // }
 }

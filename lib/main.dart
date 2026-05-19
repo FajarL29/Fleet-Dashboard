@@ -17,10 +17,10 @@ class MyApp extends StatelessWidget {
     return BlocProvider(
       create: (_) => DashboardBloc()..add(const DashboardInitialized()),
       child: MaterialApp(
+        home: const DashboardScreen(),
         title: 'Fleet Management',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.darkTheme,
-        home: const DashboardScreen(),
       ),
     );
   }
