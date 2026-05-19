@@ -6,11 +6,10 @@ import '../bloc/dashboard/dashboard_bloc.dart';
 import '../bloc/dashboard/dashboard_event.dart';
 import '../bloc/dashboard/dashboard_state.dart';
 import '../constants/menu_items.dart';
-import '../widgets/sidebar.dart';
-import '../widgets/header.dart';
-import '../widgets/map_section.dart';
 import '../widgets/driver_monitoring.dart';
-import '../widgets/statistics_cards.dart';
+import '../widgets/map_section.dart';
+import '../widgets/overview/overview_dashboard.dart';
+import '../widgets/sidebar.dart';
 import '../theme/app_theme.dart';
 import '../utils/responsive_layout.dart';
 
@@ -139,11 +138,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildDashboardContent() {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _buildMapArea(context),
-      ],
+    return BlocBuilder<DashboardBloc, DashboardState>(
+      buildWhen: (prev, curr) =>
+          prev.vehicles != curr.vehicles ||
+          prev.selectedVehicle != curr.selectedVehicle ||
+          prev.driverAlerts != curr.driverAlerts ||
+          prev.alertLog != curr.alertLog ||
+          prev.driversHealth != curr.driversHealth,
+      builder: (context, state) {
+        return OverviewDashboard(
+          mapController: _mapController,
+          vehicles: state.vehicles,
+          selectedVehicle: state.selectedVehicle,
+          driverAlerts: state.driverAlerts,
+          alertLog: state.alertLog,
+          driversHealth: state.driversHealth,
+          onVehicleSelected: (vehicle) =>
+              context.read<DashboardBloc>().add(VehicleSelected(vehicle)),
+          onClearSelection: () {
+            context.read<DashboardBloc>().add(const SelectionCleared());
+          },
+          onFollowModeChanged: _handleFollowModeChanged,
+          onOpenMapFullscreen: _toggleMapFullScreen,
+        );
+      },
     );
   }
 
