@@ -16,7 +16,7 @@ class ReportScreen extends StatelessWidget {
           children: [
             Padding(
               padding: EdgeInsets.fromLTRB(24, 16, 24, 0),
-              child: Header(),
+              // child: Header(),
             ),
             Expanded(
               child: SingleChildScrollView(
