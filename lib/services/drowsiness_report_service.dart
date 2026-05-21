@@ -27,24 +27,39 @@ class DrowsinessReportService {
     return DrowsinessReport.fromJson(response);
   }
 
-  Future<List<DrowsinessEvent>> getEvents({
+  Future<List<DrowsinessEvent>> getEventsByVehicle({
     required String vehicleId,
-    required DateTime startDate,
-    required DateTime endDate,
+    DateTime? startDate,
+    DateTime? endDate,
     int limit = 100,
   }) async {
-    final query = {
-      'start_date': _dateOnly(startDate),
-      'end_date': _dateOnly(endDate),
+    final query = <String, String>{
       'limit': limit.toString(),
     };
-    final response = await _get('/trip/drowsiness/events/$vehicleId', query);
+    if (startDate != null) query['start_date'] = _dateOnly(startDate);
+    if (endDate != null) query['end_date'] = _dateOnly(endDate);
+
+    final response = await _get('/drowsiness/events/$vehicleId', query);
     final data = response['data'] as List<dynamic>? ?? const [];
 
     return data
         .whereType<Map<String, dynamic>>()
         .map(DrowsinessEvent.fromJson)
         .toList();
+  }
+
+  Future<List<DrowsinessEvent>> getEvents({
+    required String vehicleId,
+    required DateTime startDate,
+    required DateTime endDate,
+    int limit = 100,
+  }) {
+    return getEventsByVehicle(
+      vehicleId: vehicleId,
+      startDate: startDate,
+      endDate: endDate,
+      limit: limit,
+    );
   }
 
   Future<Map<String, dynamic>> _get(

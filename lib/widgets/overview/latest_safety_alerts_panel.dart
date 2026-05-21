@@ -13,6 +13,8 @@ class LatestSafetyAlertsPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final visibleAlerts = alerts.take(3).toList();
+
     return Container(
       padding: const EdgeInsets.fromLTRB(18, 16, 18, 12),
       decoration: BoxDecoration(
@@ -45,10 +47,10 @@ class LatestSafetyAlertsPanel extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Expanded(
-            child: alerts.isEmpty
+            child: visibleAlerts.isEmpty
                 ? const Center(
                     child: Text(
-                      'No active safety alerts',
+                      'No drowsiness events found',
                       style: TextStyle(
                         color: AppTheme.textSecondary,
                         fontSize: 13,
@@ -56,13 +58,13 @@ class LatestSafetyAlertsPanel extends StatelessWidget {
                     ),
                   )
                 : ListView.separated(
-                    itemCount: alerts.length,
+                    itemCount: visibleAlerts.length,
                     separatorBuilder: (_, __) => Divider(
                       color: Colors.white.withOpacity(0.06),
                       height: 1,
                     ),
                     itemBuilder: (context, index) {
-                      final alert = alerts[index];
+                      final alert = visibleAlerts[index];
                       final severityColor = _severityColor(
                         alert['severity']?.toString() ?? 'Low',
                       );
@@ -92,6 +94,8 @@ class LatestSafetyAlertsPanel extends StatelessWidget {
                                 children: [
                                   Text(
                                     alert['eventType']?.toString() ?? 'Safety Alert',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(
                                       color: AppTheme.textPrimary,
                                       fontSize: 14,
@@ -140,7 +144,14 @@ class LatestSafetyAlertsPanel extends StatelessWidget {
       return '--:--';
     }
 
-    return DateFormat('HH:mm').format(time);
+    final now = DateTime.now();
+    final isToday = time.year == now.year &&
+        time.month == now.month &&
+        time.day == now.day;
+
+    return isToday
+        ? DateFormat('HH:mm').format(time)
+        : DateFormat('MMM d, HH:mm').format(time);
   }
 
   Color _severityColor(String severity) {
@@ -164,6 +175,8 @@ class _MetaText extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       value,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
       style: const TextStyle(
         color: AppTheme.textSecondary,
         fontSize: 12,

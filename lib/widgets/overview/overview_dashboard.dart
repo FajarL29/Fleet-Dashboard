@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:intl/intl.dart';
 
+import '../../models/drowsiness_report.dart';
 import '../../models/driver_health.dart';
 import '../../models/vehicle.dart';
 import '../../theme/app_theme.dart';
-import '../header.dart';
 import '../map_section.dart';
 import 'device_status_panel.dart';
 import 'high_risk_drivers_panel.dart';
@@ -22,6 +22,7 @@ class OverviewDashboard extends StatelessWidget {
     required this.driverAlerts,
     required this.alertLog,
     required this.driversHealth,
+    required this.recentDrowsinessEvents,
     required this.onVehicleSelected,
     required this.onClearSelection,
     required this.onFollowModeChanged,
@@ -34,6 +35,7 @@ class OverviewDashboard extends StatelessWidget {
   final Map<int, Map<String, dynamic>> driverAlerts;
   final List<String> alertLog;
   final List<DriverHealth> driversHealth;
+  final List<DrowsinessEvent> recentDrowsinessEvents;
   final ValueChanged<Vehicle> onVehicleSelected;
   final VoidCallback onClearSelection;
   final ValueChanged<bool> onFollowModeChanged;
@@ -43,6 +45,7 @@ class OverviewDashboard extends StatelessWidget {
   Widget build(BuildContext context) {
     final overviewData = _buildOverviewData();
     final kpiCards = _buildKpiCards(overviewData);
+    final eventSourceLabel = _eventSourceLabel();
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
       child: LayoutBuilder(
@@ -54,10 +57,17 @@ class OverviewDashboard extends StatelessWidget {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // const Header(),
               const SizedBox(height: 14),
               const _OverviewHeading(),
-              const SizedBox(height: 16),
+              const SizedBox(height: 2),
+              Text(
+                'Recent events from $eventSourceLabel',
+                style: const TextStyle(
+                  color: AppTheme.textSecondary,
+                  fontSize: 11,
+                ),
+              ),
+              const SizedBox(height: 14),
               if (useDesktopKpiRow)
                 SizedBox(
                   height: 112,
@@ -231,14 +241,16 @@ class OverviewDashboard extends StatelessWidget {
         accentColor: const Color(0xFF8B5CF6),
       ),
       OverviewKpiCard(
-        title: 'Events Need Review',
+        // TODO: Replace with real review queue count when backend provides review status.
+        title: 'Recent Events',
         value: '${data.eventsNeedReview}',
-        subtitle: 'Pending safety follow-up',
-        trendText: '${data.eventsNeedReviewDeltaLabel} review queue',
+        subtitle: 'Recent vehicle activity',
+        trendText: '${data.eventsNeedReviewDeltaLabel} recent items',
         trendColor: AppTheme.error,
         icon: Icons.warning_amber_rounded,
         accentColor: const Color(0xFFF59E0B),
       ),
+      // TODO: Replace this proxy with real driver risk data when the backend exposes it.
       OverviewKpiCard(
         title: 'High-Risk Drivers',
         value: '${data.highRiskDriverCount}',
@@ -248,6 +260,7 @@ class OverviewDashboard extends StatelessWidget {
         icon: Icons.groups_rounded,
         accentColor: const Color(0xFFEF4444),
       ),
+      // TODO: Replace this proxy with real device health data when the backend exposes it.
       OverviewKpiCard(
         title: 'Device Health',
         value: '${data.deviceHealthPercentage}%',
@@ -260,16 +273,6 @@ class OverviewDashboard extends StatelessWidget {
     ];
   }
 
-  double _kpiWidth(double contentWidth) {
-    if (contentWidth >= 1720) {
-      return (contentWidth - 64) / 5;
-    }
-    if (contentWidth >= 1440) {
-      return (contentWidth - 48) / 3;
-    }
-    return contentWidth;
-  }
-
   _OverviewData _buildOverviewData() {
     final onlineVehicles =
         vehicles.where((vehicle) => vehicle.status == VehicleStatus.active).length;
@@ -279,13 +282,13 @@ class OverviewDashboard extends StatelessWidget {
         vehicles.where((vehicle) => vehicle.status == VehicleStatus.error).length;
 
     final latestAlerts = _buildLatestAlerts();
-    final recentEvents = _buildRecentEvents(latestAlerts);
+    final recentEvents = _buildRecentEvents();
     final highRiskDrivers = _buildHighRiskDrivers();
-    final drowsyEventsToday = latestAlerts
-        .where((alert) => (alert['eventType'] as String).contains('Drowsiness'))
+    final drowsyEventsToday = recentDrowsinessEvents
+        .where(_isTodayEvent)
         .length;
-    final eventsNeedReview = latestAlerts
-        .where((alert) => alert['severity'] != 'Low')
+    final eventsNeedReview = recentDrowsinessEvents
+        .where((event) => _severityFromRisk(event.riskLevel) != 'Low')
         .length;
 
     return _OverviewData(
@@ -320,54 +323,10 @@ class OverviewDashboard extends StatelessWidget {
   }
 
   List<Map<String, dynamic>> _buildLatestAlerts() {
-    final alerts = <Map<String, dynamic>>[];
-    final fallbackLocations = ['Sunter, Jakarta Utara', 'Bekasi', 'Karawang'];
+    final events = List<DrowsinessEvent>.from(recentDrowsinessEvents)
+      ..sort((a, b) => b.time.compareTo(a.time));
 
-    driverAlerts.forEach((driverId, alert) {
-      final driver = _driverById(driverId);
-      final vehicle = _vehicleForDriver(driver, alert['vehicle_id']?.toString());
-      final eventType = _formatEventType(alert['type']?.toString());
-      final severity = _severityFromType(eventType);
-
-      alerts.add({
-        'driverName': driver?.name ?? 'Unknown Driver',
-        'vehicleLabel': vehicle?.plateNumber ?? alert['vehicle_id']?.toString() ?? '-',
-        'location': _locationForVehicle(vehicle, fallbackLocations[alerts.length % 3]),
-        'time': _normalizeDateTime(alert['time']),
-        'eventType': eventType,
-        'severity': severity,
-        'speedLabel':
-            vehicle == null ? '-' : '${vehicle.speed.toStringAsFixed(0)} km/h',
-      });
-    });
-
-    for (var i = 0; i < alertLog.length && alerts.length < 5; i++) {
-      final driver = driversHealth.isEmpty
-          ? null
-          : driversHealth[i % driversHealth.length];
-      final vehicle = vehicles.isEmpty ? null : vehicles[i % vehicles.length];
-      final message = alertLog[i];
-      final eventType = _eventTypeFromLog(message);
-      final severity = _severityFromType(eventType);
-
-      alerts.add({
-        'driverName': driver?.name ?? _fallbackDriver(i),
-        'vehicleLabel': vehicle?.plateNumber ?? _fallbackPlate(i),
-        'location': _fallbackLocation(i),
-        'time': DateTime.now().subtract(Duration(minutes: 14 * (i + 1))),
-        'eventType': eventType,
-        'severity': severity,
-        'speedLabel':
-            vehicle == null ? '${42 + (i * 5)} km/h' : '${vehicle.speed.toStringAsFixed(0)} km/h',
-      });
-    }
-
-    alerts.sort(
-      (a, b) => (_normalizeDateTime(b['time']))
-          .compareTo(_normalizeDateTime(a['time'])),
-    );
-
-    return alerts.take(6).toList();
+    return events.take(3).map(_mapEventForOverview).toList();
   }
 
   List<Map<String, dynamic>> _buildHighRiskDrivers() {
@@ -412,51 +371,19 @@ class OverviewDashboard extends StatelessWidget {
     return items.take(5).toList();
   }
 
-  List<Map<String, dynamic>> _buildRecentEvents(
-    List<Map<String, dynamic>> latestAlerts,
-  ) {
-    if (latestAlerts.isNotEmpty) {
-      return latestAlerts
-          .map(
-            (alert) => {
-              'time': alert['time'],
-              'eventType': alert['eventType'],
-              'driverName': alert['driverName'],
-              'vehicleLabel': alert['vehicleLabel'],
-              'location': alert['location'],
-              'severity': alert['severity'],
-              'speedLabel': alert['speedLabel'],
-            },
-          )
-          .toList();
-    }
+  List<Map<String, dynamic>> _buildRecentEvents() {
+    final events = List<DrowsinessEvent>.from(recentDrowsinessEvents)
+      ..sort((a, b) => b.time.compareTo(a.time));
 
-    return List.generate(5, (index) {
-      return {
-        'time': DateTime.now().subtract(Duration(minutes: 12 * (index + 1))),
-        'eventType': index.isEven ? 'Drowsiness Detected' : 'Overspeed',
-        'driverName': _fallbackDriver(index),
-        'vehicleLabel': _fallbackPlate(index),
-        'location': _fallbackLocation(index),
-        'severity': index.isEven ? 'High' : 'Medium',
-        'speedLabel': '${48 + (index * 6)} km/h',
-      };
-    });
-  }
-
-  DriverHealth? _driverById(int driverId) {
-    for (final driver in driversHealth) {
-      if (int.tryParse(driver.driverId) == driverId) {
-        return driver;
-      }
-    }
-    return null;
+    return events.take(3).map(_mapEventForOverview).toList();
   }
 
   Vehicle? _vehicleForDriver(DriverHealth? driver, String? vehicleId) {
     if (vehicleId != null && vehicleId.isNotEmpty) {
       for (final vehicle in vehicles) {
-        if (vehicle.id == vehicleId || vehicle.plateNumber == vehicleId) {
+        if (vehicle.id == vehicleId ||
+            vehicle.plateNumber == vehicleId ||
+            vehicle.apiVehicleId == vehicleId) {
           return vehicle;
         }
       }
@@ -492,19 +419,77 @@ class OverviewDashboard extends StatelessWidget {
         .join(' ');
   }
 
-  String _eventTypeFromLog(String message) {
-    final lower = message.toLowerCase();
-    if (lower.contains('drows')) return 'Drowsiness Detected';
-    if (lower.contains('speed')) return 'Overspeed';
-    if (lower.contains('co2')) return 'Device Warning';
-    return 'Safety Alert';
+  String _severityFromRisk(String? riskLevel) {
+    final lower = riskLevel?.toLowerCase().trim() ?? '';
+    if (lower == 'high') return 'High';
+    if (lower == 'medium') return 'Medium';
+    if (lower == 'low') return 'Low';
+    return 'Medium';
   }
 
-  String _severityFromType(String eventType) {
-    final lower = eventType.toLowerCase();
-    if (lower.contains('drows') || lower.contains('alert')) return 'High';
-    if (lower.contains('braking') || lower.contains('speed')) return 'Medium';
-    return 'Low';
+  bool _isTodayEvent(DrowsinessEvent event) {
+    final now = DateTime.now();
+    return event.time.year == now.year &&
+        event.time.month == now.month &&
+        event.time.day == now.day;
+  }
+
+  Map<String, dynamic> _mapEventForOverview(DrowsinessEvent event) {
+    final vehicle = _vehicleForEvent(event);
+    final driver = _driverForEvent(event);
+
+    return {
+      'driverName': driver?.name ?? event.driverLabel,
+      'vehicleLabel': event.vehicleId.isNotEmpty
+          ? event.vehicleId
+          : (vehicle?.plateNumber ?? '-'),
+      'location': _eventLocationLabel(event, vehicle),
+      'time': event.time,
+      'eventType': _eventTitle(event),
+      'severity': _severityFromRisk(event.riskLevel),
+      'speedLabel':
+          vehicle == null ? '-' : '${vehicle.speed.toStringAsFixed(0)} km/h',
+    };
+  }
+
+  DriverHealth? _driverForEvent(DrowsinessEvent event) {
+    for (final driver in driversHealth) {
+      if (driver.driverId == event.userId.toString()) {
+        return driver;
+      }
+    }
+    return null;
+  }
+
+  Vehicle? _vehicleForEvent(DrowsinessEvent event) {
+    for (final vehicle in vehicles) {
+      if (vehicle.id == event.vehicleId ||
+          vehicle.plateNumber == event.vehicleId ||
+          vehicle.apiVehicleId == event.vehicleId) {
+        return vehicle;
+      }
+    }
+    return null;
+  }
+
+  String _eventTitle(DrowsinessEvent event) {
+    if (event.status.trim().isNotEmpty) {
+      return _formatEventType(event.status);
+    }
+    if ((event.behaviorType ?? '').trim().isNotEmpty) {
+      return _formatEventType(event.behaviorType);
+    }
+    return 'Drowsiness Detected';
+  }
+
+  String _eventLocationLabel(DrowsinessEvent event, Vehicle? vehicle) {
+    if (event.location != null && event.location!.trim().isNotEmpty) {
+      return event.location!;
+    }
+    if (event.latitude != null && event.longitude != null) {
+      return '${event.latitude!.toStringAsFixed(5)}, ${event.longitude!.toStringAsFixed(5)}';
+    }
+    return _locationForVehicle(vehicle, 'Unknown location');
   }
 
   String _locationForVehicle(Vehicle? vehicle, String fallback) {
@@ -547,17 +532,6 @@ class OverviewDashboard extends StatelessWidget {
     return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
   }
 
-  String _fallbackDriver(int index) {
-    const names = [
-      'Ahmad Fauzi',
-      'Dimas Putra',
-      'Rizky Pratama',
-      'Hendra Wijaya',
-      'Yudi Kurniawan',
-    ];
-    return names[index % names.length];
-  }
-
   String _fallbackPlate(int index) {
     const plates = [
       'B 7041 UDB',
@@ -569,16 +543,22 @@ class OverviewDashboard extends StatelessWidget {
     return plates[index % plates.length];
   }
 
-  String _fallbackLocation(int index) {
-    const locations = [
-      'Sunter, Jakarta Utara',
-      'Bekasi, Jawa Barat',
-      'Karawang, Jawa Barat',
-      'Tambun, Bekasi',
-      'Cikarang, Bekasi',
-    ];
-    return locations[index % locations.length];
+  String _eventSourceLabel() {
+    final selectedApiId = selectedVehicle?.apiVehicleId?.trim();
+    if (selectedApiId != null && selectedApiId.isNotEmpty) {
+      return selectedApiId;
+    }
+
+    for (final vehicle in vehicles) {
+      final apiId = vehicle.apiVehicleId?.trim();
+      if (apiId != null && apiId.isNotEmpty) {
+        return apiId;
+      }
+    }
+
+    return 'VIN-0001';
   }
+
 }
 
 class _OverviewHeading extends StatelessWidget {
@@ -603,6 +583,63 @@ class _OverviewHeading extends StatelessWidget {
           style: TextStyle(
             color: AppTheme.textSecondary,
             fontSize: 13,
+          ),
+        ),
+        SizedBox(height: 3),
+        Text(
+          'Live overview · recent data',
+          style: TextStyle(
+            color: AppTheme.textSecondary,
+            fontSize: 11,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _OverviewHeadingWithSource extends StatelessWidget {
+  const _OverviewHeadingWithSource({
+    required this.eventSourceLabel,
+  });
+
+  final String eventSourceLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Driver Safety & Telematics',
+          style: TextStyle(
+            color: AppTheme.textPrimary,
+            fontSize: 28,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'Overview of fleet health, live tracking, and safety monitoring.',
+          style: TextStyle(
+            color: AppTheme.textSecondary,
+            fontSize: 13,
+          ),
+        ),
+        const SizedBox(height: 3),
+        const Text(
+          'Live overview · recent data',
+          style: TextStyle(
+            color: AppTheme.textSecondary,
+            fontSize: 11,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          'Recent events from $eventSourceLabel',
+          style: const TextStyle(
+            color: AppTheme.textSecondary,
+            fontSize: 11,
           ),
         ),
       ],

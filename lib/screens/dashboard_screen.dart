@@ -144,7 +144,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           prev.selectedVehicle != curr.selectedVehicle ||
           prev.driverAlerts != curr.driverAlerts ||
           prev.alertLog != curr.alertLog ||
-          prev.driversHealth != curr.driversHealth,
+          prev.driversHealth != curr.driversHealth ||
+          prev.recentDrowsinessEvents != curr.recentDrowsinessEvents,
       builder: (context, state) {
         return OverviewDashboard(
           mapController: _mapController,
@@ -153,6 +154,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           driverAlerts: state.driverAlerts,
           alertLog: state.alertLog,
           driversHealth: state.driversHealth,
+          recentDrowsinessEvents: state.recentDrowsinessEvents,
           onVehicleSelected: (vehicle) =>
               context.read<DashboardBloc>().add(VehicleSelected(vehicle)),
           onClearSelection: () {

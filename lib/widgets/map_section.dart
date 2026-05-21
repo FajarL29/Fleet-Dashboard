@@ -171,7 +171,7 @@ class _MapSectionState extends State<MapSection> with TickerProviderStateMixin {
       children: [
         TileLayer(
           urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-          userAgentPackageName: 'com.example.fleet_dashboard',
+          userAgentPackageName: 'fleet_dashboard',
         ),
 
         SmoothVehicleMarkerLayer(

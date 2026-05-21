@@ -4,13 +4,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:http/http.dart' as http; // Tambahkan http
+import '../../models/drowsiness_report.dart';
 import '../../models/vehicle.dart';
+import '../../services/drowsiness_report_service.dart';
 import '../../services/gps_socket_service.dart';
 import 'dashboard_event.dart';
 import 'dashboard_state.dart';
 
 class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
   final GpsSocketService _gpsSocketService = GpsSocketService();
+  final DrowsinessReportService _drowsinessReportService =
+      const DrowsinessReportService();
   StreamSubscription? _gpsSubscription;
 
   // Tambahan untuk Drowsiness Polling
@@ -47,6 +51,8 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
           "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6ImRyaXZlcl9wcm9fMDEiLCJmdWxsbmFtZSI6IlJlaW5lciBQcmFrb3NvIiwiZW1haWwiOiJyZWluZXJAZXhhbXBsZS5jb20iLCJjcmVhdGVkX2J5IjoiU1lTVEVNIiwiY3JlYXRlZF9kdCI6IjIwMjYtMDMtMzBUMTA6MTk6MzYuMDAwWiIsImFkZHJlc3MiOiJCZWthc2ssIEluZG9uZXNpYSIsImlhdCI6MTc3NDg0MDkwOSwiZXhwIjoxNzc0ODQ0NTA5fQ.XWOT48IaoQWCCaQjfzYBabv6QSjiRKLdd0E6QJoQot0",
     );
     // _startDrowsinessPolling(userId: event.userID, token: event.token);
+
+    await _loadRecentDrowsinessEvents(emit);
   }
 
   /// --- LOGIKA DROWSINESS POLLING (HTTP) ---
@@ -167,6 +173,9 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     try {
       Map<String, dynamic> data;
       if (message is String) {
+        if (message.trim().isEmpty) {
+          return;
+        }
         data = json.decode(message);
       } else if (message is Map<String, dynamic>) {
         data = message;
@@ -266,8 +275,12 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     emit(state.copyWith(selectedMenuIndex: event.index));
   }
 
-  void _onVehicleSelected(VehicleSelected event, Emitter<DashboardState> emit) {
+  Future<void> _onVehicleSelected(
+    VehicleSelected event,
+    Emitter<DashboardState> emit,
+  ) async {
     emit(state.copyWith(selectedVehicle: event.vehicle));
+    await _loadRecentDrowsinessEvents(emit, vehicle: event.vehicle);
   }
 
   void _onSelectionCleared(
@@ -300,6 +313,87 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     _gpsSubscription?.cancel();
     _drowsinessTimer?.cancel(); // Pastikan timer mati
     _gpsSocketService.disconnect();
+  }
+
+  Future<void> _loadRecentDrowsinessEvents(
+    Emitter<DashboardState> emit, {
+    Vehicle? vehicle,
+  }) async {
+    final fallbackVehicle = state.vehicles.isEmpty ? null : state.vehicles.first;
+    final targetVehicle = vehicle ?? state.selectedVehicle ?? fallbackVehicle;
+
+    if (targetVehicle == null) {
+      emit(state.copyWith(recentDrowsinessEvents: const []));
+      return;
+    }
+
+    final now = DateTime.now();
+    final todayStart = DateTime(now.year, now.month, now.day);
+
+    try {
+      var events = await _fetchEventsForDateRange(
+        targetVehicle: targetVehicle,
+        startDate: todayStart,
+        endDate: now,
+      );
+
+      if (events.isEmpty) {
+        events = await _fetchEventsForDateRange(
+          targetVehicle: targetVehicle,
+          startDate: now.subtract(const Duration(days: 30)),
+          endDate: now,
+        );
+      }
+
+      final sortedEvents = List<DrowsinessEvent>.from(events)
+        ..sort((a, b) => b.time.compareTo(a.time));
+
+      emit(state.copyWith(recentDrowsinessEvents: sortedEvents));
+    } catch (e) {
+      debugPrint('Failed to load drowsiness events: $e');
+      emit(
+        state.copyWith(
+          recentDrowsinessEvents: state.recentDrowsinessEvents,
+        ),
+      );
+    }
+  }
+
+  Future<List<DrowsinessEvent>> _fetchEventsForDateRange({
+    required Vehicle targetVehicle,
+    required DateTime startDate,
+    required DateTime endDate,
+  }) async {
+    for (final vehicleId in _eventVehicleIds(targetVehicle)) {
+      final events = await _drowsinessReportService.getEventsByVehicle(
+        vehicleId: vehicleId,
+        startDate: startDate,
+        endDate: endDate,
+        limit: 100,
+      );
+
+      if (events.isNotEmpty) {
+        return List<DrowsinessEvent>.from(events);
+      }
+    }
+
+    return <DrowsinessEvent>[];
+  }
+
+  List<String> _eventVehicleIds(Vehicle vehicle) {
+    final identifiers = <String>[];
+    final apiVehicleId = vehicle.apiVehicleId?.trim();
+
+    if (apiVehicleId != null && apiVehicleId.isNotEmpty) {
+      identifiers.add(apiVehicleId);
+    }
+
+    if (identifiers.isEmpty) {
+      // TODO: Remove this local-development fallback after all vehicles carry API IDs.
+      identifiers.add('VIN-0001');
+    }
+
+    return identifiers;
   }
 }
 

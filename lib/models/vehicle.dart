@@ -10,6 +10,7 @@ enum VehicleStatus {
 
 class Vehicle {
   final String id;
+  final String? apiVehicleId;
   final String plateNumber;
   final String type;
   final String driverName;
@@ -23,6 +24,7 @@ class Vehicle {
 
   Vehicle({
     required this.id,
+    this.apiVehicleId,
     required this.plateNumber,
     required this.type,
     required this.driverName,
@@ -48,6 +50,7 @@ class Vehicle {
   // CopyWith method for immutable updates
   Vehicle copyWith({
     String? id,
+    String? apiVehicleId,
     String? plateNumber,
     String? type,
     String? driverName,
@@ -59,6 +62,7 @@ class Vehicle {
   }) {
     return Vehicle(
       id: id ?? this.id,
+      apiVehicleId: apiVehicleId ?? this.apiVehicleId,
       plateNumber: plateNumber ?? this.plateNumber,
       type: type ?? this.type,
       driverName: driverName ?? this.driverName,

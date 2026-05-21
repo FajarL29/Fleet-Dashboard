@@ -78,6 +78,7 @@ class DrowsinessEvent {
     required this.time,
     required this.status,
     required this.riskLevel,
+    this.behaviorType,
     this.imageUrl,
     this.previewBase64,
     this.location,
@@ -91,6 +92,7 @@ class DrowsinessEvent {
   final DateTime time;
   final String status;
   final String riskLevel;
+  final String? behaviorType;
   final String? imageUrl;
   final String? previewBase64;
   final String? location;
@@ -110,6 +112,7 @@ class DrowsinessEvent {
       time: _parseDate(json['event_time'] ?? json['time']) ?? DateTime.fromMillisecondsSinceEpoch(0),
       status: (json['status'] ?? '').toString(),
       riskLevel: (json['risk_level'] ?? '').toString(),
+      behaviorType: _optionalString(json['behavior_type']),
       imageUrl: json['img_path']?.toString(),
       previewBase64: json['powerbi_preview']?.toString(),
       location: _locationName(json, locationMap),
@@ -151,6 +154,14 @@ int _toInt(dynamic value) {
   if (value is int) return value;
   if (value is num) return value.toInt();
   return int.tryParse(value?.toString() ?? '') ?? 0;
+}
+
+String? _optionalString(dynamic value) {
+  final stringValue = value?.toString().trim();
+  if (stringValue == null || stringValue.isEmpty) {
+    return null;
+  }
+  return stringValue;
 }
 
 double? _toDouble(dynamic value) {

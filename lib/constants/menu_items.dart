@@ -17,7 +17,7 @@ class MenuItem {
 class MenuItems {
   static const List<MenuItem> items = [
     MenuItem(
-      title: 'Dashboard',
+      title: 'Overview',
       icon: Icons.dashboard_rounded,
       route: '/',
     ),

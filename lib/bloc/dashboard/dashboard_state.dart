@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:latlong2/latlong.dart';
+import '../../models/drowsiness_report.dart';
 import '../../models/vehicle.dart';
 import '../../models/driver_health.dart';
 import '../../models/aqi_data.dart';
@@ -47,6 +48,9 @@ class DashboardState extends Equatable {
   /// Alert log
   final List<String> alertLog;
 
+  /// Recent drowsiness events from the API
+  final List<DrowsinessEvent> recentDrowsinessEvents;
+
   /// Error message (if any)
   final String? errorMessage;
 
@@ -61,6 +65,7 @@ class DashboardState extends Equatable {
     this.onlineDrivers = 0,
     this.highRiskAlerts = 0,
     this.alertLog = const [],
+    this.recentDrowsinessEvents = const [],
     this.errorMessage,
     this.driverAlerts = const {},
   });
@@ -72,6 +77,7 @@ class DashboardState extends Equatable {
       vehicles: [
         Vehicle(
           id: '1210',
+          apiVehicleId: 'VIN-0001',
           plateNumber: 'B 7041 UDB',
           type: 'HIACE Commuter',
           driverName: 'Budi',
@@ -82,6 +88,7 @@ class DashboardState extends Equatable {
 
         Vehicle(
         id: '999', 
+        // TODO: Replace with the real API vehicle identifier when available.
         plateNumber: 'B 9999 XYZ',
         type: 'HIACE Luxury',
         driverName: 'Bahrudin',
@@ -90,6 +97,7 @@ class DashboardState extends Equatable {
       ),
       Vehicle(
         id: '1234', 
+        // TODO: Replace with the real API vehicle identifier when available.
         plateNumber: 'B 1111 UOB',
         type: 'Innova Ribon',
         driverName: 'Gito',
@@ -134,6 +142,7 @@ class DashboardState extends Equatable {
         'Vehicle V-110 exceeding speed limit',
         'High CO2 levels detected in V-112',
       ],
+      recentDrowsinessEvents: const [],
     );
   }
 
@@ -152,6 +161,7 @@ class DashboardState extends Equatable {
     int? onlineDrivers,
     int? highRiskAlerts,
     List<String>? alertLog,
+    List<DrowsinessEvent>? recentDrowsinessEvents,
     String? errorMessage,
     bool clearErrorMessage = false, 
     Map<int, Map<String, dynamic>>? driverAlerts, // Perbaikan: Pakai ? dan hapus required
@@ -169,6 +179,8 @@ class DashboardState extends Equatable {
       onlineDrivers: onlineDrivers ?? this.onlineDrivers,
       highRiskAlerts: highRiskAlerts ?? this.highRiskAlerts,
       alertLog: alertLog ?? this.alertLog,
+      recentDrowsinessEvents:
+          recentDrowsinessEvents ?? this.recentDrowsinessEvents,
       errorMessage:
           clearErrorMessage ? null : (errorMessage ?? this.errorMessage),
       driverAlerts: driverAlerts ?? this.driverAlerts, // Perbaikan: Tambahkan ini
@@ -187,6 +199,7 @@ class DashboardState extends Equatable {
         onlineDrivers,
         highRiskAlerts,
         alertLog,
+        recentDrowsinessEvents,
         errorMessage,
         driverAlerts, // Perbaikan: Masukkan ke props agar UI sinkron
       ];
