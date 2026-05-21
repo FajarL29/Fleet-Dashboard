@@ -4,14 +4,17 @@ class DrowsinessReport {
   const DrowsinessReport({
     required this.summary,
     required this.eventsByDay,
+    required this.eventsByHour,
   });
 
   final DrowsinessReportSummary summary;
   final List<DrowsinessEventsByDay> eventsByDay;
+  final List<DrowsinessEventsByHour> eventsByHour;
 
   factory DrowsinessReport.fromJson(Map<String, dynamic> json) {
     final data = json['data'] as Map<String, dynamic>? ?? json;
     final days = data['events_by_day'] as List<dynamic>? ?? const [];
+    final hours = data['events_by_hour'] as List<dynamic>? ?? const [];
 
     return DrowsinessReport(
       summary: DrowsinessReportSummary.fromJson(
@@ -20,6 +23,10 @@ class DrowsinessReport {
       eventsByDay: days
           .whereType<Map<String, dynamic>>()
           .map(DrowsinessEventsByDay.fromJson)
+          .toList(),
+      eventsByHour: hours
+          .whereType<Map<String, dynamic>>()
+          .map(DrowsinessEventsByHour.fromJson)
           .toList(),
     );
   }
@@ -65,6 +72,23 @@ class DrowsinessEventsByDay {
   factory DrowsinessEventsByDay.fromJson(Map<String, dynamic> json) {
     return DrowsinessEventsByDay(
       date: _parseDate(json['event_date']) ?? DateTime.fromMillisecondsSinceEpoch(0),
+      totalEvents: _toInt(json['total_events']),
+    );
+  }
+}
+
+class DrowsinessEventsByHour {
+  const DrowsinessEventsByHour({
+    required this.hour,
+    required this.totalEvents,
+  });
+
+  final int hour;
+  final int totalEvents;
+
+  factory DrowsinessEventsByHour.fromJson(Map<String, dynamic> json) {
+    return DrowsinessEventsByHour(
+      hour: _toInt(json['event_hour']),
       totalEvents: _toInt(json['total_events']),
     );
   }

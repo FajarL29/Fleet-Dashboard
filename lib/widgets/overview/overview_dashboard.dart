@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:intl/intl.dart';
 
+import '../../models/driver_behavior_summary.dart';
 import '../../models/drowsiness_report.dart';
 import '../../models/driver_health.dart';
 import '../../models/vehicle.dart';
@@ -23,6 +24,8 @@ class OverviewDashboard extends StatelessWidget {
     required this.alertLog,
     required this.driversHealth,
     required this.recentDrowsinessEvents,
+    required this.currentDrowsinessReport,
+    required this.driverBehaviorSummaries,
     required this.onVehicleSelected,
     required this.onClearSelection,
     required this.onFollowModeChanged,
@@ -36,6 +39,8 @@ class OverviewDashboard extends StatelessWidget {
   final List<String> alertLog;
   final List<DriverHealth> driversHealth;
   final List<DrowsinessEvent> recentDrowsinessEvents;
+  final DrowsinessReport? currentDrowsinessReport;
+  final List<DriverBehaviorSummary> driverBehaviorSummaries;
   final ValueChanged<Vehicle> onVehicleSelected;
   final VoidCallback onClearSelection;
   final ValueChanged<bool> onFollowModeChanged;
@@ -245,7 +250,7 @@ class OverviewDashboard extends StatelessWidget {
         title: 'Recent Events',
         value: '${data.eventsNeedReview}',
         subtitle: 'Recent vehicle activity',
-        trendText: '${data.eventsNeedReviewDeltaLabel} recent items',
+        trendText: data.eventsNeedReviewTrendLabel,
         trendColor: AppTheme.error,
         icon: Icons.warning_amber_rounded,
         accentColor: const Color(0xFFF59E0B),
@@ -254,8 +259,8 @@ class OverviewDashboard extends StatelessWidget {
       OverviewKpiCard(
         title: 'High-Risk Drivers',
         value: '${data.highRiskDriverCount}',
-        subtitle: 'Warning or alert status',
-        trendText: '${data.highRiskDriversDeltaLabel} monitored',
+        subtitle: data.highRiskDriversSubtitle,
+        trendText: data.highRiskDriversTrendLabel,
         trendColor: AppTheme.error,
         icon: Icons.groups_rounded,
         accentColor: const Color(0xFFEF4444),
@@ -284,11 +289,23 @@ class OverviewDashboard extends StatelessWidget {
     final latestAlerts = _buildLatestAlerts();
     final recentEvents = _buildRecentEvents();
     final highRiskDrivers = _buildHighRiskDrivers();
+    final realHighRiskDrivers = _buildRealHighRiskDrivers();
     final drowsyEventsToday = recentDrowsinessEvents
         .where(_isTodayEvent)
         .length;
-    final eventsNeedReview = recentDrowsinessEvents
+    final eventBasedRecentCount = recentDrowsinessEvents
         .where((event) => _severityFromRisk(event.riskLevel) != 'Low')
+        .length;
+    final aggregateReport = currentDrowsinessReport;
+    final reportSummary = aggregateReport?.summary;
+    final recentEventsKpiValue = reportSummary?.totalEvents ??
+        (eventBasedRecentCount == 0 ? latestAlerts.length : eventBasedRecentCount);
+    final highRiskEventCount = reportSummary?.highRiskEvents ?? 0;
+    final peakHourLabel = _peakHourLabel(reportSummary?.peakHour);
+    final realHighRiskDriverCount = driverBehaviorSummaries
+        .where((summary) => summary.userId != null)
+        .where((summary) => summary.riskLevel == 'High')
+        .where((summary) => summary.totalEvents >= 20 || summary.priorityScore >= 50)
         .length;
 
     return _OverviewData(
@@ -298,10 +315,13 @@ class OverviewDashboard extends StatelessWidget {
           ? 0
           : (onlineVehicles / vehicles.length) * 100,
       drowsyEventsToday: drowsyEventsToday,
-      eventsNeedReview: eventsNeedReview == 0 ? latestAlerts.length : eventsNeedReview,
-      highRiskDriverCount: highRiskDrivers
-          .where((driver) => (driver['riskScore'] as int) >= 55)
-          .length,
+      eventsNeedReview: recentEventsKpiValue,
+      // TODO: Handle unassigned behavior events separately.
+      highRiskDriverCount: realHighRiskDrivers.isNotEmpty
+          ? realHighRiskDriverCount
+          : highRiskDrivers
+              .where((driver) => (driver['riskScore'] as int) >= 55)
+              .length,
       totalDevices: vehicles.length,
       onlineDevices: onlineVehicles,
       warningDevices: warningVehicles,
@@ -311,12 +331,24 @@ class OverviewDashboard extends StatelessWidget {
           : ((onlineVehicles / vehicles.length) * 100).round(),
       drowsyEventsDeltaLabel: drowsyEventsToday == 0 ? '0' : '+$drowsyEventsToday',
       eventsNeedReviewDeltaLabel:
-          eventsNeedReview == 0 ? '0' : '+$eventsNeedReview',
-      highRiskDriversDeltaLabel: highRiskDrivers.isEmpty
-          ? '0'
-          : '${highRiskDrivers.length}',
+          recentEventsKpiValue == 0 ? '0' : '+$recentEventsKpiValue',
+      eventsNeedReviewTrendLabel: peakHourLabel != null
+          ? 'Peak hour: $peakHourLabel'
+          : '${recentEventsKpiValue == 0 ? '0' : '+$recentEventsKpiValue'} recent items',
+      highRiskDriversSubtitle: realHighRiskDrivers.isNotEmpty
+          ? 'Based on driver behavior'
+          : 'Warning or alert status',
+      highRiskDriversDeltaLabel: realHighRiskDrivers.isNotEmpty
+          ? '${realHighRiskDrivers.length}'
+          : highRiskDrivers.isEmpty
+              ? (highRiskEventCount == 0 ? '0' : '$highRiskEventCount')
+              : '${highRiskDrivers.length}',
+      highRiskDriversTrendLabel: realHighRiskDrivers.isNotEmpty
+          ? 'Top ${realHighRiskDrivers.length} shown'
+          : '${highRiskDrivers.isEmpty ? (highRiskEventCount == 0 ? '0' : highRiskEventCount) : highRiskDrivers.length} monitored',
       latestAlerts: latestAlerts,
-      highRiskDrivers: highRiskDrivers,
+      highRiskDrivers:
+          realHighRiskDrivers.isNotEmpty ? realHighRiskDrivers : highRiskDrivers,
       recentEvents: recentEvents,
       lastUpdatedLabel: _lastUpdatedLabel(latestAlerts),
     );
@@ -369,6 +401,38 @@ class OverviewDashboard extends StatelessWidget {
     );
 
     return items.take(5).toList();
+  }
+
+  List<Map<String, dynamic>> _buildRealHighRiskDrivers() {
+    final rankedDrivers = driverBehaviorSummaries
+        .where((summary) => summary.userId != null)
+        .where((summary) => summary.priorityScore > 0)
+        .toList()
+      ..sort((a, b) {
+        final priorityCompare = b.priorityScore.compareTo(a.priorityScore);
+        if (priorityCompare != 0) return priorityCompare;
+        final scoreCompare = b.interventionScore.compareTo(a.interventionScore);
+        if (scoreCompare != 0) return scoreCompare;
+        return b.totalEvents.compareTo(a.totalEvents);
+      });
+
+    return rankedDrivers.take(3).map((summary) {
+      final linkedDriver = _driverForBehavior(summary);
+      final linkedVehicle = _vehicleForBehavior(summary);
+      final score = summary.priorityScore;
+
+      return {
+        'name': linkedDriver?.name ?? summary.driverLabel,
+        'initials': _initials(linkedDriver?.name ?? summary.driverLabel),
+        'vehicleLabel': summary.vehicleId ??
+            linkedVehicle?.plateNumber ??
+            linkedVehicle?.apiVehicleId ??
+            '-',
+        'riskScore': score,
+        'statusText':
+            '${summary.riskLevel} · ${summary.dominantBehavior} · ${summary.totalEvents} events',
+      };
+    }).toList();
   }
 
   List<Map<String, dynamic>> _buildRecentEvents() {
@@ -458,6 +522,35 @@ class OverviewDashboard extends StatelessWidget {
         return driver;
       }
     }
+    return null;
+  }
+
+  DriverHealth? _driverForBehavior(DriverBehaviorSummary summary) {
+    if (summary.userId == null) return null;
+
+    for (final driver in driversHealth) {
+      if (driver.driverId == summary.userId.toString()) {
+        return driver;
+      }
+    }
+
+    return null;
+  }
+
+  Vehicle? _vehicleForBehavior(DriverBehaviorSummary summary) {
+    final vehicleId = summary.vehicleId?.trim();
+    if (vehicleId == null || vehicleId.isEmpty) {
+      return null;
+    }
+
+    for (final vehicle in vehicles) {
+      if (vehicle.id == vehicleId ||
+          vehicle.plateNumber == vehicleId ||
+          vehicle.apiVehicleId == vehicleId) {
+        return vehicle;
+      }
+    }
+
     return null;
   }
 
@@ -557,6 +650,15 @@ class OverviewDashboard extends StatelessWidget {
     }
 
     return 'VIN-0001';
+  }
+
+  String? _peakHourLabel(int? peakHour) {
+    if (peakHour == null || peakHour < 0 || peakHour > 23) {
+      return null;
+    }
+
+    final time = DateTime(2026, 1, 1, peakHour);
+    return DateFormat('HH:mm').format(time);
   }
 
 }
@@ -783,7 +885,10 @@ class _OverviewData {
     required this.deviceHealthPercentage,
     required this.drowsyEventsDeltaLabel,
     required this.eventsNeedReviewDeltaLabel,
+    required this.eventsNeedReviewTrendLabel,
+    required this.highRiskDriversSubtitle,
     required this.highRiskDriversDeltaLabel,
+    required this.highRiskDriversTrendLabel,
     required this.latestAlerts,
     required this.highRiskDrivers,
     required this.recentEvents,
@@ -803,7 +908,10 @@ class _OverviewData {
   final int deviceHealthPercentage;
   final String drowsyEventsDeltaLabel;
   final String eventsNeedReviewDeltaLabel;
+  final String eventsNeedReviewTrendLabel;
+  final String highRiskDriversSubtitle;
   final String highRiskDriversDeltaLabel;
+  final String highRiskDriversTrendLabel;
   final List<Map<String, dynamic>> latestAlerts;
   final List<Map<String, dynamic>> highRiskDrivers;
   final List<Map<String, dynamic>> recentEvents;

@@ -137,7 +137,10 @@ class _ReportContentState extends State<ReportContent> {
                     const SizedBox(width: 14),
                     Expanded(
                       flex: 48,
-                      child: ReportHourCard(events: data?.events ?? const []),
+                      child: ReportHourCard(
+                        report: data?.report,
+                        events: data?.events ?? const [],
+                      ),
                     ),
                   ],
                 ),

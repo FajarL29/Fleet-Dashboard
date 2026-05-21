@@ -34,7 +34,7 @@ class HighRiskDriversPanel extends StatelessWidget {
               ),
               Spacer(),
               Text(
-                'Safety score',
+                'Priority score',
                 style: TextStyle(
                   color: AppTheme.textSecondary,
                   fontSize: 12,
@@ -135,8 +135,8 @@ class HighRiskDriversPanel extends StatelessWidget {
   }
 
   Color _scoreColor(int score) {
-    if (score >= 70) return AppTheme.error;
-    if (score >= 50) return AppTheme.warning;
+    if (score >= 100) return AppTheme.error;
+    if (score >= 30) return AppTheme.warning;
     return AppTheme.success;
   }
 }

@@ -38,7 +38,7 @@ class ReportMapCard extends StatelessWidget {
                 children: [
                   TileLayer(
                     urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                    userAgentPackageName: 'fleet_dashboard',
+                    userAgentPackageName: 'com.fleet.dashboard',
                   ),
                   MarkerLayer(
                     markers: markerEvents

@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:latlong2/latlong.dart';
+import '../../models/driver_behavior_summary.dart';
 import '../../models/drowsiness_report.dart';
 import '../../models/vehicle.dart';
 import '../../models/driver_health.dart';
@@ -51,6 +52,12 @@ class DashboardState extends Equatable {
   /// Recent drowsiness events from the API
   final List<DrowsinessEvent> recentDrowsinessEvents;
 
+  /// Aggregate drowsiness report from the API
+  final DrowsinessReport? currentDrowsinessReport;
+
+  /// Aggregate driver behavior summaries from the API
+  final List<DriverBehaviorSummary> driverBehaviorSummaries;
+
   /// Error message (if any)
   final String? errorMessage;
 
@@ -66,6 +73,8 @@ class DashboardState extends Equatable {
     this.highRiskAlerts = 0,
     this.alertLog = const [],
     this.recentDrowsinessEvents = const [],
+    this.currentDrowsinessReport,
+    this.driverBehaviorSummaries = const [],
     this.errorMessage,
     this.driverAlerts = const {},
   });
@@ -143,6 +152,8 @@ class DashboardState extends Equatable {
         'High CO2 levels detected in V-112',
       ],
       recentDrowsinessEvents: const [],
+      currentDrowsinessReport: null,
+      driverBehaviorSummaries: const [],
     );
   }
 
@@ -162,6 +173,9 @@ class DashboardState extends Equatable {
     int? highRiskAlerts,
     List<String>? alertLog,
     List<DrowsinessEvent>? recentDrowsinessEvents,
+    DrowsinessReport? currentDrowsinessReport,
+    bool clearCurrentDrowsinessReport = false,
+    List<DriverBehaviorSummary>? driverBehaviorSummaries,
     String? errorMessage,
     bool clearErrorMessage = false, 
     Map<int, Map<String, dynamic>>? driverAlerts, // Perbaikan: Pakai ? dan hapus required
@@ -181,6 +195,11 @@ class DashboardState extends Equatable {
       alertLog: alertLog ?? this.alertLog,
       recentDrowsinessEvents:
           recentDrowsinessEvents ?? this.recentDrowsinessEvents,
+      currentDrowsinessReport: clearCurrentDrowsinessReport
+          ? null
+          : (currentDrowsinessReport ?? this.currentDrowsinessReport),
+      driverBehaviorSummaries:
+          driverBehaviorSummaries ?? this.driverBehaviorSummaries,
       errorMessage:
           clearErrorMessage ? null : (errorMessage ?? this.errorMessage),
       driverAlerts: driverAlerts ?? this.driverAlerts, // Perbaikan: Tambahkan ini
@@ -200,6 +219,8 @@ class DashboardState extends Equatable {
         highRiskAlerts,
         alertLog,
         recentDrowsinessEvents,
+        currentDrowsinessReport,
+        driverBehaviorSummaries,
         errorMessage,
         driverAlerts, // Perbaikan: Masukkan ke props agar UI sinkron
       ];

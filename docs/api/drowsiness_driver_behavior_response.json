@@ -1,0 +1,785 @@
+{
+  "status": "success",
+  "stat_code": 200,
+  "data": [
+    {
+      "user_id": 1,
+      "vehicle_id": "VIN-0001",
+      "internal_vehicle_id": null,
+      "total_events": 1988,
+      "latest_event_time": "2026-05-15T16:36:29.000Z",
+      "behaviors": {
+        "drowsiness_episode": 421,
+        "distraction": 219,
+        "yawn": 185,
+        "drowsy": 408,
+        "drowsy_score_on": 54
+      },
+      "risk_summary": {
+        "high": 883,
+        "medium": 185,
+        "low": 219
+      }
+    },
+    {
+      "user_id": null,
+      "vehicle_id": "VIN-0001",
+      "internal_vehicle_id": null,
+      "total_events": 2851,
+      "latest_event_time": "2026-05-15T16:34:24.000Z",
+      "behaviors": {
+        "drowsiness_episode": 1,
+        "distraction": 0,
+        "yawn": 58,
+        "drowsy": 1844,
+        "drowsy_score_on": 545
+      },
+      "risk_summary": {
+        "high": 2390,
+        "medium": 58,
+        "low": 0
+      }
+    },
+    {
+      "user_id": 2,
+      "vehicle_id": "VIN-0001",
+      "internal_vehicle_id": null,
+      "total_events": 363,
+      "latest_event_time": "2026-05-11T16:23:00.000Z",
+      "behaviors": {
+        "drowsiness_episode": 62,
+        "distraction": 85,
+        "yawn": 54,
+        "drowsy": 24,
+        "drowsy_score_on": 31
+      },
+      "risk_summary": {
+        "high": 117,
+        "medium": 54,
+        "low": 85
+      }
+    },
+    {
+      "user_id": 46,
+      "vehicle_id": "VIN-0001",
+      "internal_vehicle_id": null,
+      "total_events": 3,
+      "latest_event_time": "2026-05-11T16:18:45.000Z",
+      "behaviors": {
+        "drowsiness_episode": 0,
+        "distraction": 0,
+        "yawn": 1,
+        "drowsy": 1,
+        "drowsy_score_on": 0
+      },
+      "risk_summary": {
+        "high": 1,
+        "medium": 1,
+        "low": 0
+      }
+    },
+    {
+      "user_id": 34,
+      "vehicle_id": "VIN-0001",
+      "internal_vehicle_id": null,
+      "total_events": 43,
+      "latest_event_time": "2026-05-11T09:24:32.000Z",
+      "behaviors": {
+        "drowsiness_episode": 0,
+        "distraction": 0,
+        "yawn": 0,
+        "drowsy": 17,
+        "drowsy_score_on": 19
+      },
+      "risk_summary": {
+        "high": 36,
+        "medium": 0,
+        "low": 0
+      }
+    },
+    {
+      "user_id": 37,
+      "vehicle_id": "VIN-0001",
+      "internal_vehicle_id": null,
+      "total_events": 164,
+      "latest_event_time": "2026-05-11T09:19:52.000Z",
+      "behaviors": {
+        "drowsiness_episode": 0,
+        "distraction": 0,
+        "yawn": 0,
+        "drowsy": 92,
+        "drowsy_score_on": 48
+      },
+      "risk_summary": {
+        "high": 140,
+        "medium": 0,
+        "low": 0
+      }
+    },
+    {
+      "user_id": 35,
+      "vehicle_id": "VIN-0001",
+      "internal_vehicle_id": null,
+      "total_events": 125,
+      "latest_event_time": "2026-05-11T09:15:44.000Z",
+      "behaviors": {
+        "drowsiness_episode": 0,
+        "distraction": 0,
+        "yawn": 0,
+        "drowsy": 59,
+        "drowsy_score_on": 61
+      },
+      "risk_summary": {
+        "high": 120,
+        "medium": 0,
+        "low": 0
+      }
+    },
+    {
+      "user_id": 43,
+      "vehicle_id": "VIN-0001",
+      "internal_vehicle_id": null,
+      "total_events": 13,
+      "latest_event_time": "2026-05-11T09:11:52.000Z",
+      "behaviors": {
+        "drowsiness_episode": 0,
+        "distraction": 0,
+        "yawn": 0,
+        "drowsy": 0,
+        "drowsy_score_on": 0
+      },
+      "risk_summary": {
+        "high": 0,
+        "medium": 0,
+        "low": 0
+      }
+    },
+    {
+      "user_id": 42,
+      "vehicle_id": "VIN-0001",
+      "internal_vehicle_id": null,
+      "total_events": 16,
+      "latest_event_time": "2026-05-11T09:11:49.000Z",
+      "behaviors": {
+        "drowsiness_episode": 0,
+        "distraction": 0,
+        "yawn": 0,
+        "drowsy": 6,
+        "drowsy_score_on": 8
+      },
+      "risk_summary": {
+        "high": 14,
+        "medium": 0,
+        "low": 0
+      }
+    },
+    {
+      "user_id": 45,
+      "vehicle_id": "VIN-0001",
+      "internal_vehicle_id": null,
+      "total_events": 2,
+      "latest_event_time": "2026-05-11T09:00:58.000Z",
+      "behaviors": {
+        "drowsiness_episode": 0,
+        "distraction": 0,
+        "yawn": 0,
+        "drowsy": 1,
+        "drowsy_score_on": 1
+      },
+      "risk_summary": {
+        "high": 2,
+        "medium": 0,
+        "low": 0
+      }
+    },
+    {
+      "user_id": 44,
+      "vehicle_id": "VIN-0001",
+      "internal_vehicle_id": null,
+      "total_events": 7,
+      "latest_event_time": "2026-05-11T08:11:59.000Z",
+      "behaviors": {
+        "drowsiness_episode": 0,
+        "distraction": 0,
+        "yawn": 0,
+        "drowsy": 0,
+        "drowsy_score_on": 7
+      },
+      "risk_summary": {
+        "high": 7,
+        "medium": 0,
+        "low": 0
+      }
+    },
+    {
+      "user_id": 41,
+      "vehicle_id": "VIN-0001",
+      "internal_vehicle_id": null,
+      "total_events": 5,
+      "latest_event_time": "2026-05-11T07:29:10.000Z",
+      "behaviors": {
+        "drowsiness_episode": 0,
+        "distraction": 0,
+        "yawn": 0,
+        "drowsy": 1,
+        "drowsy_score_on": 2
+      },
+      "risk_summary": {
+        "high": 3,
+        "medium": 0,
+        "low": 0
+      }
+    },
+    {
+      "user_id": 39,
+      "vehicle_id": "VIN-0001",
+      "internal_vehicle_id": null,
+      "total_events": 4,
+      "latest_event_time": "2026-05-11T07:18:04.000Z",
+      "behaviors": {
+        "drowsiness_episode": 0,
+        "distraction": 0,
+        "yawn": 0,
+        "drowsy": 2,
+        "drowsy_score_on": 2
+      },
+      "risk_summary": {
+        "high": 4,
+        "medium": 0,
+        "low": 0
+      }
+    },
+    {
+      "user_id": 38,
+      "vehicle_id": "VIN-0001",
+      "internal_vehicle_id": null,
+      "total_events": 9,
+      "latest_event_time": "2026-05-11T07:18:04.000Z",
+      "behaviors": {
+        "drowsiness_episode": 0,
+        "distraction": 0,
+        "yawn": 0,
+        "drowsy": 5,
+        "drowsy_score_on": 4
+      },
+      "risk_summary": {
+        "high": 9,
+        "medium": 0,
+        "low": 0
+      }
+    },
+    {
+      "user_id": 36,
+      "vehicle_id": "VIN-0001",
+      "internal_vehicle_id": null,
+      "total_events": 3,
+      "latest_event_time": "2026-05-08T15:11:59.000Z",
+      "behaviors": {
+        "drowsiness_episode": 0,
+        "distraction": 0,
+        "yawn": 0,
+        "drowsy": 1,
+        "drowsy_score_on": 2
+      },
+      "risk_summary": {
+        "high": 3,
+        "medium": 0,
+        "low": 0
+      }
+    },
+    {
+      "user_id": 3,
+      "vehicle_id": "VIN-0001",
+      "internal_vehicle_id": null,
+      "total_events": 283,
+      "latest_event_time": "2026-04-16T10:21:35.000Z",
+      "behaviors": {
+        "drowsiness_episode": 4,
+        "distraction": 0,
+        "yawn": 95,
+        "drowsy": 65,
+        "drowsy_score_on": 78
+      },
+      "risk_summary": {
+        "high": 147,
+        "medium": 95,
+        "low": 0
+      }
+    },
+    {
+      "user_id": 33,
+      "vehicle_id": "VIN-0001",
+      "internal_vehicle_id": null,
+      "total_events": 13,
+      "latest_event_time": "2026-04-10T15:45:14.000Z",
+      "behaviors": {
+        "drowsiness_episode": 0,
+        "distraction": 0,
+        "yawn": 0,
+        "drowsy": 4,
+        "drowsy_score_on": 7
+      },
+      "risk_summary": {
+        "high": 11,
+        "medium": 0,
+        "low": 0
+      }
+    },
+    {
+      "user_id": 6,
+      "vehicle_id": "VIN-0001",
+      "internal_vehicle_id": null,
+      "total_events": 74,
+      "latest_event_time": "2026-04-10T15:25:31.000Z",
+      "behaviors": {
+        "drowsiness_episode": 0,
+        "distraction": 0,
+        "yawn": 29,
+        "drowsy": 15,
+        "drowsy_score_on": 14
+      },
+      "risk_summary": {
+        "high": 29,
+        "medium": 29,
+        "low": 0
+      }
+    },
+    {
+      "user_id": 5,
+      "vehicle_id": "VIN-0001",
+      "internal_vehicle_id": null,
+      "total_events": 100,
+      "latest_event_time": "2026-04-09T18:07:35.000Z",
+      "behaviors": {
+        "drowsiness_episode": 67,
+        "distraction": 0,
+        "yawn": 5,
+        "drowsy": 5,
+        "drowsy_score_on": 8
+      },
+      "risk_summary": {
+        "high": 80,
+        "medium": 5,
+        "low": 0
+      }
+    },
+    {
+      "user_id": 4,
+      "vehicle_id": "VIN-0001",
+      "internal_vehicle_id": null,
+      "total_events": 132,
+      "latest_event_time": "2026-04-09T18:04:53.000Z",
+      "behaviors": {
+        "drowsiness_episode": 0,
+        "distraction": 0,
+        "yawn": 37,
+        "drowsy": 38,
+        "drowsy_score_on": 22
+      },
+      "risk_summary": {
+        "high": 60,
+        "medium": 37,
+        "low": 0
+      }
+    },
+    {
+      "user_id": 31,
+      "vehicle_id": "VIN-0001",
+      "internal_vehicle_id": null,
+      "total_events": 12,
+      "latest_event_time": "2026-04-09T17:47:23.000Z",
+      "behaviors": {
+        "drowsiness_episode": 0,
+        "distraction": 0,
+        "yawn": 0,
+        "drowsy": 5,
+        "drowsy_score_on": 7
+      },
+      "risk_summary": {
+        "high": 12,
+        "medium": 0,
+        "low": 0
+      }
+    },
+    {
+      "user_id": 30,
+      "vehicle_id": "VIN-0001",
+      "internal_vehicle_id": null,
+      "total_events": 1,
+      "latest_event_time": "2026-04-09T07:59:58.000Z",
+      "behaviors": {
+        "drowsiness_episode": 0,
+        "distraction": 0,
+        "yawn": 0,
+        "drowsy": 0,
+        "drowsy_score_on": 0
+      },
+      "risk_summary": {
+        "high": 0,
+        "medium": 0,
+        "low": 0
+      }
+    },
+    {
+      "user_id": 29,
+      "vehicle_id": "VIN-0001",
+      "internal_vehicle_id": null,
+      "total_events": 3,
+      "latest_event_time": "2026-03-12T14:30:20.000Z",
+      "behaviors": {
+        "drowsiness_episode": 0,
+        "distraction": 0,
+        "yawn": 0,
+        "drowsy": 0,
+        "drowsy_score_on": 0
+      },
+      "risk_summary": {
+        "high": 0,
+        "medium": 0,
+        "low": 0
+      }
+    },
+    {
+      "user_id": 19,
+      "vehicle_id": "VIN-0001",
+      "internal_vehicle_id": null,
+      "total_events": 5,
+      "latest_event_time": "2026-03-12T13:56:10.000Z",
+      "behaviors": {
+        "drowsiness_episode": 0,
+        "distraction": 0,
+        "yawn": 0,
+        "drowsy": 0,
+        "drowsy_score_on": 2
+      },
+      "risk_summary": {
+        "high": 2,
+        "medium": 0,
+        "low": 0
+      }
+    },
+    {
+      "user_id": 18,
+      "vehicle_id": "VIN-0001",
+      "internal_vehicle_id": null,
+      "total_events": 5,
+      "latest_event_time": "2026-03-12T11:16:09.000Z",
+      "behaviors": {
+        "drowsiness_episode": 0,
+        "distraction": 0,
+        "yawn": 1,
+        "drowsy": 0,
+        "drowsy_score_on": 2
+      },
+      "risk_summary": {
+        "high": 2,
+        "medium": 1,
+        "low": 0
+      }
+    },
+    {
+      "user_id": 28,
+      "vehicle_id": "VIN-0001",
+      "internal_vehicle_id": null,
+      "total_events": 1,
+      "latest_event_time": "2026-03-12T11:01:58.000Z",
+      "behaviors": {
+        "drowsiness_episode": 0,
+        "distraction": 0,
+        "yawn": 0,
+        "drowsy": 0,
+        "drowsy_score_on": 0
+      },
+      "risk_summary": {
+        "high": 0,
+        "medium": 0,
+        "low": 0
+      }
+    },
+    {
+      "user_id": 27,
+      "vehicle_id": "VIN-0001",
+      "internal_vehicle_id": null,
+      "total_events": 1,
+      "latest_event_time": "2026-03-12T11:01:09.000Z",
+      "behaviors": {
+        "drowsiness_episode": 0,
+        "distraction": 0,
+        "yawn": 0,
+        "drowsy": 0,
+        "drowsy_score_on": 0
+      },
+      "risk_summary": {
+        "high": 0,
+        "medium": 0,
+        "low": 0
+      }
+    },
+    {
+      "user_id": 25,
+      "vehicle_id": "VIN-0001",
+      "internal_vehicle_id": null,
+      "total_events": 3,
+      "latest_event_time": "2026-03-12T10:59:47.000Z",
+      "behaviors": {
+        "drowsiness_episode": 0,
+        "distraction": 0,
+        "yawn": 0,
+        "drowsy": 0,
+        "drowsy_score_on": 0
+      },
+      "risk_summary": {
+        "high": 0,
+        "medium": 0,
+        "low": 0
+      }
+    },
+    {
+      "user_id": 26,
+      "vehicle_id": "VIN-0001",
+      "internal_vehicle_id": null,
+      "total_events": 1,
+      "latest_event_time": "2026-03-12T10:59:23.000Z",
+      "behaviors": {
+        "drowsiness_episode": 0,
+        "distraction": 0,
+        "yawn": 0,
+        "drowsy": 0,
+        "drowsy_score_on": 1
+      },
+      "risk_summary": {
+        "high": 1,
+        "medium": 0,
+        "low": 0
+      }
+    },
+    {
+      "user_id": 21,
+      "vehicle_id": "VIN-0001",
+      "internal_vehicle_id": null,
+      "total_events": 1,
+      "latest_event_time": "2026-03-12T10:47:18.000Z",
+      "behaviors": {
+        "drowsiness_episode": 0,
+        "distraction": 0,
+        "yawn": 0,
+        "drowsy": 0,
+        "drowsy_score_on": 1
+      },
+      "risk_summary": {
+        "high": 1,
+        "medium": 0,
+        "low": 0
+      }
+    },
+    {
+      "user_id": 17,
+      "vehicle_id": "VIN-0001",
+      "internal_vehicle_id": null,
+      "total_events": 31,
+      "latest_event_time": "2026-03-10T11:12:41.000Z",
+      "behaviors": {
+        "drowsiness_episode": 0,
+        "distraction": 0,
+        "yawn": 2,
+        "drowsy": 9,
+        "drowsy_score_on": 9
+      },
+      "risk_summary": {
+        "high": 18,
+        "medium": 2,
+        "low": 0
+      }
+    },
+    {
+      "user_id": 14,
+      "vehicle_id": "VIN-0001",
+      "internal_vehicle_id": null,
+      "total_events": 6,
+      "latest_event_time": "2026-03-10T09:23:16.000Z",
+      "behaviors": {
+        "drowsiness_episode": 0,
+        "distraction": 0,
+        "yawn": 0,
+        "drowsy": 0,
+        "drowsy_score_on": 0
+      },
+      "risk_summary": {
+        "high": 0,
+        "medium": 0,
+        "low": 0
+      }
+    },
+    {
+      "user_id": 16,
+      "vehicle_id": "VIN-0001",
+      "internal_vehicle_id": null,
+      "total_events": 17,
+      "latest_event_time": "2026-03-06T07:51:30.000Z",
+      "behaviors": {
+        "drowsiness_episode": 0,
+        "distraction": 0,
+        "yawn": 3,
+        "drowsy": 5,
+        "drowsy_score_on": 6
+      },
+      "risk_summary": {
+        "high": 11,
+        "medium": 3,
+        "low": 0
+      }
+    },
+    {
+      "user_id": 15,
+      "vehicle_id": "VIN-0001",
+      "internal_vehicle_id": null,
+      "total_events": 39,
+      "latest_event_time": "2026-03-03T11:03:45.000Z",
+      "behaviors": {
+        "drowsiness_episode": 0,
+        "distraction": 0,
+        "yawn": 5,
+        "drowsy": 8,
+        "drowsy_score_on": 13
+      },
+      "risk_summary": {
+        "high": 21,
+        "medium": 5,
+        "low": 0
+      }
+    },
+    {
+      "user_id": 12,
+      "vehicle_id": "VIN-0001",
+      "internal_vehicle_id": null,
+      "total_events": 8,
+      "latest_event_time": "2026-03-02T15:41:15.000Z",
+      "behaviors": {
+        "drowsiness_episode": 0,
+        "distraction": 0,
+        "yawn": 4,
+        "drowsy": 1,
+        "drowsy_score_on": 1
+      },
+      "risk_summary": {
+        "high": 2,
+        "medium": 4,
+        "low": 0
+      }
+    },
+    {
+      "user_id": 11,
+      "vehicle_id": "VIN-0001",
+      "internal_vehicle_id": null,
+      "total_events": 78,
+      "latest_event_time": "2026-03-02T15:40:48.000Z",
+      "behaviors": {
+        "drowsiness_episode": 0,
+        "distraction": 0,
+        "yawn": 3,
+        "drowsy": 25,
+        "drowsy_score_on": 16
+      },
+      "risk_summary": {
+        "high": 41,
+        "medium": 3,
+        "low": 0
+      }
+    },
+    {
+      "user_id": 9,
+      "vehicle_id": "VIN-0001",
+      "internal_vehicle_id": null,
+      "total_events": 139,
+      "latest_event_time": "2026-03-02T15:40:17.000Z",
+      "behaviors": {
+        "drowsiness_episode": 0,
+        "distraction": 0,
+        "yawn": 2,
+        "drowsy": 44,
+        "drowsy_score_on": 67
+      },
+      "risk_summary": {
+        "high": 111,
+        "medium": 2,
+        "low": 0
+      }
+    },
+    {
+      "user_id": 10,
+      "vehicle_id": "VIN-0001",
+      "internal_vehicle_id": null,
+      "total_events": 44,
+      "latest_event_time": "2026-02-25T11:29:50.000Z",
+      "behaviors": {
+        "drowsiness_episode": 0,
+        "distraction": 0,
+        "yawn": 0,
+        "drowsy": 12,
+        "drowsy_score_on": 25
+      },
+      "risk_summary": {
+        "high": 37,
+        "medium": 0,
+        "low": 0
+      }
+    },
+    {
+      "user_id": 8,
+      "vehicle_id": "VIN-0001",
+      "internal_vehicle_id": null,
+      "total_events": 7,
+      "latest_event_time": "2026-02-25T11:29:42.000Z",
+      "behaviors": {
+        "drowsiness_episode": 0,
+        "distraction": 0,
+        "yawn": 1,
+        "drowsy": 1,
+        "drowsy_score_on": 2
+      },
+      "risk_summary": {
+        "high": 3,
+        "medium": 1,
+        "low": 0
+      }
+    },
+    {
+      "user_id": 13,
+      "vehicle_id": "VIN-0001",
+      "internal_vehicle_id": null,
+      "total_events": 11,
+      "latest_event_time": "2026-02-24T20:43:13.000Z",
+      "behaviors": {
+        "drowsiness_episode": 0,
+        "distraction": 0,
+        "yawn": 0,
+        "drowsy": 1,
+        "drowsy_score_on": 5
+      },
+      "risk_summary": {
+        "high": 6,
+        "medium": 0,
+        "low": 0
+      }
+    },
+    {
+      "user_id": 7,
+      "vehicle_id": "VIN-0001",
+      "internal_vehicle_id": null,
+      "total_events": 22,
+      "latest_event_time": "2026-02-24T16:42:22.000Z",
+      "behaviors": {
+        "drowsiness_episode": 0,
+        "distraction": 0,
+        "yawn": 1,
+        "drowsy": 7,
+        "drowsy_score_on": 11
+      },
+      "risk_summary": {
+        "high": 18,
+        "medium": 1,
+        "low": 0
+      }
+    }
+  ]
+}

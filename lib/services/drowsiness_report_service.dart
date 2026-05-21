@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../models/driver_behavior_summary.dart';
 import '../models/drowsiness_report.dart';
 
 class DrowsinessReportService {
@@ -60,6 +61,26 @@ class DrowsinessReportService {
       endDate: endDate,
       limit: limit,
     );
+  }
+
+  Future<List<DriverBehaviorSummary>> getDriverBehavior({
+    String? vehicleId,
+    int limit = 100,
+  }) async {
+    final query = <String, String>{
+      'limit': limit.toString(),
+    };
+    if (vehicleId != null && vehicleId.trim().isNotEmpty) {
+      query['vehicle_id'] = vehicleId.trim();
+    }
+
+    final response = await _get('/drowsiness/driver-behavior', query);
+    final data = response['data'] as List<dynamic>? ?? const [];
+
+    return data
+        .whereType<Map<String, dynamic>>()
+        .map(DriverBehaviorSummary.fromJson)
+        .toList();
   }
 
   Future<Map<String, dynamic>> _get(

@@ -17,12 +17,12 @@ class ReportStatsRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final summary = report?.summary;
-    final totalEvents = events.length;
-    final highRiskEvents = events
+    final totalEvents = summary?.totalEvents ?? events.length;
+    final highRiskEvents = summary?.highRiskEvents ?? events
         .where((event) => event.riskLevel.toLowerCase() == 'high')
         .length;
-    final peakHour = _peakHour(events) ?? summary?.peakHour ?? 0;
-    final peakDate = _peakDate(events) ?? summary?.peakDate;
+    final peakHour = summary?.peakHour ?? _peakHour(events) ?? 0;
+    final peakDate = summary?.peakDate ?? _peakDate(events);
     final highRiskRatio = totalEvents == 0
         ? 0
         : ((highRiskEvents / totalEvents) * 100).round();

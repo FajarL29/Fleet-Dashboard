@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:http/http.dart' as http; // Tambahkan http
+import '../../models/driver_behavior_summary.dart';
 import '../../models/drowsiness_report.dart';
 import '../../models/vehicle.dart';
 import '../../services/drowsiness_report_service.dart';
@@ -323,7 +324,13 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     final targetVehicle = vehicle ?? state.selectedVehicle ?? fallbackVehicle;
 
     if (targetVehicle == null) {
-      emit(state.copyWith(recentDrowsinessEvents: const []));
+      emit(
+        state.copyWith(
+          recentDrowsinessEvents: const [],
+          clearCurrentDrowsinessReport: true,
+          driverBehaviorSummaries: const [],
+        ),
+      );
       return;
     }
 
@@ -331,6 +338,21 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     final todayStart = DateTime(now.year, now.month, now.day);
 
     try {
+      DrowsinessReport? report;
+      List<DriverBehaviorSummary> driverBehaviorSummaries =
+          state.driverBehaviorSummaries;
+      try {
+        report = await _fetchDrowsinessReport(targetVehicle);
+      } catch (e) {
+        debugPrint('Failed to load drowsiness report: $e');
+        report = state.currentDrowsinessReport;
+      }
+      try {
+        driverBehaviorSummaries = await _fetchDriverBehavior(targetVehicle);
+      } catch (e) {
+        debugPrint('Failed to load driver behavior: $e');
+      }
+
       var events = await _fetchEventsForDateRange(
         targetVehicle: targetVehicle,
         startDate: todayStart,
@@ -348,15 +370,39 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
       final sortedEvents = List<DrowsinessEvent>.from(events)
         ..sort((a, b) => b.time.compareTo(a.time));
 
-      emit(state.copyWith(recentDrowsinessEvents: sortedEvents));
+      emit(
+        state.copyWith(
+          recentDrowsinessEvents: sortedEvents,
+          currentDrowsinessReport: report,
+          driverBehaviorSummaries: driverBehaviorSummaries,
+        ),
+      );
     } catch (e) {
-      debugPrint('Failed to load drowsiness events: $e');
+      debugPrint('Failed to load overview drowsiness data: $e');
       emit(
         state.copyWith(
           recentDrowsinessEvents: state.recentDrowsinessEvents,
+          currentDrowsinessReport: state.currentDrowsinessReport,
+          driverBehaviorSummaries: state.driverBehaviorSummaries,
         ),
       );
     }
+  }
+
+  Future<DrowsinessReport?> _fetchDrowsinessReport(Vehicle targetVehicle) async {
+    for (final vehicleId in _eventVehicleIds(targetVehicle)) {
+      final report = await _drowsinessReportService.getReport(
+        vehicleId: vehicleId,
+      );
+
+      if (report.summary.vehicleId.isNotEmpty ||
+          report.eventsByDay.isNotEmpty ||
+          report.summary.totalEvents > 0) {
+        return report;
+      }
+    }
+
+    return null;
   }
 
   Future<List<DrowsinessEvent>> _fetchEventsForDateRange({
@@ -378,6 +424,24 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     }
 
     return <DrowsinessEvent>[];
+  }
+
+  Future<List<DriverBehaviorSummary>> _fetchDriverBehavior(
+    Vehicle targetVehicle,
+  ) async {
+    for (final vehicleId in _eventVehicleIds(targetVehicle)) {
+      final behaviorSummaries =
+          await _drowsinessReportService.getDriverBehavior(
+        vehicleId: vehicleId,
+        limit: 100,
+      );
+
+      if (behaviorSummaries.isNotEmpty) {
+        return List<DriverBehaviorSummary>.from(behaviorSummaries);
+      }
+    }
+
+    return <DriverBehaviorSummary>[];
   }
 
   List<String> _eventVehicleIds(Vehicle vehicle) {

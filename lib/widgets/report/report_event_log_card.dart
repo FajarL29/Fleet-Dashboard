@@ -14,6 +14,9 @@ class ReportEventLogCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final sortedEvents = List<DrowsinessEvent>.from(events)
+      ..sort((a, b) => b.time.compareTo(a.time));
+
     return ReportCard(
       child: Column(
         children: [
@@ -68,7 +71,7 @@ class ReportEventLogCard extends StatelessWidget {
                     ),
                   )
                 : Column(
-                    children: events
+                    children: sortedEvents
                         .take(5)
                         .map(
                           (event) => Expanded(
@@ -120,9 +123,7 @@ class _EventRow extends StatelessWidget {
     final severity = _formatRiskLevel(event.riskLevel);
     final severityColor = _severityColor(event.riskLevel);
     final driver = event.driverLabel;
-    final location = event.location?.isNotEmpty == true
-        ? event.location!
-        : 'Unknown location';
+    final location = _locationLabel(event);
 
     return Row(
       children: [
@@ -243,6 +244,18 @@ class _EventRow extends StatelessWidget {
       default:
         return ReportStyles.textMuted;
     }
+  }
+
+  String _locationLabel(DrowsinessEvent event) {
+    if (event.location?.isNotEmpty == true) {
+      return event.location!;
+    }
+
+    if (event.latitude != null && event.longitude != null) {
+      return '${event.latitude!.toStringAsFixed(5)}, ${event.longitude!.toStringAsFixed(5)}';
+    }
+
+    return 'Unknown location';
   }
 }
 

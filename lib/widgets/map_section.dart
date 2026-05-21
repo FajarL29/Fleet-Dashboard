@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+
 import '../models/vehicle.dart';
 import '../theme/app_theme.dart';
 
@@ -12,8 +13,7 @@ class MapSection extends StatefulWidget {
   final VoidCallback? onFullScreenToggle;
   final bool showVehicleList;
   final String? selectedVehicleId;
-  final VoidCallback?
-  onClearSelection; // Penting untuk reset state di Bloc/Parent
+  final VoidCallback? onClearSelection;
   final ValueChanged<bool>? onFollowModeChanged;
 
   const MapSection({
@@ -36,52 +36,37 @@ class MapSection extends StatefulWidget {
 class _MapSectionState extends State<MapSection> with TickerProviderStateMixin {
   static final LatLng _headoffice = LatLng(-6.140869, 106.889175);
   static const double _followCancelThreshold = 15.0;
+  static const double _initialRefreshNudge = 0.00001;
 
   bool _isFollowingMode = true;
+  bool _didRunInitialMapRefresh = false;
   Offset? _panStartPosition;
-
-  @override
-  void initState() {
-    super.initState();
-    // Auto-fit saat pertama kali load jika tidak dalam mode fullscreen
-    if (!widget.isFullScreen) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _fitAllVehicles());
-    }
-  }
 
   @override
   void didUpdateWidget(MapSection oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Jika jumlah kendaraan berubah, kita fit ulang kameranya
+
     if (oldWidget.vehicles.length != widget.vehicles.length) {
       _fitAllVehicles();
     }
 
-    if (oldWidget.selectedVehicleId != widget.selectedVehicleId) {
-      print('🔄 MapSection selectedVehicleId changed: ${oldWidget.selectedVehicleId} -> ${widget.selectedVehicleId}');
-      if (widget.selectedVehicleId != null) {
-        _setFollowingMode(true);
-      }
+    if (oldWidget.selectedVehicleId != widget.selectedVehicleId &&
+        widget.selectedVehicleId != null) {
+      _setFollowingMode(true);
     }
   }
 
-  /// Memaksa kamera melihat seluruh armada dan membatalkan pilihan unit
   void _fitAllVehicles() {
     if (widget.vehicles.isEmpty) {
       widget.mapController.move(_headoffice, 12);
       return;
     }
 
-    // 1. PENTING: Panggil callback untuk hapus selectedVehicle di Bloc/Parent
-    // Ini agar widget.selectedVehicleId jadi null dan kamera tidak ditarik balik
     widget.onClearSelection?.call();
     _setFollowingMode(false);
 
-    // 2. Hitung cakupan area semua kendaraan
-    final points = widget.vehicles.map((v) => v.position).toList();
+    final points = widget.vehicles.map((vehicle) => vehicle.position).toList();
     final bounds = LatLngBounds.fromPoints(points);
-
-    // 3. Hitung padding dinamis
     final padding = EdgeInsets.only(
       left: widget.showVehicleList ? 260 : 40,
       right: 40,
@@ -89,7 +74,6 @@ class _MapSectionState extends State<MapSection> with TickerProviderStateMixin {
       bottom: 40,
     );
 
-    // 4. Eksekusi Fit Camera
     widget.mapController.fitCamera(
       CameraFit.bounds(bounds: bounds, padding: padding),
     );
@@ -131,60 +115,100 @@ class _MapSectionState extends State<MapSection> with TickerProviderStateMixin {
     _panStartPosition = null;
   }
 
+  void _refreshMapOnFirstReady() {
+    if (_didRunInitialMapRefresh || !mounted) return;
+    _didRunInitialMapRefresh = true;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+
+      if (!widget.isFullScreen) {
+        _fitAllVehicles();
+      }
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+
+        final camera = widget.mapController.camera;
+        final center = camera.center;
+        final zoom = camera.zoom;
+        final nudgedCenter = LatLng(
+          center.latitude + _initialRefreshNudge,
+          center.longitude + _initialRefreshNudge,
+        );
+
+        widget.mapController.move(nudgedCenter, zoom);
+
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          widget.mapController.move(center, zoom);
+        });
+      });
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Cari data kendaraan yang sedang dipilih untuk Info Window
     final selectedVehicleData = widget.selectedVehicleId != null
         ? widget.vehicles.firstWhere(
-            (v) => v.id == widget.selectedVehicleId,
+            (vehicle) => vehicle.id == widget.selectedVehicleId,
             orElse: () => widget.vehicles.first,
           )
         : null;
 
-    print('🏗️ MapSection build: selectedVehicleId=${widget.selectedVehicleId}, selectedVehicleData=${selectedVehicleData?.id}');
-
     return Stack(
       children: [
-        // --- 1. LAYER PETA ---
-        ClipRRect(
-  borderRadius: BorderRadius.circular(widget.isFullScreen ? 0 : 0),
-  child: Listener(
-    onPointerDown: _onPointerDown,
-    onPointerMove: _onPointerMove,
-    onPointerUp: _onPointerUp,
-    onPointerCancel: (_) => _panStartPosition = null,
-    behavior: HitTestBehavior.opaque,
-    child: FlutterMap(
-      mapController: widget.mapController,
-      options: MapOptions(
-        initialCenter: _headoffice,
-        initialZoom: 12,
-        // Handler tap peta untuk deselect
-        onTap: (tapPosition, point) => _handleMapTap(), 
-        // Logic auto-follow: Matikan follow kalau user geser peta manual
-        onPositionChanged: (position, hasGesture) {
-          if (hasGesture && _isFollowingMode) {
-            _setFollowingMode(false);
-          }
-        },
-      ),
-      children: [
-        TileLayer(
-          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-          userAgentPackageName: 'fleet_dashboard',
-        ),
+        Positioned.fill(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              if (constraints.maxWidth <= 0 || constraints.maxHeight <= 0) {
+                return const SizedBox.expand();
+              }
 
-        SmoothVehicleMarkerLayer(
-          vehicles: widget.vehicles,
-          selectedVehicleId: widget.selectedVehicleId,
-          onVehicleTap: _handleVehicleTap,
+              return ClipRRect(
+                borderRadius: BorderRadius.circular(0),
+                child: SizedBox(
+                  width: constraints.maxWidth,
+                  height: constraints.maxHeight,
+                  child: Listener(
+                    onPointerDown: _onPointerDown,
+                    onPointerMove: _onPointerMove,
+                    onPointerUp: _onPointerUp,
+                    onPointerCancel: (_) => _panStartPosition = null,
+                    behavior: HitTestBehavior.opaque,
+                    child: FlutterMap(
+                      mapController: widget.mapController,
+                      options: MapOptions(
+                        initialCenter: _headoffice,
+                        initialZoom: 12,
+                        onMapReady: _refreshMapOnFirstReady,
+                        onTap: (tapPosition, point) => _handleMapTap(),
+                        onPositionChanged: (position, hasGesture) {
+                          if (hasGesture && _isFollowingMode) {
+                            _setFollowingMode(false);
+                          }
+                        },
+                      ),
+                      children: [
+                        TileLayer(
+                          // TODO: Production should use a proper tile provider instead of the public OSM tile server.
+                          urlTemplate:
+                              'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                          userAgentPackageName: 'com.fleet.dashboard',
+                        ),
+                        SmoothVehicleMarkerLayer(
+                          vehicles: widget.vehicles,
+                          selectedVehicleId: widget.selectedVehicleId,
+                          onVehicleTap: _handleVehicleTap,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
         ),
-      ],
-    ),
-  ),
-),
-
-        // --- 2. FLOATING SIDEBAR (LIST ARMADA) ---
         if (widget.showVehicleList)
           Positioned(
             left: 16,
@@ -192,23 +216,18 @@ class _MapSectionState extends State<MapSection> with TickerProviderStateMixin {
             bottom: 16,
             child: _buildVehicleSidebar(),
           ),
-
-        // --- 3. FLOATING INFO WINDOW (TOP CENTER-ISH) ---
         if (selectedVehicleData != null)
           Positioned(
             left: widget.showVehicleList ? 250 : 16,
             top: 16,
             child: _buildInfoWindow(selectedVehicleData),
           ),
-
-        // --- 4. ACTION BUTTONS (BOTTOM RIGHT) ---
         Positioned(
           right: 16,
           bottom: 16,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Button Fullscreen
               if (widget.onFullScreenToggle != null) ...[
                 FloatingActionButton.small(
                   heroTag: 'fs_btn',
@@ -223,7 +242,6 @@ class _MapSectionState extends State<MapSection> with TickerProviderStateMixin {
                 ),
                 const SizedBox(height: 8),
               ],
-              // Button Fit All / Zoom Out Map
               FloatingActionButton.small(
                 heroTag: 'fit_all_btn',
                 backgroundColor: AppTheme.darkNavy,
@@ -237,8 +255,6 @@ class _MapSectionState extends State<MapSection> with TickerProviderStateMixin {
     );
   }
 
-  // --- WIDGET BUILDERS ---
-
   Widget _buildVehicleSidebar() {
     return Container(
       width: 220,
@@ -246,7 +262,9 @@ class _MapSectionState extends State<MapSection> with TickerProviderStateMixin {
         color: AppTheme.darkNavy.withOpacity(0.7),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: Colors.white10),
-        boxShadow: [const BoxShadow(color: Colors.black38, blurRadius: 10)],
+        boxShadow: const [
+          BoxShadow(color: Colors.black38, blurRadius: 10),
+        ],
       ),
       child: Column(
         children: [
@@ -256,8 +274,11 @@ class _MapSectionState extends State<MapSection> with TickerProviderStateMixin {
               padding: EdgeInsets.zero,
               itemCount: widget.vehicles.length,
               itemBuilder: (context, index) {
-                final v = widget.vehicles[index];
-                return _buildVehicleTile(v, widget.selectedVehicleId == v.id);
+                final vehicle = widget.vehicles[index];
+                return _buildVehicleTile(
+                  vehicle,
+                  widget.selectedVehicleId == vehicle.id,
+                );
               },
             ),
           ),
@@ -320,7 +341,9 @@ class _MapSectionState extends State<MapSection> with TickerProviderStateMixin {
         color: AppTheme.darkNavy,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.white.withOpacity(0.3)),
-        boxShadow: [const BoxShadow(color: Colors.black45, blurRadius: 10)],
+        boxShadow: const [
+          BoxShadow(color: Colors.black45, blurRadius: 10),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -341,10 +364,7 @@ class _MapSectionState extends State<MapSection> with TickerProviderStateMixin {
                 constraints: const BoxConstraints(),
                 padding: EdgeInsets.zero,
                 icon: const Icon(Icons.close, color: Colors.white54, size: 18),
-                onPressed: () {
-                  print('🗑️ Close button pressed for vehicle: ${vehicle.id}');
-                  widget.onClearSelection?.call();
-                },
+                onPressed: widget.onClearSelection,
               ),
             ],
           ),
@@ -408,7 +428,8 @@ class SmoothVehicleMarkerLayer extends StatefulWidget {
   });
 
   @override
-  State<SmoothVehicleMarkerLayer> createState() => _SmoothVehicleMarkerLayerState();
+  State<SmoothVehicleMarkerLayer> createState() =>
+      _SmoothVehicleMarkerLayerState();
 }
 
 class _MarkerAnimationData {
@@ -454,9 +475,8 @@ class _SmoothVehicleMarkerLayerState extends State<SmoothVehicleMarkerLayer>
   void didUpdateWidget(SmoothVehicleMarkerLayer oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    final newIds = widget.vehicles.map((v) => v.id).toSet();
+    final newIds = widget.vehicles.map((vehicle) => vehicle.id).toSet();
 
-    // Hapus marker yang sudah tidak ada
     _markerData.keys
         .where((id) => !newIds.contains(id))
         .toList()
@@ -465,7 +485,6 @@ class _SmoothVehicleMarkerLayerState extends State<SmoothVehicleMarkerLayer>
       _markerData.remove(id);
     });
 
-    // Perbarui data marker yang ada dan tambahkan marker baru
     for (final vehicle in widget.vehicles) {
       final current = _markerData[vehicle.id];
       if (current == null) {
@@ -479,7 +498,10 @@ class _SmoothVehicleMarkerLayerState extends State<SmoothVehicleMarkerLayer>
       }
 
       if (current.vehicle.position != vehicle.position) {
-        current.updateTarget(vehicle.position, const Duration(milliseconds: 500));
+        current.updateTarget(
+          vehicle.position,
+          const Duration(milliseconds: 500),
+        );
       }
       current.vehicle = vehicle;
     }
@@ -504,48 +526,50 @@ class _SmoothVehicleMarkerLayerState extends State<SmoothVehicleMarkerLayer>
 
     return Stack(
       children: _markerData.values.map((data) {
-          return AnimatedBuilder(
-            animation: data.animation,
-            builder: (context, _) {
-              final currentPosition = data.animation.value;
-              final pxPoint = map.projectAtZoom(currentPosition);
-              final marker = _buildMarkerWidget(data.vehicle);
-              final markerSize = widget.selectedVehicleId == data.vehicle.id ? 80.0 : 40.0;
+        return AnimatedBuilder(
+          animation: data.animation,
+          builder: (context, _) {
+            final currentPosition = data.animation.value;
+            final pxPoint = map.projectAtZoom(currentPosition);
+            final marker = _buildMarkerWidget(data.vehicle);
+            final markerSize =
+                widget.selectedVehicleId == data.vehicle.id ? 80.0 : 40.0;
 
-              final positions = <Widget>[];
+            final positions = <Widget>[];
 
-              Widget buildPositioned(double xShift) {
-                final shiftedLocalPoint = Offset(pxPoint.dx + xShift, pxPoint.dy) - map.pixelOrigin;
-                return Positioned(
-                  key: ValueKey('${data.vehicle.id}-$xShift'),
-                  width: markerSize,
-                  height: markerSize,
-                  left: shiftedLocalPoint.dx - markerSize / 2,
-                  top: shiftedLocalPoint.dy - markerSize / 2,
-                  child: marker,
-                );
+            Widget buildPositioned(double xShift) {
+              final shiftedLocalPoint =
+                  Offset(pxPoint.dx + xShift, pxPoint.dy) - map.pixelOrigin;
+              return Positioned(
+                key: ValueKey('${data.vehicle.id}-$xShift'),
+                width: markerSize,
+                height: markerSize,
+                left: shiftedLocalPoint.dx - markerSize / 2,
+                top: shiftedLocalPoint.dy - markerSize / 2,
+                child: marker,
+              );
+            }
+
+            positions.add(buildPositioned(0));
+
+            if (worldWidth != 0) {
+              for (double shift = -worldWidth;
+                  shift.abs() <= worldWidth;
+                  shift -= worldWidth) {
+                positions.add(buildPositioned(shift));
               }
-
-              positions.add(buildPositioned(0));
-
-              if (worldWidth != 0) {
-                        for (double shift = -worldWidth;
-                    shift.abs() <= worldWidth;
-                    shift -= worldWidth) {
-                  positions.add(buildPositioned(shift));
-                }
-                for (double shift = worldWidth;
-                    shift.abs() <= worldWidth;
-                    shift += worldWidth) {
-                  positions.add(buildPositioned(shift));
-                }
+              for (double shift = worldWidth;
+                  shift.abs() <= worldWidth;
+                  shift += worldWidth) {
+                positions.add(buildPositioned(shift));
               }
+            }
 
-              return Stack(children: positions);
-            },
-          );
-        }).toList(),
-      );
+            return Stack(children: positions);
+          },
+        );
+      }).toList(),
+    );
   }
 
   Widget _buildMarkerWidget(Vehicle vehicle) {
@@ -561,7 +585,6 @@ class _SmoothVehicleMarkerLayerState extends State<SmoothVehicleMarkerLayer>
   }
 }
 
-/// Widget internal untuk tampilan Marker dengan rotasi heading
 class _VehicleMarkerWidget extends StatelessWidget {
   final Color color;
   final bool isSelected;
@@ -576,7 +599,7 @@ class _VehicleMarkerWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AnimatedRotation(
-      turns: heading / 360, // Convert degrees to turns (0-1)
+      turns: heading / 360,
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,
       child: AnimatedContainer(
@@ -597,7 +620,9 @@ class _VehicleMarkerWidget extends StatelessWidget {
                     spreadRadius: 2,
                   ),
                 ]
-              : [const BoxShadow(color: Colors.black26, blurRadius: 4)],
+              : const [
+                  BoxShadow(color: Colors.black26, blurRadius: 4),
+                ],
         ),
         child: const Icon(Icons.navigation, color: Colors.white, size: 18),
       ),
