@@ -108,6 +108,11 @@ class DrowsinessEvent {
     this.location,
     this.latitude,
     this.longitude,
+    this.speedAtEvent,
+    this.telemetryTimestamp,
+    this.tripId,
+    this.telemetryStatusId,
+    this.speedSource,
   });
 
   final int id;
@@ -122,8 +127,20 @@ class DrowsinessEvent {
   final String? location;
   final double? latitude;
   final double? longitude;
+  final double? speedAtEvent;
+  final DateTime? telemetryTimestamp;
+  final int? tripId;
+  final int? telemetryStatusId;
+  final String? speedSource;
 
   String get driverLabel => userId > 0 ? 'User #$userId' : 'Unknown';
+  bool get hasSpeedContext => speedAtEvent != null;
+  String? get formattedSpeed =>
+      speedAtEvent == null ? null : '${speedAtEvent!.toStringAsFixed(0)} km/h';
+  String? get formattedTelemetryTime =>
+      telemetryTimestamp == null
+          ? null
+          : telemetryTimestamp!.toLocal().toIso8601String();
 
   factory DrowsinessEvent.fromJson(Map<String, dynamic> json) {
     final locationData = json['location'];
@@ -154,6 +171,11 @@ class DrowsinessEvent {
             locationMap?['lng'] ??
             locationMap?['lon'],
       ),
+      speedAtEvent: _toDouble(json['speed_at_event']),
+      telemetryTimestamp: _parseDate(json['telemetry_timestamp']),
+      tripId: _toNullableInt(json['trip_id']),
+      telemetryStatusId: _toNullableInt(json['telemetry_status_id']),
+      speedSource: _optionalString(json['speed_source']),
     );
   }
 }
@@ -178,6 +200,13 @@ int _toInt(dynamic value) {
   if (value is int) return value;
   if (value is num) return value.toInt();
   return int.tryParse(value?.toString() ?? '') ?? 0;
+}
+
+int? _toNullableInt(dynamic value) {
+  if (value == null) return null;
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  return int.tryParse(value.toString());
 }
 
 String? _optionalString(dynamic value) {

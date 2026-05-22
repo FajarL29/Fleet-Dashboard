@@ -104,7 +104,8 @@ class _EventHeader extends StatelessWidget {
         Expanded(flex: 16, child: Text('Driver', style: style)),
         Expanded(flex: 14, child: Text('Vehicle ID', style: style)),
         Expanded(flex: 14, child: Text('Severity', style: style)),
-        Expanded(flex: 30, child: Text('Location', style: style)),
+        Expanded(flex: 18, child: Text('Speed', style: style)),
+        Expanded(flex: 24, child: Text('Location', style: style)),
         SizedBox(width: 24),
       ],
     );
@@ -195,7 +196,18 @@ class _EventRow extends StatelessWidget {
           ),
         ),
         Expanded(
-          flex: 30,
+          flex: 18,
+          child: Text(
+            event.formattedSpeed ?? '',
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: ReportStyles.textSecondary,
+              fontSize: 12,
+            ),
+          ),
+        ),
+        Expanded(
+          flex: 24,
           child: Row(
             children: [
               const Icon(

@@ -95,6 +95,7 @@ class _PreviewRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final severity = event['severity']?.toString() ?? 'Low';
     final severityColor = _severityColor(severity);
+    final speedLabel = event['speedLabel']?.toString() ?? '';
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -134,6 +135,19 @@ class _PreviewRow extends StatelessWidget {
                   height: 1.15,
                 ),
               ),
+              if (speedLabel.isNotEmpty) ...[
+                const SizedBox(height: 1),
+                Text(
+                  'Speed: $speedLabel',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppTheme.textSecondary,
+                    fontSize: 10,
+                    height: 1.1,
+                  ),
+                ),
+              ],
             ],
           ),
         ),

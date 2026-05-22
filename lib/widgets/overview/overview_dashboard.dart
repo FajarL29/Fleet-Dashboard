@@ -511,8 +511,7 @@ class OverviewDashboard extends StatelessWidget {
       'time': event.time,
       'eventType': _eventTitle(event),
       'severity': _severityFromRisk(event.riskLevel),
-      'speedLabel':
-          vehicle == null ? '-' : '${vehicle.speed.toStringAsFixed(0)} km/h',
+      'speedLabel': event.formattedSpeed,
     };
   }
 

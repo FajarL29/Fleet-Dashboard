@@ -110,6 +110,8 @@ class LatestSafetyAlertsPanel extends StatelessWidget {
                                       _MetaText(alert['driverName']?.toString() ?? '-'),
                                       _MetaText(alert['vehicleLabel']?.toString() ?? '-'),
                                       _MetaText(alert['location']?.toString() ?? '-'),
+                                      if ((alert['speedLabel']?.toString() ?? '').isNotEmpty)
+                                        _MetaText('Speed: ${alert['speedLabel']}'),
                                     ],
                                   ),
                                 ],
