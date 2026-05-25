@@ -1,13 +1,34 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import '../bloc/dashboard/dashboard_bloc.dart';
+import '../bloc/dashboard/dashboard_state.dart';
+import '../theme/app_theme.dart';
+import '../widgets/safety/safety_content.dart';
 
 class SafetyScreen extends StatelessWidget {
   const SafetyScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Safety')),
-      body: const Center(child: Text('Safety Screen - Coming Soon')),
+    return Container(
+      color: AppTheme.darkNavy,
+      child: SafeArea(
+        child: BlocBuilder<DashboardBloc, DashboardState>(
+          buildWhen: (prev, curr) =>
+              prev.selectedVehicle != curr.selectedVehicle ||
+              prev.vehicles != curr.vehicles,
+          builder: (context, state) {
+            return Padding(
+              padding: const EdgeInsets.all(24),
+              child: SafetyContent(
+                selectedVehicle: state.selectedVehicle,
+                vehicles: state.vehicles,
+              ),
+            );
+          },
+        ),
+      ),
     );
   }
 }

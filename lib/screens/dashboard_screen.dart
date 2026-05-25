@@ -1,4 +1,5 @@
 import 'package:fleet_dashboard/screens/report_screen.dart';
+import 'package:fleet_dashboard/screens/safety_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -115,7 +116,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     );
                   case '/safety':
                     return MaterialPageRoute(
-                      builder: (context) => _buildPlaceholderContent('Safety'),
+                      builder: (context) => const SafetyScreen(),
                       settings: settings,
                     );
                   case '/settings':
