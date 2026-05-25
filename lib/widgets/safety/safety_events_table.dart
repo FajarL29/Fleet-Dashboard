@@ -77,12 +77,19 @@ class SafetyEventsTable extends StatelessWidget {
                           ),
                           _TableCell(
                             flex: 16,
-                            child: Text(
-                              _eventTypeLabel(event),
-                              style: const TextStyle(
-                                color: ReportStyles.textPrimary,
-                                fontWeight: FontWeight.w600,
-                              ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _eventTypeLabel(event),
+                                  style: const TextStyle(
+                                    color: ReportStyles.textPrimary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                _ReviewStatusText(status: event.reviewStatus),
+                              ],
                             ),
                           ),
                           _TableCell(
@@ -288,5 +295,52 @@ class _SeverityChip extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _ReviewStatusText extends StatelessWidget {
+  const _ReviewStatusText({required this.status});
+
+  final String status;
+
+  @override
+  Widget build(BuildContext context) {
+    Color color;
+    switch (status) {
+      case 'confirmed':
+        color = ReportStyles.green;
+        break;
+      case 'false_alarm':
+        color = ReportStyles.orange;
+        break;
+      case 'follow_up_required':
+        color = ReportStyles.blue;
+        break;
+      case 'followed_up':
+        color = ReportStyles.purple;
+        break;
+      case 'new':
+      default:
+        color = ReportStyles.textMuted;
+        break;
+    }
+
+    return Text(
+      _reviewStatusLabel(status),
+      style: TextStyle(
+        color: color,
+        fontSize: 11,
+        fontWeight: FontWeight.w700,
+      ),
+    );
+  }
+
+  String _reviewStatusLabel(String value) {
+    return value
+        .replaceAll('_', ' ')
+        .split(RegExp(r'[\s]+'))
+        .where((part) => part.isNotEmpty)
+        .map((part) => '${part[0].toUpperCase()}${part.substring(1).toLowerCase()}')
+        .join(' ');
   }
 }

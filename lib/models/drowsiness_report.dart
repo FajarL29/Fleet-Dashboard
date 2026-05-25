@@ -1,3 +1,5 @@
+import 'package:intl/intl.dart';
+
 import 'api_helpers.dart';
 
 class DrowsinessReport {
@@ -113,6 +115,12 @@ class DrowsinessEvent {
     this.tripId,
     this.telemetryStatusId,
     this.speedSource,
+    this.reviewStatus = 'new',
+    this.reviewNote,
+    this.reviewedBy,
+    this.reviewedAt,
+    this.followUpNote,
+    this.followedUpAt,
   });
 
   final int id;
@@ -132,15 +140,89 @@ class DrowsinessEvent {
   final int? tripId;
   final int? telemetryStatusId;
   final String? speedSource;
+  final String reviewStatus;
+  final String? reviewNote;
+  final String? reviewedBy;
+  final DateTime? reviewedAt;
+  final String? followUpNote;
+  final DateTime? followedUpAt;
 
   String get driverLabel => userId > 0 ? 'User #$userId' : 'Unknown';
   bool get hasSpeedContext => speedAtEvent != null;
+  bool get isReviewed => reviewStatus != 'new';
+  bool get isConfirmed => reviewStatus == 'confirmed';
+  bool get isFalseAlarm => reviewStatus == 'false_alarm';
+  bool get isFollowUpRequired => reviewStatus == 'follow_up_required';
+  bool get isFollowedUp => reviewStatus == 'followed_up';
   String? get formattedSpeed =>
       speedAtEvent == null ? null : '${speedAtEvent!.toStringAsFixed(0)} km/h';
   String? get formattedTelemetryTime =>
       telemetryTimestamp == null
           ? null
           : telemetryTimestamp!.toLocal().toIso8601String();
+  String? get formattedReviewedAt => _formatDisplayDate(reviewedAt);
+  String? get formattedFollowedUpAt => _formatDisplayDate(followedUpAt);
+
+  DrowsinessEvent copyWith({
+    int? id,
+    String? vehicleId,
+    int? userId,
+    DateTime? time,
+    String? status,
+    String? riskLevel,
+    String? behaviorType,
+    String? imageUrl,
+    String? previewBase64,
+    String? location,
+    double? latitude,
+    double? longitude,
+    double? speedAtEvent,
+    DateTime? telemetryTimestamp,
+    int? tripId,
+    int? telemetryStatusId,
+    String? speedSource,
+    String? reviewStatus,
+    String? reviewNote,
+    bool clearReviewNote = false,
+    String? reviewedBy,
+    bool clearReviewedBy = false,
+    DateTime? reviewedAt,
+    bool clearReviewedAt = false,
+    String? followUpNote,
+    bool clearFollowUpNote = false,
+    DateTime? followedUpAt,
+    bool clearFollowedUpAt = false,
+  }) {
+    return DrowsinessEvent(
+      id: id ?? this.id,
+      vehicleId: vehicleId ?? this.vehicleId,
+      userId: userId ?? this.userId,
+      time: time ?? this.time,
+      status: status ?? this.status,
+      riskLevel: riskLevel ?? this.riskLevel,
+      behaviorType: behaviorType ?? this.behaviorType,
+      imageUrl: imageUrl ?? this.imageUrl,
+      previewBase64: previewBase64 ?? this.previewBase64,
+      location: location ?? this.location,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      speedAtEvent: speedAtEvent ?? this.speedAtEvent,
+      telemetryTimestamp: telemetryTimestamp ?? this.telemetryTimestamp,
+      tripId: tripId ?? this.tripId,
+      telemetryStatusId: telemetryStatusId ?? this.telemetryStatusId,
+      speedSource: speedSource ?? this.speedSource,
+      reviewStatus: reviewStatus ?? this.reviewStatus,
+      reviewNote: clearReviewNote ? null : (reviewNote ?? this.reviewNote),
+      reviewedBy: clearReviewedBy ? null : (reviewedBy ?? this.reviewedBy),
+      reviewedAt: clearReviewedAt ? null : (reviewedAt ?? this.reviewedAt),
+      followUpNote: clearFollowUpNote
+          ? null
+          : (followUpNote ?? this.followUpNote),
+      followedUpAt: clearFollowedUpAt
+          ? null
+          : (followedUpAt ?? this.followedUpAt),
+    );
+  }
 
   factory DrowsinessEvent.fromJson(Map<String, dynamic> json) {
     final locationData = json['location'];
@@ -176,6 +258,12 @@ class DrowsinessEvent {
       tripId: _toNullableInt(json['trip_id']),
       telemetryStatusId: _toNullableInt(json['telemetry_status_id']),
       speedSource: _optionalString(json['speed_source']),
+      reviewStatus: _reviewStatus(json['review_status']),
+      reviewNote: _optionalString(json['review_note']),
+      reviewedBy: _optionalString(json['reviewed_by']),
+      reviewedAt: _parseDate(json['reviewed_at']),
+      followUpNote: _optionalString(json['follow_up_note']),
+      followedUpAt: _parseDate(json['followed_up_at']),
     );
   }
 }
@@ -227,4 +315,20 @@ double? _toDouble(dynamic value) {
 DateTime? _parseDate(dynamic value) {
   if (value == null) return null;
   return DateTime.tryParse(value.toString())?.toLocal();
+}
+
+String _reviewStatus(dynamic value) {
+  final normalized = value?.toString().trim().toLowerCase();
+  if (normalized == null || normalized.isEmpty) {
+    return 'new';
+  }
+  return normalized;
+}
+
+String? _formatDisplayDate(DateTime? value) {
+  if (value == null) {
+    return null;
+  }
+
+  return DateFormat('MMM d, yyyy hh:mm:ss a').format(value);
 }

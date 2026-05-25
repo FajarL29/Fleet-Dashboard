@@ -83,29 +83,106 @@ class DrowsinessReportService {
         .toList();
   }
 
+  Future<DrowsinessEvent> updateDrowsinessReview({
+    required int drowsinessId,
+    required String reviewStatus,
+    String? reviewNote,
+    String? followUpNote,
+    String? reviewedBy,
+  }) async {
+    final body = <String, dynamic>{
+      'review_status': reviewStatus,
+    };
+
+    if (reviewNote != null) {
+      body['review_note'] = reviewNote;
+    }
+    if (followUpNote != null) {
+      body['follow_up_note'] = followUpNote;
+    }
+    if (reviewedBy != null) {
+      body['reviewed_by'] = reviewedBy;
+    }
+
+    final response = await _send(
+      'PATCH',
+      '/drowsiness/review/$drowsinessId',
+      body: body,
+    );
+
+    final data = response['data'];
+    if (data is Map<String, dynamic>) {
+      return DrowsinessEvent.fromJson(data);
+    }
+
+    throw Exception('Unexpected review update response format');
+  }
+
   Future<Map<String, dynamic>> _get(
     String path, [
     Map<String, String>? query,
   ]) async {
+    return _send('GET', path, query: query);
+  }
+
+  Future<Map<String, dynamic>> _send(
+    String method,
+    String path, {
+    Map<String, String>? query,
+    Map<String, dynamic>? body,
+  }) async {
     final uri = Uri.parse('$baseUrl$path').replace(queryParameters: query);
-    final response = _client == null
-        ? await http.get(uri)
-        : await _client!.get(uri);
+    final client = _client ?? http.Client();
+    final shouldCloseClient = _client == null;
 
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw Exception('Request failed ${response.statusCode}: ${response.body}');
+    try {
+      final response = await _request(
+        client,
+        method,
+        uri,
+        body: body,
+      );
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception('Request failed ${response.statusCode}: ${response.body}');
+      }
+
+      final decoded = json.decode(response.body);
+      if (decoded is! Map<String, dynamic>) {
+        throw Exception('Unexpected API response format');
+      }
+
+      if (decoded['status'] != null && decoded['status'] != 'success') {
+        throw Exception(decoded['message'] ?? 'API returned ${decoded['status']}');
+      }
+
+      return decoded;
+    } finally {
+      if (shouldCloseClient) {
+        client.close();
+      }
     }
+  }
 
-    final decoded = json.decode(response.body);
-    if (decoded is! Map<String, dynamic>) {
-      throw Exception('Unexpected API response format');
+  Future<http.Response> _request(
+    http.Client client,
+    String method,
+    Uri uri, {
+    Map<String, dynamic>? body,
+  }) {
+    switch (method.toUpperCase()) {
+      case 'PATCH':
+        return client.patch(
+          uri,
+          headers: const {
+            'Content-Type': 'application/json',
+          },
+          body: json.encode(body ?? const <String, dynamic>{}),
+        );
+      case 'GET':
+      default:
+        return client.get(uri);
     }
-
-    if (decoded['status'] != null && decoded['status'] != 'success') {
-      throw Exception(decoded['message'] ?? 'API returned ${decoded['status']}');
-    }
-
-    return decoded;
   }
 
   String _dateOnly(DateTime date) {

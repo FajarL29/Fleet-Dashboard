@@ -30,12 +30,15 @@ class _SafetyContentState extends State<SafetyContent> {
 
   late DateTime _endDate;
   late DateTime _startDate;
-  late Future<List<DrowsinessEvent>> _future;
   String? _activeVehicleApiId;
   int? _selectedEventId;
   String _severityFilter = 'All';
   String _eventTypeFilter = 'All';
   String _searchQuery = '';
+  List<DrowsinessEvent> _events = const [];
+  bool _isLoading = true;
+  bool _isReviewUpdating = false;
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -43,7 +46,7 @@ class _SafetyContentState extends State<SafetyContent> {
     _endDate = DateTime.now();
     _startDate = _endDate.subtract(const Duration(days: 30));
     _activeVehicleApiId = _resolveVehicleApiId();
-    _future = _loadEvents();
+    _loadEvents();
   }
 
   @override
@@ -54,22 +57,46 @@ class _SafetyContentState extends State<SafetyContent> {
       setState(() {
         _activeVehicleApiId = nextVehicleApiId;
         _selectedEventId = null;
-        _future = _loadEvents();
       });
+      _loadEvents();
     }
   }
 
-  Future<List<DrowsinessEvent>> _loadEvents() async {
-    final vehicleId = _activeVehicleApiId ?? 'VIN-0001';
-    final events = await _service.getEventsByVehicle(
-      vehicleId: vehicleId,
-      startDate: _startDate,
-      endDate: _endDate,
-      limit: 100,
-    );
+  Future<void> _loadEvents() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
 
-    events.sort((a, b) => b.time.compareTo(a.time));
-    return events;
+    final vehicleId = _activeVehicleApiId ?? 'VIN-0001';
+    try {
+      final events = await _service.getEventsByVehicle(
+        vehicleId: vehicleId,
+        startDate: _startDate,
+        endDate: _endDate,
+        limit: 100,
+      );
+
+      events.sort((a, b) => b.time.compareTo(a.time));
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _events = events;
+        _isLoading = false;
+      });
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _isLoading = false;
+        _errorMessage = error.toString();
+      });
+    }
   }
 
   String _resolveVehicleApiId() {
@@ -89,9 +116,7 @@ class _SafetyContentState extends State<SafetyContent> {
   }
 
   void _refresh() {
-    setState(() {
-      _future = _loadEvents();
-    });
+    _loadEvents();
   }
 
   Future<void> _pickDateRange() async {
@@ -128,8 +153,8 @@ class _SafetyContentState extends State<SafetyContent> {
     setState(() {
       _startDate = picked.start;
       _endDate = picked.end;
-      _future = _loadEvents();
     });
+    _loadEvents();
   }
 
   List<DrowsinessEvent> _applyFilters(List<DrowsinessEvent> events) {
@@ -154,6 +179,8 @@ class _SafetyContentState extends State<SafetyContent> {
         event.driverLabel,
         event.status,
         event.behaviorType ?? '',
+        event.reviewStatus,
+        event.reviewedBy ?? '',
       ].join(' ').toLowerCase();
 
       return searchable.contains(query);
@@ -162,153 +189,194 @@ class _SafetyContentState extends State<SafetyContent> {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<List<DrowsinessEvent>>(
-      future: _future,
-      builder: (context, snapshot) {
-        final allEvents = snapshot.data ?? const <DrowsinessEvent>[];
-        final filteredEvents = _applyFilters(allEvents);
-        final selectedEvent = _resolveSelectedEvent(filteredEvents);
+    final filteredEvents = _applyFilters(_events);
+    final selectedEvent = _resolveSelectedEvent(filteredEvents);
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Safety Events',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.w700,
-                color: ReportStyles.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Review drowsiness and driver safety events',
-              style: TextStyle(
-                fontSize: 14,
-                color: ReportStyles.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 18),
-            SafetyFilterBar(
-              dateRangeLabel: _dateRangeLabel(_startDate, _endDate),
-              severityFilter: _severityFilter,
-              eventTypeFilter: _eventTypeFilter,
-              searchQuery: _searchQuery,
-              eventCount: filteredEvents.length,
-              selectedVehicleLabel:
-                  widget.selectedVehicle?.apiVehicleId?.trim().isNotEmpty == true
-                  ? widget.selectedVehicle!.apiVehicleId!
-                  : _activeVehicleApiId ?? 'VIN-0001',
-              onDateRangeTap: _pickDateRange,
-              onRefresh: _refresh,
-              onSeverityChanged: (value) {
-                setState(() {
-                  _severityFilter = value;
-                });
-              },
-              onEventTypeChanged: (value) {
-                setState(() {
-                  _eventTypeFilter = value;
-                });
-              },
-              onSearchChanged: (value) {
-                setState(() {
-                  _searchQuery = value;
-                });
-              },
-              isLoading: snapshot.connectionState == ConnectionState.waiting,
-            ),
-            const SizedBox(height: 16),
-            const SafetyWorkflowStepper(),
-            const SizedBox(height: 16),
-            Expanded(
-              child: Builder(
-                builder: (context) {
-                  if (snapshot.hasError) {
-                    return _SafetyErrorState(
-                      message: snapshot.error.toString(),
-                      onRetry: _refresh,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Safety Events',
+          style: TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.w700,
+            color: ReportStyles.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'Review drowsiness and driver safety events',
+          style: TextStyle(
+            fontSize: 14,
+            color: ReportStyles.textSecondary,
+          ),
+        ),
+        const SizedBox(height: 18),
+        SafetyFilterBar(
+          dateRangeLabel: _dateRangeLabel(_startDate, _endDate),
+          severityFilter: _severityFilter,
+          eventTypeFilter: _eventTypeFilter,
+          searchQuery: _searchQuery,
+          eventCount: filteredEvents.length,
+          selectedVehicleLabel:
+              widget.selectedVehicle?.apiVehicleId?.trim().isNotEmpty == true
+              ? widget.selectedVehicle!.apiVehicleId!
+              : _activeVehicleApiId ?? 'VIN-0001',
+          onDateRangeTap: _pickDateRange,
+          onRefresh: _refresh,
+          onSeverityChanged: (value) {
+            setState(() {
+              _severityFilter = value;
+            });
+          },
+          onEventTypeChanged: (value) {
+            setState(() {
+              _eventTypeFilter = value;
+            });
+          },
+          onSearchChanged: (value) {
+            setState(() {
+              _searchQuery = value;
+            });
+          },
+          isLoading: _isLoading,
+        ),
+        const SizedBox(height: 16),
+        const SafetyWorkflowStepper(),
+        const SizedBox(height: 16),
+        Expanded(
+          child: Builder(
+            builder: (context) {
+              if (_errorMessage != null) {
+                return _SafetyErrorState(
+                  message: _errorMessage!,
+                  onRetry: _refresh,
+                );
+              }
+
+              if (_isLoading && _events.isEmpty) {
+                return const _SafetyLoadingState();
+              }
+
+              if (filteredEvents.isEmpty) {
+                return SafetyEmptyState(
+                  title: _events.isEmpty
+                      ? 'No safety events found'
+                      : 'No events match the current filters',
+                  subtitle: _events.isEmpty
+                      ? 'Try a different vehicle or date range.'
+                      : 'Adjust severity, event type, or search terms.',
+                );
+              }
+
+              return LayoutBuilder(
+                builder: (context, constraints) {
+                  final isCompact = constraints.maxWidth < 1180;
+                  if (isCompact) {
+                    return Column(
+                      children: [
+                        Expanded(
+                          flex: 12,
+                          child: SafetyEventsTable(
+                            events: filteredEvents,
+                            selectedEventId: selectedEvent?.id,
+                            onEventSelected: (event) {
+                              setState(() {
+                                _selectedEventId = event.id;
+                              });
+                            },
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Expanded(
+                          flex: 11,
+                          child: SafetyEventDetailPanel(
+                            event: selectedEvent,
+                            isUpdatingReview: _isReviewUpdating,
+                            onReviewAction: _handleReviewAction,
+                          ),
+                        ),
+                      ],
                     );
                   }
 
-                  if (snapshot.connectionState == ConnectionState.waiting &&
-                      allEvents.isEmpty) {
-                    return const _SafetyLoadingState();
-                  }
-
-                  if (filteredEvents.isEmpty) {
-                    return SafetyEmptyState(
-                      title: allEvents.isEmpty
-                          ? 'No safety events found'
-                          : 'No events match the current filters',
-                      subtitle: allEvents.isEmpty
-                          ? 'Try a different vehicle or date range.'
-                          : 'Adjust severity, event type, or search terms.',
-                    );
-                  }
-
-                  return LayoutBuilder(
-                    builder: (context, constraints) {
-                      final isCompact = constraints.maxWidth < 1180;
-                      if (isCompact) {
-                        return Column(
-                          children: [
-                            Expanded(
-                              flex: 12,
-                              child: SafetyEventsTable(
-                                events: filteredEvents,
-                                selectedEventId: selectedEvent?.id,
-                                onEventSelected: (event) {
-                                  setState(() {
-                                    _selectedEventId = event.id;
-                                  });
-                                },
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            Expanded(
-                              flex: 11,
-                              child: SafetyEventDetailPanel(
-                                event: selectedEvent,
-                              ),
-                            ),
-                          ],
-                        );
-                      }
-
-                      return Row(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Expanded(
-                            flex: 58,
-                            child: SafetyEventsTable(
-                              events: filteredEvents,
-                              selectedEventId: selectedEvent?.id,
-                              onEventSelected: (event) {
-                                setState(() {
-                                  _selectedEventId = event.id;
-                                });
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            flex: 42,
-                            child: SafetyEventDetailPanel(
-                              event: selectedEvent,
-                            ),
-                          ),
-                        ],
-                      );
-                    },
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(
+                        flex: 58,
+                        child: SafetyEventsTable(
+                          events: filteredEvents,
+                          selectedEventId: selectedEvent?.id,
+                          onEventSelected: (event) {
+                            setState(() {
+                              _selectedEventId = event.id;
+                            });
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        flex: 42,
+                        child: SafetyEventDetailPanel(
+                          event: selectedEvent,
+                          isUpdatingReview: _isReviewUpdating,
+                          onReviewAction: _handleReviewAction,
+                        ),
+                      ),
+                    ],
                   );
                 },
-              ),
-            ),
-          ],
-        );
-      },
+              );
+            },
+          ),
+        ),
+      ],
     );
+  }
+
+  Future<void> _handleReviewAction(SafetyReviewActionRequest request) async {
+    setState(() {
+      _isReviewUpdating = true;
+    });
+
+    try {
+      final updatedEvent = await _service.updateDrowsinessReview(
+        drowsinessId: request.eventId,
+        reviewStatus: request.reviewStatus,
+        reviewNote: request.reviewNote,
+        followUpNote: request.followUpNote,
+        reviewedBy: 'operator',
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _events = _events
+            .map((event) => event.id == updatedEvent.id ? updatedEvent : event)
+            .toList();
+        _selectedEventId = updatedEvent.id;
+        _isReviewUpdating = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Review updated')),
+      );
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _isReviewUpdating = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to update review')),
+      );
+    }
   }
 
   String _dateRangeLabel(DateTime start, DateTime end) {

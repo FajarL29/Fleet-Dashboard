@@ -7,6 +7,20 @@ import 'package:intl/intl.dart';
 import '../../models/drowsiness_report.dart';
 import '../report/report_styles.dart';
 
+class SafetyReviewActionRequest {
+  const SafetyReviewActionRequest({
+    required this.eventId,
+    required this.reviewStatus,
+    this.reviewNote,
+    this.followUpNote,
+  });
+
+  final int eventId;
+  final String reviewStatus;
+  final String? reviewNote;
+  final String? followUpNote;
+}
+
 String _eventTypeLabel(DrowsinessEvent event) {
   return _readableLabel(event.behaviorType ?? event.status);
 }
@@ -53,9 +67,13 @@ class SafetyEventDetailPanel extends StatelessWidget {
   const SafetyEventDetailPanel({
     super.key,
     required this.event,
+    this.isUpdatingReview = false,
+    this.onReviewAction,
   });
 
   final DrowsinessEvent? event;
+  final bool isUpdatingReview;
+  final Future<void> Function(SafetyReviewActionRequest request)? onReviewAction;
 
   @override
   Widget build(BuildContext context) {
@@ -89,152 +107,132 @@ class SafetyEventDetailPanel extends StatelessWidget {
                   ),
                   const SizedBox(height: 14),
                   Expanded(
-                    child: SingleChildScrollView(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _EvidenceCard(event: event!),
-                          const SizedBox(height: 14),
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                child: _InfoCard(
-                                  icon: Icons.speed_rounded,
-                                  title: 'Speed at Event',
-                                  value: event!.formattedSpeed ?? '-',
-                                ),
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        return Scrollbar(
+                          thumbVisibility: true,
+                          child: SingleChildScrollView(
+                            padding: const EdgeInsets.only(right: 4),
+                            child: ConstrainedBox(
+                              constraints: BoxConstraints(
+                                minHeight: constraints.maxHeight,
                               ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: _InfoCard(
-                                  icon: Icons.pin_drop_outlined,
-                                  title: 'Location',
-                                  value: _locationLabel(event!),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Wrap(
-                            spacing: 12,
-                            runSpacing: 12,
-                            children: [
-                              _MetaTile(
-                                icon: Icons.badge_outlined,
-                                label: 'Event ID',
-                                value: event!.id.toString(),
-                              ),
-                              _MetaTile(
-                                icon: Icons.emergency_outlined,
-                                label: 'Event Type',
-                                value: _eventTypeLabel(event!),
-                              ),
-                              _MetaTile(
-                                icon: Icons.task_alt_outlined,
-                                label: 'Status',
-                                value: _readableLabel(event!.status),
-                              ),
-                              _MetaTile(
-                                icon: Icons.warning_amber_rounded,
-                                label: 'Risk Level',
-                                value: _severityLabel(event!),
-                              ),
-                              _MetaTile(
-                                icon: Icons.person_outline_rounded,
-                                label: 'Driver/User',
-                                value: event!.driverLabel,
-                              ),
-                              _MetaTile(
-                                icon: Icons.local_shipping_outlined,
-                                label: 'Vehicle',
-                                value: event!.vehicleId.isEmpty
-                                    ? '-'
-                                    : event!.vehicleId,
-                              ),
-                              _MetaTile(
-                                icon: Icons.schedule_rounded,
-                                label: 'Event Time',
-                                value: _dateTimeLabel(event!.time),
-                              ),
-                              _MetaTile(
-                                icon: Icons.av_timer_rounded,
-                                label: 'Telemetry Timestamp',
-                                value: event!.telemetryTimestamp == null
-                                    ? '-'
-                                    : _dateTimeLabel(event!.telemetryTimestamp!),
-                              ),
-                              _MetaTile(
-                                icon: Icons.radar_rounded,
-                                label: 'Speed Source',
-                                value: event!.speedSource?.trim().isNotEmpty == true
-                                    ? event!.speedSource!
-                                    : '-',
-                              ),
-                              _MetaTile(
-                                icon: Icons.my_location_rounded,
-                                label: 'Location Coordinate',
-                                value: _coordinateLabel(event!),
-                              ),
-                              _MetaTile(
-                                icon: Icons.access_time_rounded,
-                                label: 'Location Time',
-                                value: event!.telemetryTimestamp == null
-                                    ? '-'
-                                    : _dateTimeLabel(event!.telemetryTimestamp!),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 14),
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF12264A),
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(
-                                color: ReportStyles.blue.withOpacity(0.5),
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(
-                                  Icons.info_outline_rounded,
-                                  color: ReportStyles.blue,
-                                ),
-                                const SizedBox(width: 12),
-                                const Expanded(
-                                  child: Column(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _EvidenceCard(event: event!),
+                                  const SizedBox(height: 14),
+                                  Row(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Text(
-                                        'Review workflow coming soon',
-                                        style: TextStyle(
-                                          color: ReportStyles.textPrimary,
-                                          fontWeight: FontWeight.w700,
+                                      Expanded(
+                                        child: _InfoCard(
+                                          icon: Icons.speed_rounded,
+                                          title: 'Speed at Event',
+                                          value: event!.formattedSpeed ?? '-',
                                         ),
                                       ),
-                                      SizedBox(height: 4),
-                                      Text(
-                                        'This is a read-only view for now.',
-                                        style: TextStyle(
-                                          color: ReportStyles.textSecondary,
-                                          fontSize: 13,
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: _InfoCard(
+                                          icon: Icons.pin_drop_outlined,
+                                          title: 'Location',
+                                          value: _locationLabel(event!),
                                         ),
                                       ),
                                     ],
                                   ),
-                                ),
-                                FilledButton.icon(
-                                  onPressed: null,
-                                  icon: const Icon(Icons.lock_outline_rounded),
-                                  label: const Text('Review Actions'),
-                                ),
-                              ],
+                                  const SizedBox(height: 12),
+                                  Wrap(
+                                    spacing: 12,
+                                    runSpacing: 12,
+                                    children: [
+                                      _MetaTile(
+                                        icon: Icons.badge_outlined,
+                                        label: 'Event ID',
+                                        value: event!.id.toString(),
+                                      ),
+                                      _MetaTile(
+                                        icon: Icons.emergency_outlined,
+                                        label: 'Event Type',
+                                        value: _eventTypeLabel(event!),
+                                      ),
+                                      _MetaTile(
+                                        icon: Icons.task_alt_outlined,
+                                        label: 'Status',
+                                        value: _readableLabel(event!.status),
+                                      ),
+                                      _MetaTile(
+                                        icon: Icons.warning_amber_rounded,
+                                        label: 'Risk Level',
+                                        value: _severityLabel(event!),
+                                      ),
+                                      _MetaTile(
+                                        icon: Icons.person_outline_rounded,
+                                        label: 'Driver/User',
+                                        value: event!.driverLabel,
+                                      ),
+                                      _MetaTile(
+                                        icon: Icons.local_shipping_outlined,
+                                        label: 'Vehicle',
+                                        value: event!.vehicleId.isEmpty
+                                            ? '-'
+                                            : event!.vehicleId,
+                                      ),
+                                      _MetaTile(
+                                        icon: Icons.schedule_rounded,
+                                        label: 'Event Time',
+                                        value: _dateTimeLabel(event!.time),
+                                      ),
+                                      _MetaTile(
+                                        icon: Icons.av_timer_rounded,
+                                        label: 'Telemetry Timestamp',
+                                        value: event!.telemetryTimestamp == null
+                                            ? '-'
+                                            : _dateTimeLabel(
+                                                event!.telemetryTimestamp!,
+                                              ),
+                                      ),
+                                      _MetaTile(
+                                        icon: Icons.radar_rounded,
+                                        label: 'Speed Source',
+                                        value: event!.speedSource
+                                                    ?.trim()
+                                                    .isNotEmpty ==
+                                                true
+                                            ? event!.speedSource!
+                                            : '-',
+                                      ),
+                                      _MetaTile(
+                                        icon: Icons.my_location_rounded,
+                                        label: 'Location Coordinate',
+                                        value: _coordinateLabel(event!),
+                                      ),
+                                      _MetaTile(
+                                        icon: Icons.access_time_rounded,
+                                        label: 'Location Time',
+                                        value: event!.telemetryTimestamp == null
+                                            ? '-'
+                                            : _dateTimeLabel(
+                                                event!.telemetryTimestamp!,
+                                              ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 14),
+                                  _ReviewStatusSection(event: event!),
+                                  const SizedBox(height: 14),
+                                  _ReviewActionsCard(
+                                    event: event!,
+                                    isUpdatingReview: isUpdatingReview,
+                                    onReviewAction: onReviewAction,
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                        ],
-                      ),
+                        );
+                      },
                     ),
                   ),
                 ],
@@ -242,7 +240,397 @@ class SafetyEventDetailPanel extends StatelessWidget {
             ),
     );
   }
+}
 
+class _ReviewStatusSection extends StatelessWidget {
+  const _ReviewStatusSection({required this.event});
+
+  final DrowsinessEvent event;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: ReportStyles.surfaceBackground,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: ReportStyles.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text(
+                'Review Status',
+                style: TextStyle(
+                  color: ReportStyles.textPrimary,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(width: 10),
+              _ReviewStatusBadge(status: event.reviewStatus),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              _MetaTile(
+                icon: Icons.verified_user_outlined,
+                label: 'Reviewed By',
+                value: event.reviewedBy ?? '-',
+              ),
+              _MetaTile(
+                icon: Icons.event_available_rounded,
+                label: 'Reviewed At',
+                value: event.formattedReviewedAt ?? '-',
+              ),
+              _MetaTile(
+                icon: Icons.note_alt_outlined,
+                label: 'Review Note',
+                value: event.reviewNote ?? '-',
+              ),
+              _MetaTile(
+                icon: Icons.assignment_turned_in_outlined,
+                label: 'Follow-up Note',
+                value: event.followUpNote ?? '-',
+              ),
+              _MetaTile(
+                icon: Icons.update_rounded,
+                label: 'Followed Up At',
+                value: event.formattedFollowedUpAt ?? '-',
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReviewActionsCard extends StatelessWidget {
+  const _ReviewActionsCard({
+    required this.event,
+    required this.isUpdatingReview,
+    required this.onReviewAction,
+  });
+
+  final DrowsinessEvent event;
+  final bool isUpdatingReview;
+  final Future<void> Function(SafetyReviewActionRequest request)? onReviewAction;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasCallback = onReviewAction != null;
+    final canRunActions = hasCallback && !isUpdatingReview;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF12264A),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: ReportStyles.blue.withOpacity(0.5),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.rate_review_outlined,
+                color: ReportStyles.blue,
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Review actions',
+                      style: TextStyle(
+                        color: ReportStyles.textPrimary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'Update review status and notes without leaving this page.',
+                      style: TextStyle(
+                        color: ReportStyles.textSecondary,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (isUpdatingReview)
+                const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              FilledButton.icon(
+                onPressed: canRunActions
+                    ? () => _promptForAction(
+                          context,
+                          status: 'confirmed',
+                          title: 'Confirm Event',
+                          message: 'Confirm this as a valid drowsiness event.',
+                          initialNote:
+                              'Valid drowsiness event from camera evidence',
+                          submitLabel: 'Confirm Event',
+                        )
+                    : null,
+                icon: const Icon(Icons.check_circle_outline_rounded),
+                label: const Text('Confirm Event'),
+              ),
+              OutlinedButton.icon(
+                onPressed: canRunActions
+                    ? () => _promptForAction(
+                          context,
+                          status: 'false_alarm',
+                          title: 'Mark False Alarm',
+                          message: 'Record why this event is a false positive.',
+                          initialNote: 'False positive after evidence check',
+                          submitLabel: 'Mark False Alarm',
+                        )
+                    : null,
+                icon: const Icon(Icons.cancel_outlined),
+                label: const Text('Mark False Alarm'),
+              ),
+              OutlinedButton.icon(
+                onPressed: canRunActions
+                    ? () => _promptForAction(
+                          context,
+                          status: 'follow_up_required',
+                          title: 'Follow-up Required',
+                          message: 'Add a note for supervisor follow-up.',
+                          initialNote: 'Needs supervisor follow-up',
+                          submitLabel: 'Save Follow-up Required',
+                        )
+                    : null,
+                icon: const Icon(Icons.assignment_late_outlined),
+                label: const Text('Follow-up Required'),
+              ),
+              FilledButton.icon(
+                onPressed: canRunActions
+                    ? () => _promptForAction(
+                          context,
+                          status: 'followed_up',
+                          title: 'Mark Followed Up',
+                          message: 'Add the outcome of the follow-up.',
+                          initialNote: 'Supervisor contacted driver',
+                          submitLabel: 'Mark Followed Up',
+                          isFollowUp: true,
+                        )
+                    : null,
+                style: FilledButton.styleFrom(
+                  backgroundColor: event.isFollowUpRequired
+                      ? ReportStyles.blue
+                      : ReportStyles.green,
+                ),
+                icon: const Icon(Icons.task_alt_rounded),
+                label: const Text('Mark Followed Up'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _promptForAction(
+    BuildContext context, {
+    required String status,
+    required String title,
+    required String message,
+    required String initialNote,
+    required String submitLabel,
+    bool isFollowUp = false,
+  }) async {
+    if (onReviewAction == null) {
+      return;
+    }
+
+    final note = await showDialog<String?>(
+      context: context,
+      builder: (context) => _ReviewNoteDialog(
+        title: title,
+        message: message,
+        label: isFollowUp ? 'Follow-up note' : 'Review note',
+        initialValue: isFollowUp
+            ? (event.followUpNote ?? initialNote)
+            : (event.reviewNote ?? initialNote),
+        submitLabel: submitLabel,
+      ),
+    );
+
+    if (note == null) {
+      return;
+    }
+
+    await onReviewAction!(
+      SafetyReviewActionRequest(
+        eventId: event.id,
+        reviewStatus: status,
+        reviewNote: isFollowUp ? null : note,
+        followUpNote: isFollowUp ? note : null,
+      ),
+    );
+  }
+}
+
+class _ReviewNoteDialog extends StatefulWidget {
+  const _ReviewNoteDialog({
+    required this.title,
+    required this.message,
+    required this.label,
+    required this.initialValue,
+    required this.submitLabel,
+  });
+
+  final String title;
+  final String message;
+  final String label;
+  final String initialValue;
+  final String submitLabel;
+
+  @override
+  State<_ReviewNoteDialog> createState() => _ReviewNoteDialogState();
+}
+
+class _ReviewNoteDialogState extends State<_ReviewNoteDialog> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialValue);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: ReportStyles.cardBackground,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: Text(
+        widget.title,
+        style: const TextStyle(color: ReportStyles.textPrimary),
+      ),
+      content: SizedBox(
+        width: 420,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              widget.message,
+              style: const TextStyle(
+                color: ReportStyles.textSecondary,
+                fontSize: 13,
+              ),
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              controller: _controller,
+              maxLines: 4,
+              style: const TextStyle(color: ReportStyles.textPrimary),
+              decoration: InputDecoration(
+                labelText: widget.label,
+                labelStyle: const TextStyle(color: ReportStyles.textSecondary),
+                filled: true,
+                fillColor: ReportStyles.surfaceBackground,
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: ReportStyles.border),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: ReportStyles.blue),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(_controller.text.trim()),
+          child: Text(widget.submitLabel),
+        ),
+      ],
+    );
+  }
+}
+
+class _ReviewStatusBadge extends StatelessWidget {
+  const _ReviewStatusBadge({required this.status});
+
+  final String status;
+
+  @override
+  Widget build(BuildContext context) {
+    late final Color color;
+    switch (status) {
+      case 'confirmed':
+        color = ReportStyles.green;
+        break;
+      case 'false_alarm':
+        color = ReportStyles.orange;
+        break;
+      case 'follow_up_required':
+        color = ReportStyles.blue;
+        break;
+      case 'followed_up':
+        color = ReportStyles.purple;
+        break;
+      case 'new':
+      default:
+        color = ReportStyles.textSecondary;
+        break;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withOpacity(0.4)),
+      ),
+      child: Text(
+        _readableLabel(status),
+        style: TextStyle(
+          color: color,
+          fontWeight: FontWeight.w700,
+          fontSize: 12,
+        ),
+      ),
+    );
+  }
 }
 
 class _EvidenceCard extends StatelessWidget {
