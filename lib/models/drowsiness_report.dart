@@ -5,11 +5,13 @@ import 'api_helpers.dart';
 class DrowsinessReport {
   const DrowsinessReport({
     required this.summary,
+    required this.reviewSummary,
     required this.eventsByDay,
     required this.eventsByHour,
   });
 
   final DrowsinessReportSummary summary;
+  final DrowsinessReviewSummary reviewSummary;
   final List<DrowsinessEventsByDay> eventsByDay;
   final List<DrowsinessEventsByHour> eventsByHour;
 
@@ -22,6 +24,9 @@ class DrowsinessReport {
       summary: DrowsinessReportSummary.fromJson(
         data['summary'] as Map<String, dynamic>? ?? const {},
       ),
+      reviewSummary: DrowsinessReviewSummary.fromJson(
+        data['review_summary'] as Map<String, dynamic>? ?? const {},
+      ),
       eventsByDay: days
           .whereType<Map<String, dynamic>>()
           .map(DrowsinessEventsByDay.fromJson)
@@ -30,6 +35,47 @@ class DrowsinessReport {
           .whereType<Map<String, dynamic>>()
           .map(DrowsinessEventsByHour.fromJson)
           .toList(),
+    );
+  }
+}
+
+class DrowsinessReviewSummary {
+  const DrowsinessReviewSummary({
+    required this.totalEvents,
+    required this.newEvents,
+    required this.confirmed,
+    required this.falseAlarm,
+    required this.followUpRequired,
+    required this.followedUp,
+    required this.reviewedTotal,
+    required this.reviewCompletionRate,
+    required this.falseAlarmRate,
+    required this.closureRate,
+  });
+
+  final int totalEvents;
+  final int newEvents;
+  final int confirmed;
+  final int falseAlarm;
+  final int followUpRequired;
+  final int followedUp;
+  final int reviewedTotal;
+  final double reviewCompletionRate;
+  final double falseAlarmRate;
+  final double closureRate;
+
+  factory DrowsinessReviewSummary.fromJson(Map<String, dynamic> json) {
+    return DrowsinessReviewSummary(
+      totalEvents: _toInt(json['total_events']),
+      newEvents: _toInt(json['new']),
+      confirmed: _toInt(json['confirmed']),
+      falseAlarm: _toInt(json['false_alarm']),
+      followUpRequired: _toInt(json['follow_up_required']),
+      followedUp: _toInt(json['followed_up']),
+      reviewedTotal: _toInt(json['reviewed_total']),
+      reviewCompletionRate: _toDouble(json['review_completion_rate']) ?? 0,
+      falseAlarmRate: _toDouble(json['false_alarm_rate']) ?? 0,
+      closureRate: _toDouble(json['closure_rate']) ?? 0,
     );
   }
 }

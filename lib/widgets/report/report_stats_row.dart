@@ -17,7 +17,8 @@ class ReportStatsRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final summary = report?.summary;
-    final totalEvents = summary?.totalEvents ?? events.length;
+    final reviewSummary = report?.reviewSummary;
+    final totalEvents = _resolveTotalEvents(summary, reviewSummary, events);
     final highRiskEvents = summary?.highRiskEvents ?? events
         .where((event) => event.riskLevel.toLowerCase() == 'high')
         .length;
@@ -66,6 +67,24 @@ class ReportStatsRow extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  int _resolveTotalEvents(
+    DrowsinessReportSummary? summary,
+    DrowsinessReviewSummary? reviewSummary,
+    List<DrowsinessEvent> events,
+  ) {
+    final summaryTotal = summary?.totalEvents;
+    if (summaryTotal != null && summaryTotal > 0) {
+      return summaryTotal;
+    }
+
+    final reviewTotal = reviewSummary?.totalEvents;
+    if (reviewTotal != null && reviewTotal > 0) {
+      return reviewTotal;
+    }
+
+    return events.length;
   }
 
   int? _peakHour(List<DrowsinessEvent> events) {

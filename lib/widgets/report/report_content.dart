@@ -7,6 +7,7 @@ import 'report_event_log_card.dart';
 import 'report_filter_bar.dart';
 import 'report_hour_card.dart';
 import 'report_map_card.dart';
+import 'report_review_summary_section.dart';
 import 'report_stats_row.dart';
 import 'report_styles.dart';
 
@@ -124,6 +125,22 @@ class _ReportContentState extends State<ReportContent> {
               ReportStatsRow(
                 report: data?.report,
                 events: data?.events ?? const [],
+              ),
+              const SizedBox(height: 14),
+              ReportReviewSummarySection(
+                reviewSummary: data?.report.reviewSummary ??
+                    const DrowsinessReviewSummary(
+                      totalEvents: 0,
+                      newEvents: 0,
+                      confirmed: 0,
+                      falseAlarm: 0,
+                      followUpRequired: 0,
+                      followedUp: 0,
+                      reviewedTotal: 0,
+                      reviewCompletionRate: 0,
+                      falseAlarmRate: 0,
+                      closureRate: 0,
+                    ),
               ),
               const SizedBox(height: 14),
               SizedBox(
