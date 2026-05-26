@@ -27,45 +27,66 @@ class ReportStatsRow extends StatelessWidget {
     final highRiskRatio = totalEvents == 0
         ? 0
         : ((highRiskEvents / totalEvents) * 100).round();
+    final reviewCompletion = reviewSummary?.reviewCompletionRate ?? 0;
+    final cards = [
+      _StatCardData(
+        title: 'Total Drowsy Events',
+        value: _formatCount(totalEvents),
+        description: 'Selected vehicle ${summary?.vehicleId ?? '-'}',
+        descriptionColor: ReportStyles.green,
+        icon: Icons.nightlight_round,
+        accentColor: ReportStyles.blue,
+      ),
+      _StatCardData(
+        title: 'High-Severity Events',
+        value: _formatCount(highRiskEvents),
+        description: '$highRiskRatio% of total events',
+        descriptionColor: ReportStyles.red,
+        icon: Icons.warning_amber_rounded,
+        accentColor: ReportStyles.red,
+      ),
+      _StatCardData(
+        title: 'Peak Hour',
+        value: '${peakHour.toString().padLeft(2, '0')}:00',
+        description: peakDate == null
+            ? 'Peak date unavailable'
+            : 'Peak date ${DateFormat('MMM d, yyyy').format(peakDate)}',
+        descriptionColor: ReportStyles.green,
+        icon: Icons.schedule_rounded,
+        accentColor: ReportStyles.purple,
+      ),
+      _StatCardData(
+        title: 'Review Completion',
+        value: _formatPercent(reviewCompletion),
+        description:
+            '${_formatCount(reviewSummary?.reviewedTotal ?? 0)} reviewed of ${_formatCount(reviewSummary?.totalEvents ?? totalEvents)}',
+        descriptionColor: ReportStyles.blue,
+        icon: Icons.rate_review_outlined,
+        accentColor: ReportStyles.orange,
+      ),
+    ];
 
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Expanded(
-          child: _StatCard(
-            title: 'Total Drowsy Events',
-            value: totalEvents.toString(),
-            description: 'Selected vehicle ${summary?.vehicleId ?? '-'}',
-            descriptionColor: ReportStyles.green,
-            icon: Icons.nightlight_round,
-            accentColor: ReportStyles.blue,
-          ),
-        ),
-        const SizedBox(width: 14),
-        Expanded(
-          child: _StatCard(
-            title: 'High-Severity Events',
-            value: highRiskEvents.toString(),
-            description: '$highRiskRatio% of total events',
-            descriptionColor: ReportStyles.red,
-            icon: Icons.warning_amber_rounded,
-            accentColor: ReportStyles.red,
-          ),
-        ),
-        const SizedBox(width: 14),
-        Expanded(
-          child: _StatCard(
-            title: 'Peak Hour',
-            value: '${peakHour.toString().padLeft(2, '0')}:00',
-            description: peakDate == null
-                ? 'Peak date unavailable'
-                : 'Peak date ${DateFormat('MMM d, yyyy').format(peakDate)}',
-            descriptionColor: ReportStyles.green,
-            icon: Icons.schedule_rounded,
-            accentColor: ReportStyles.purple,
-          ),
-        ),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cardWidth = constraints.maxWidth >= 1320
+            ? (constraints.maxWidth - 42) / 4
+            : constraints.maxWidth >= 980
+                ? (constraints.maxWidth - 14) / 2
+                : constraints.maxWidth;
+
+        return Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: cards
+              .map(
+                (card) => SizedBox(
+                  width: cardWidth,
+                  child: _StatCard(data: card),
+                ),
+              )
+              .toList(),
+        );
+      },
     );
   }
 
@@ -86,6 +107,16 @@ class ReportStatsRow extends StatelessWidget {
 
     return events.length;
   }
+
+  String _formatPercent(double value) {
+    final isWhole = value == value.roundToDouble();
+    if (isWhole) {
+      return '${value.toStringAsFixed(0)}%';
+    }
+    return '${value.toStringAsFixed(1)}%';
+  }
+
+  String _formatCount(int value) => NumberFormat.decimalPattern().format(value);
 
   int? _peakHour(List<DrowsinessEvent> events) {
     if (events.isEmpty) return null;
@@ -117,6 +148,70 @@ class ReportStatsRow extends StatelessWidget {
 
 class _StatCard extends StatelessWidget {
   const _StatCard({
+    required this.data,
+  });
+
+  final _StatCardData data;
+
+  @override
+  Widget build(BuildContext context) {
+    return ReportCard(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      child: Row(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: data.accentColor.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(data.icon, color: data.accentColor, size: 18),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  data.title,
+                  style: const TextStyle(
+                    color: ReportStyles.textMuted,
+                    fontSize: 10,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  data.value,
+                  style: const TextStyle(
+                    color: ReportStyles.textPrimary,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    height: 1,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  data.description,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: data.descriptionColor,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatCardData {
+  const _StatCardData({
     required this.title,
     required this.value,
     required this.description,
@@ -131,57 +226,4 @@ class _StatCard extends StatelessWidget {
   final Color descriptionColor;
   final IconData icon;
   final Color accentColor;
-
-  @override
-  Widget build(BuildContext context) {
-    return ReportCard(
-      child: Row(
-        children: [
-          Container(
-            width: 54,
-            height: 54,
-            decoration: BoxDecoration(
-              color: accentColor.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(icon, color: accentColor, size: 28),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: ReportStyles.textMuted,
-                    fontSize: 12,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  value,
-                  style: const TextStyle(
-                    color: ReportStyles.textPrimary,
-                    fontSize: 28,
-                    fontWeight: FontWeight.w800,
-                    height: 1,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  description,
-                  style: TextStyle(
-                    color: descriptionColor,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }

@@ -4,12 +4,14 @@ import 'package:intl/intl.dart';
 import '../../models/drowsiness_report.dart';
 import '../../services/drowsiness_report_service.dart';
 import 'report_event_log_card.dart';
+import 'report_executive_risk_summary_card.dart';
 import 'report_filter_bar.dart';
 import 'report_hour_card.dart';
 import 'report_map_card.dart';
 import 'report_review_summary_section.dart';
 import 'report_stats_row.dart';
 import 'report_styles.dart';
+import 'report_weekly_behavior_trend_section.dart';
 
 class ReportContent extends StatefulWidget {
   const ReportContent({super.key});
@@ -92,12 +94,19 @@ class _ReportContentState extends State<ReportContent> {
           children: [
             Row(
               children: [
-                const Text(
-                  'Drowsiness Report',
-                  style: TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.w700,
-                    color: ReportStyles.textPrimary,
+                const Expanded(
+                  child: Text(
+                    'Drowsiness Report',
+                    maxLines: 1,
+                    softWrap: false,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w700,
+                      color: ReportStyles.textPrimary,
+                      letterSpacing: 0,
+                      height: 1.05,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -115,18 +124,57 @@ class _ReportContentState extends State<ReportContent> {
               onDateRangeTap: _pickDateRange,
               onRefresh: _refresh,
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 12),
             if (snapshot.hasError)
               _ReportErrorCard(
                 message: snapshot.error.toString(),
                 onRetry: _refresh,
               )
             else ...[
+              ReportExecutiveRiskSummaryCard(
+                riskSummary: data?.report.riskSummary ??
+                    const ReportRiskSummary(
+                      riskLevel: 'no_data',
+                      riskScore: 0,
+                      headline: 'No drowsiness events detected',
+                      shortSummary:
+                          'No drowsiness events were detected for the selected period.',
+                      primaryFinding: ReportPrimaryFinding(
+                        title: 'Peak risk day',
+                        value: '-',
+                        description:
+                            'No weekday trend is available for the selected period.',
+                      ),
+                      mainContributor: ReportMainContributor(
+                        userId: null,
+                        driverName: '',
+                        totalEvents: 0,
+                        percentage: 0.0,
+                        description:
+                            'No driver contribution data is available.',
+                      ),
+                      dominantBehavior: ReportDominantBehavior(
+                        key: '',
+                        label: 'No dominant behavior',
+                        description:
+                            'No dominant behavior is available for the selected period.',
+                      ),
+                      reviewBacklog: ReportReviewBacklog(
+                        newEvents: 0,
+                        reviewCompletionRate: 0.0,
+                        description:
+                            'There is no review backlog for the selected period.',
+                      ),
+                      recommendedActions: [],
+                      flags: [],
+                    ),
+              ),
+              const SizedBox(height: 12),
               ReportStatsRow(
                 report: data?.report,
                 events: data?.events ?? const [],
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 12),
               ReportReviewSummarySection(
                 reviewSummary: data?.report.reviewSummary ??
                     const DrowsinessReviewSummary(
@@ -137,12 +185,17 @@ class _ReportContentState extends State<ReportContent> {
                       followUpRequired: 0,
                       followedUp: 0,
                       reviewedTotal: 0,
-                      reviewCompletionRate: 0,
-                      falseAlarmRate: 0,
-                      closureRate: 0,
+                      reviewCompletionRate: 0.0,
+                      falseAlarmRate: 0.0,
+                      closureRate: 0.0,
                     ),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 12),
+              ReportWeeklyBehaviorTrendSection(
+                weekdaySummaries:
+                    data?.report.weekdayBehaviorSummary ?? const [],
+              ),
+              const SizedBox(height: 12),
               SizedBox(
                 height: 330,
                 child: Row(
@@ -162,7 +215,7 @@ class _ReportContentState extends State<ReportContent> {
                   ],
                 ),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 12),
               SizedBox(
                 height: 310,
                 child: ReportEventLogCard(events: data?.events ?? const []),

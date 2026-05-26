@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import '../../models/drowsiness_report.dart';
 import 'report_styles.dart';
@@ -16,31 +17,31 @@ class ReportReviewSummarySection extends StatelessWidget {
     final statusCards = [
       _StatusChipData(
         label: 'New / Unreviewed',
-        value: reviewSummary.newEvents.toString(),
+        value: _formatCount(reviewSummary.newEvents),
         color: ReportStyles.textSecondary,
         icon: Icons.mark_email_unread_outlined,
       ),
       _StatusChipData(
         label: 'Confirmed',
-        value: reviewSummary.confirmed.toString(),
+        value: _formatCount(reviewSummary.confirmed),
         color: ReportStyles.green,
         icon: Icons.check_circle_outline_rounded,
       ),
       _StatusChipData(
         label: 'False Alarm',
-        value: reviewSummary.falseAlarm.toString(),
+        value: _formatCount(reviewSummary.falseAlarm),
         color: ReportStyles.orange,
         icon: Icons.cancel_outlined,
       ),
       _StatusChipData(
         label: 'Follow-up Required',
-        value: reviewSummary.followUpRequired.toString(),
+        value: _formatCount(reviewSummary.followUpRequired),
         color: ReportStyles.blue,
         icon: Icons.assignment_late_outlined,
       ),
       _StatusChipData(
         label: 'Followed Up',
-        value: reviewSummary.followedUp.toString(),
+        value: _formatCount(reviewSummary.followedUp),
         color: ReportStyles.purple,
         icon: Icons.task_alt_rounded,
       ),
@@ -51,7 +52,7 @@ class ReportReviewSummarySection extends StatelessWidget {
         label: 'Review Completion Rate',
         value: _formatPercent(reviewSummary.reviewCompletionRate),
         helper:
-            '${reviewSummary.reviewedTotal} reviewed of ${reviewSummary.totalEvents}',
+            '${_formatCount(reviewSummary.reviewedTotal)} reviewed of ${_formatCount(reviewSummary.totalEvents)}',
         color: ReportStyles.blue,
       ),
       _RateMetricData(
@@ -69,10 +70,20 @@ class ReportReviewSummarySection extends StatelessWidget {
     ];
 
     return ReportCard(
-      padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          const Text(
+            'Review breakdown',
+            style: TextStyle(
+              color: ReportStyles.textMuted,
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.35,
+            ),
+          ),
+          const SizedBox(height: 8),
           LayoutBuilder(
             builder: (context, constraints) {
               final isWide = constraints.maxWidth >= 1180;
@@ -118,6 +129,8 @@ class ReportReviewSummarySection extends StatelessWidget {
     }
     return '${value.toStringAsFixed(1)}%';
   }
+
+  String _formatCount(int value) => NumberFormat.decimalPattern().format(value);
 }
 
 class _ReviewSummaryHeader extends StatelessWidget {
@@ -132,7 +145,7 @@ class _ReviewSummaryHeader extends StatelessWidget {
           'Review Workflow Summary',
           style: TextStyle(
             color: ReportStyles.textPrimary,
-            fontSize: 17,
+            fontSize: 14,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -141,7 +154,7 @@ class _ReviewSummaryHeader extends StatelessWidget {
           'Based on operator review status from Safety Events',
           style: TextStyle(
             color: ReportStyles.textSecondary,
-            fontSize: 12,
+            fontSize: 10,
             height: 1.35,
           ),
         ),
@@ -160,8 +173,8 @@ class _StatusSummaryChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      constraints: const BoxConstraints(minWidth: 172, maxWidth: 196),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      constraints: const BoxConstraints(minWidth: 156, maxWidth: 180),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         color: ReportStyles.surfaceBackground,
         borderRadius: BorderRadius.circular(12),
@@ -171,17 +184,17 @@ class _StatusSummaryChip extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 30,
-            height: 30,
+            width: 24,
+            height: 24,
             decoration: BoxDecoration(
               color: data.color.withOpacity(0.14),
-              borderRadius: BorderRadius.circular(9),
+              borderRadius: BorderRadius.circular(7),
             ),
-            child: Icon(data.icon, color: data.color, size: 16),
+            child: Icon(data.icon, color: data.color, size: 13),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
           SizedBox(
-            width: 128,
+            width: 118,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
@@ -190,7 +203,7 @@ class _StatusSummaryChip extends StatelessWidget {
                   data.label,
                   style: const TextStyle(
                     color: ReportStyles.textMuted,
-                    fontSize: 11,
+                    fontSize: 9,
                     fontWeight: FontWeight.w600,
                   ),
                   maxLines: 1,
@@ -201,7 +214,7 @@ class _StatusSummaryChip extends StatelessWidget {
                   data.value,
                   style: const TextStyle(
                     color: ReportStyles.textPrimary,
-                    fontSize: 20,
+                    fontSize: 16,
                     fontWeight: FontWeight.w800,
                     height: 1,
                   ),
@@ -225,8 +238,8 @@ class _RateSummaryPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      constraints: const BoxConstraints(minWidth: 172, maxWidth: 228),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      constraints: const BoxConstraints(minWidth: 156, maxWidth: 202),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         color: data.color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
@@ -240,7 +253,7 @@ class _RateSummaryPill extends StatelessWidget {
             data.label,
             style: const TextStyle(
               color: ReportStyles.textMuted,
-              fontSize: 11,
+              fontSize: 9,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -252,19 +265,19 @@ class _RateSummaryPill extends StatelessWidget {
                 data.value,
                 style: const TextStyle(
                   color: ReportStyles.textPrimary,
-                  fontSize: 18,
+                  fontSize: 15,
                   fontWeight: FontWeight.w800,
                   height: 1,
                 ),
               ),
               const SizedBox(width: 8),
               SizedBox(
-                width: 112,
+                width: 100,
                 child: Text(
                   data.helper,
                   style: TextStyle(
                     color: data.color,
-                    fontSize: 10,
+                    fontSize: 8.5,
                     fontWeight: FontWeight.w600,
                   ),
                   maxLines: 2,
