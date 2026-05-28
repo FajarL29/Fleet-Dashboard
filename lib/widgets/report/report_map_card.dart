@@ -57,18 +57,19 @@ class ReportMapCard extends StatelessWidget {
             ),
             Positioned(
               left: 16,
-              top: 14,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.25),
-                  borderRadius: BorderRadius.circular(10),
-                ),
+              top: 12,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: ReportStyles.cardBackground.withValues(alpha: 0.86),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: ReportStyles.border),
+                  ),
                 child: const Text(
                   'Drowsiness Event Map',
                   style: TextStyle(
                     color: ReportStyles.textPrimary,
-                    fontSize: 14,
+                    fontSize: 13,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -79,10 +80,11 @@ class ReportMapCard extends StatelessWidget {
                 right: 16,
                 top: 14,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
-                    color: const Color(0xCC1E2230),
+                    color: ReportStyles.cardBackground.withValues(alpha: 0.92),
                     borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: ReportStyles.border),
                   ),
                   child: const Text(
                     'Waiting for event history coordinates',
@@ -96,13 +98,14 @@ class ReportMapCard extends StatelessWidget {
               ),
             Positioned(
               left: 16,
-              bottom: 16,
+              bottom: 12,
               child: Container(
-                width: 110,
-                padding: const EdgeInsets.all(10),
+                width: 104,
+                padding: const EdgeInsets.all(9),
                 decoration: BoxDecoration(
-                  color: const Color(0xCC1E2230),
+                  color: ReportStyles.cardBackground.withValues(alpha: 0.92),
                   borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: ReportStyles.border),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -111,7 +114,7 @@ class ReportMapCard extends StatelessWidget {
                       'Event Density',
                       style: TextStyle(
                         color: ReportStyles.textPrimary,
-                        fontSize: 11,
+                        fontSize: 10,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -213,7 +216,7 @@ class _DrowsinessMapMarker extends StatelessWidget {
             height: 48,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: color.withOpacity(0.22),
+              color: color.withValues(alpha: 0.22),
             ),
           ),
           Container(
@@ -221,11 +224,11 @@ class _DrowsinessMapMarker extends StatelessWidget {
             height: 26,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: color.withOpacity(0.92),
+              color: color.withValues(alpha: 0.92),
               border: Border.all(color: Colors.white, width: 2),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.25),
+                  color: Colors.black.withValues(alpha: 0.25),
                   blurRadius: 8,
                   offset: const Offset(0, 3),
                 ),

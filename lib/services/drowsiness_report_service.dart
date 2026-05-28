@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/driver_behavior_summary.dart';
+import '../models/drowsiness_driver_option.dart';
 import '../models/drowsiness_report.dart';
 
 class DrowsinessReportService {
@@ -16,10 +17,12 @@ class DrowsinessReportService {
     required String vehicleId,
     DateTime? startDate,
     DateTime? endDate,
+    int? userId,
   }) async {
     final query = <String, String>{};
     if (startDate != null) query['start_date'] = _dateOnly(startDate);
     if (endDate != null) query['end_date'] = _dateOnly(endDate);
+    if (userId != null) query['user_id'] = userId.toString();
 
     final response = await _get(
       '/drowsiness/report/$vehicleId',
@@ -28,10 +31,43 @@ class DrowsinessReportService {
     return DrowsinessReport.fromJson(response);
   }
 
+  Future<List<DrowsinessDriverOption>> fetchDrowsinessDrivers({
+    required String vehicleId,
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    final query = <String, String>{};
+    if (startDate != null) query['start_date'] = _dateOnly(startDate);
+    if (endDate != null) query['end_date'] = _dateOnly(endDate);
+
+    final response = await _get(
+      '/drowsiness/drivers/$vehicleId',
+      query.isEmpty ? null : query,
+    );
+    final data = response['data'] as List<dynamic>? ?? const [];
+    final drivers = data
+        .whereType<Map<String, dynamic>>()
+        .map((item) {
+          try {
+            return DrowsinessDriverOption.fromJson(item);
+          } on FormatException {
+            return null;
+          }
+        })
+        .whereType<DrowsinessDriverOption>()
+        .toList();
+
+    return [
+      DrowsinessDriverOption.allDrivers(),
+      ...drivers,
+    ];
+  }
+
   Future<List<DrowsinessEvent>> getEventsByVehicle({
     required String vehicleId,
     DateTime? startDate,
     DateTime? endDate,
+    int? userId,
     int limit = 100,
   }) async {
     final query = <String, String>{
@@ -39,6 +75,7 @@ class DrowsinessReportService {
     };
     if (startDate != null) query['start_date'] = _dateOnly(startDate);
     if (endDate != null) query['end_date'] = _dateOnly(endDate);
+    if (userId != null) query['user_id'] = userId.toString();
 
     final response = await _get('/drowsiness/events/$vehicleId', query);
     final data = response['data'] as List<dynamic>? ?? const [];
@@ -53,12 +90,14 @@ class DrowsinessReportService {
     required String vehicleId,
     required DateTime startDate,
     required DateTime endDate,
+    int? userId,
     int limit = 100,
   }) {
     return getEventsByVehicle(
       vehicleId: vehicleId,
       startDate: startDate,
       endDate: endDate,
+      userId: userId,
       limit: limit,
     );
   }

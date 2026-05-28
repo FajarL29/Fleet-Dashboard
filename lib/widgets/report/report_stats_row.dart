@@ -75,8 +75,8 @@ class ReportStatsRow extends StatelessWidget {
                 : constraints.maxWidth;
 
         return Wrap(
-          spacing: 12,
-          runSpacing: 12,
+          spacing: 8,
+          runSpacing: 8,
           children: cards
               .map(
                 (card) => SizedBox(
@@ -156,19 +156,22 @@ class _StatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ReportCard(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
       child: Row(
         children: [
           Container(
-            width: 38,
-            height: 38,
+            width: 42,
+            height: 42,
             decoration: BoxDecoration(
-              color: data.accentColor.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(10),
+              color: data.accentColor.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(
+                color: data.accentColor.withValues(alpha: 0.18),
+              ),
             ),
             child: Icon(data.icon, color: data.accentColor, size: 18),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -180,17 +183,17 @@ class _StatCard extends StatelessWidget {
                     fontSize: 10,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 3),
                 Text(
                   data.value,
                   style: const TextStyle(
                     color: ReportStyles.textPrimary,
-                    fontSize: 20,
+                    fontSize: 17,
                     fontWeight: FontWeight.w800,
                     height: 1,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 3),
                 Text(
                   data.description,
                   maxLines: 2,

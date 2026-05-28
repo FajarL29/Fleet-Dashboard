@@ -4,9 +4,10 @@ import '../../theme/app_theme.dart';
 
 class ReportStyles {
   static const Color pageBackground = AppTheme.darkNavy;
-  static const Color cardBackground = AppTheme.slateGrey;
-  static const Color surfaceBackground = Color(0xFF202531);
-  static const Color border = Color(0xFF363C48);
+  static const Color cardBackground = Color(0xFF101826);
+  static const Color surfaceBackground = Color(0xFF162131);
+  static const Color surfaceBackgroundSoft = Color(0xFF1A2535);
+  static const Color border = Color(0xFF253246);
   static const Color textPrimary = AppTheme.textPrimary;
   static const Color textSecondary = AppTheme.textSecondary;
   static const Color textMuted = Color(0xFF8E95A4);
@@ -34,8 +35,15 @@ class ReportCard extends StatelessWidget {
       padding: padding,
       decoration: BoxDecoration(
         color: ReportStyles.cardBackground,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: ReportStyles.border.withOpacity(0.65)),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: ReportStyles.border.withValues(alpha: 0.65)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x33040A14),
+            blurRadius: 18,
+            offset: Offset(0, 8),
+          ),
+        ],
       ),
       child: child,
     );

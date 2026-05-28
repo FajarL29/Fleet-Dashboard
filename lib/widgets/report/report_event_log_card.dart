@@ -8,9 +8,11 @@ class ReportEventLogCard extends StatelessWidget {
   const ReportEventLogCard({
     super.key,
     required this.events,
+    this.emptyMessage = 'No drowsiness events found',
   });
 
   final List<DrowsinessEvent> events;
+  final String emptyMessage;
 
   @override
   Widget build(BuildContext context) {
@@ -18,6 +20,7 @@ class ReportEventLogCard extends StatelessWidget {
       ..sort((a, b) => b.time.compareTo(a.time));
 
     return ReportCard(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
       child: Column(
         children: [
           Row(
@@ -26,14 +29,14 @@ class ReportEventLogCard extends StatelessWidget {
                 'Recent Event Log',
                 style: TextStyle(
                   color: ReportStyles.textPrimary,
-                  fontSize: 17,
+                  fontSize: 16,
                   fontWeight: FontWeight.w700,
                 ),
               ),
               const Spacer(),
               Container(
-                height: 36,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
+                height: 34,
+                padding: const EdgeInsets.symmetric(horizontal: 11),
                 decoration: BoxDecoration(
                   color: ReportStyles.surfaceBackground,
                   borderRadius: BorderRadius.circular(10),
@@ -45,7 +48,7 @@ class ReportEventLogCard extends StatelessWidget {
                       'View All Events',
                       style: TextStyle(
                         color: ReportStyles.textPrimary,
-                        fontSize: 12,
+                        fontSize: 11,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -56,29 +59,22 @@ class ReportEventLogCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 10),
           const _EventHeader(),
-          const Divider(color: ReportStyles.border, height: 18),
+          const Divider(color: ReportStyles.border, height: 14),
           Expanded(
             child: events.isEmpty
-                ? const Center(
+                ? Center(
                     child: Text(
-                      'No drowsiness events found',
-                      style: TextStyle(
+                      emptyMessage,
+                      style: const TextStyle(
                         color: ReportStyles.textMuted,
                         fontSize: 13,
                       ),
                     ),
                   )
                 : Column(
-                    children: sortedEvents
-                        .take(5)
-                        .map(
-                          (event) => Expanded(
-                            child: _EventRow(event: event),
-                          ),
-                        )
-                        .toList(),
+                    children: sortedEvents.take(5).map(_EventRow.new).toList(),
                   ),
           ),
         ],
@@ -100,12 +96,13 @@ class _EventHeader extends StatelessWidget {
 
     return const Row(
       children: [
-        Expanded(flex: 22, child: Text('Time', style: style)),
-        Expanded(flex: 16, child: Text('Driver', style: style)),
-        Expanded(flex: 14, child: Text('Vehicle ID', style: style)),
-        Expanded(flex: 14, child: Text('Severity', style: style)),
-        Expanded(flex: 18, child: Text('Speed', style: style)),
-        Expanded(flex: 24, child: Text('Location', style: style)),
+        Expanded(flex: 24, child: Text('Time', style: style)),
+        Expanded(flex: 15, child: Text('Driver', style: style)),
+        Expanded(flex: 13, child: Text('Vehicle ID', style: style)),
+        Expanded(flex: 12, child: Text('Severity', style: style)),
+        Expanded(flex: 12, child: Text('Speed', style: style)),
+        Expanded(flex: 20, child: Text('Location', style: style)),
+        Expanded(flex: 16, child: Text('Review Status', style: style)),
         SizedBox(width: 24),
       ],
     );
@@ -113,9 +110,7 @@ class _EventHeader extends StatelessWidget {
 }
 
 class _EventRow extends StatelessWidget {
-  const _EventRow({
-    required this.event,
-  });
+  const _EventRow(this.event);
 
   final DrowsinessEvent event;
 
@@ -126,117 +121,135 @@ class _EventRow extends StatelessWidget {
     final driver = event.driverLabel;
     final location = _locationLabel(event);
 
-    return Row(
-      children: [
-        Expanded(
-          flex: 22,
-          child: Text(
-            DateFormat('MMM d, yyyy hh:mm a').format(event.time),
-            style: const TextStyle(
-              color: ReportStyles.textSecondary,
-              fontSize: 12,
-            ),
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+            color: ReportStyles.border.withValues(alpha: 0.45),
           ),
         ),
-        Expanded(
-          flex: 16,
-          child: Row(
-            children: [
-              _DriverAvatar(name: driver),
-              const SizedBox(width: 8),
-              Flexible(
-                child: Text(
-                  driver,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: ReportStyles.textPrimary,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 24,
+            child: Text(
+              DateFormat('MMM d, yyyy hh:mm a').format(event.time),
+              style: const TextStyle(
+                color: ReportStyles.textSecondary,
+                fontSize: 11,
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 15,
+            child: Row(
+              children: [
+                _DriverAvatar(name: driver),
+                const SizedBox(width: 7),
+                Flexible(
+                  child: Text(
+                    driver,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: ReportStyles.textPrimary,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
-        ),
-        Expanded(
-          flex: 14,
-          child: Text(
-            event.vehicleId.isEmpty ? '-' : event.vehicleId,
-            style: const TextStyle(
-              color: ReportStyles.textSecondary,
-              fontSize: 12,
+              ],
             ),
           ),
-        ),
-        Expanded(
-          flex: 14,
-          child: Row(
-            children: [
-              Container(
-                width: 9,
-                height: 9,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: severityColor,
-                ),
+          Expanded(
+            flex: 13,
+            child: Text(
+              event.vehicleId.isEmpty ? '-' : event.vehicleId,
+              style: const TextStyle(
+                color: ReportStyles.textSecondary,
+                fontSize: 11,
               ),
-              const SizedBox(width: 8),
-              Flexible(
-                child: Text(
-                  severity,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
+            ),
+          ),
+          Expanded(
+            flex: 12,
+            child: Row(
+              children: [
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
                     color: severityColor,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
                   ),
                 ),
-              ),
-            ],
-          ),
-        ),
-        Expanded(
-          flex: 18,
-          child: Text(
-            event.formattedSpeed ?? '',
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: ReportStyles.textSecondary,
-              fontSize: 12,
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    severity,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: severityColor,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-        ),
-        Expanded(
-          flex: 24,
-          child: Row(
-            children: [
-              const Icon(
-                Icons.location_on_outlined,
-                size: 15,
-                color: ReportStyles.textMuted,
+          Expanded(
+            flex: 12,
+            child: Text(
+              event.formattedSpeed ?? '',
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: ReportStyles.textSecondary,
+                fontSize: 11,
               ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  location,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: ReportStyles.textSecondary,
-                    fontSize: 12,
+            ),
+          ),
+          Expanded(
+            flex: 20,
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.location_on_outlined,
+                  size: 14,
+                  color: ReportStyles.textMuted,
+                ),
+                const SizedBox(width: 5),
+                Expanded(
+                  child: Text(
+                    location,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: ReportStyles.textSecondary,
+                      fontSize: 11,
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-        const SizedBox(
-          width: 24,
-          child: Icon(
-            Icons.chevron_right_rounded,
-            color: ReportStyles.textSecondary,
+          Expanded(
+            flex: 16,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: _ReviewStatusChip(status: event.reviewStatus),
+            ),
           ),
-        ),
-      ],
+          const SizedBox(
+            width: 24,
+            child: Icon(
+              Icons.chevron_right_rounded,
+              size: 18,
+              color: ReportStyles.textSecondary,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -286,8 +299,8 @@ class _DriverAvatar extends StatelessWidget {
     ][name.length % 4];
 
     return Container(
-      width: 30,
-      height: 30,
+      width: 24,
+      height: 24,
       decoration: BoxDecoration(
         color: bg,
         shape: BoxShape.circle,
@@ -297,10 +310,80 @@ class _DriverAvatar extends StatelessWidget {
         name.substring(0, 1),
         style: const TextStyle(
           color: Colors.white,
-          fontSize: 13,
+          fontSize: 11,
           fontWeight: FontWeight.w700,
         ),
       ),
     );
+  }
+}
+
+class _ReviewStatusChip extends StatelessWidget {
+  const _ReviewStatusChip({
+    required this.status,
+  });
+
+  final String status;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = _statusPalette(status);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: palette.color.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        palette.label,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          color: palette.color,
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
+class _StatusPalette {
+  const _StatusPalette({
+    required this.label,
+    required this.color,
+  });
+
+  final String label;
+  final Color color;
+}
+
+_StatusPalette _statusPalette(String status) {
+  switch (status.trim().toLowerCase()) {
+    case 'confirmed':
+      return const _StatusPalette(
+        label: 'Confirmed',
+        color: ReportStyles.green,
+      );
+    case 'false_alarm':
+      return const _StatusPalette(
+        label: 'False Alarm',
+        color: ReportStyles.orange,
+      );
+    case 'follow_up_required':
+      return const _StatusPalette(
+        label: 'Follow-up Required',
+        color: ReportStyles.blue,
+      );
+    case 'followed_up':
+      return const _StatusPalette(
+        label: 'Followed Up',
+        color: ReportStyles.purple,
+      );
+    default:
+      return const _StatusPalette(
+        label: 'New / Unreviewed',
+        color: ReportStyles.textSecondary,
+      );
   }
 }

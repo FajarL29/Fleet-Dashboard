@@ -11,9 +11,11 @@ class ReportWeeklyBehaviorTrendSection extends StatefulWidget {
   const ReportWeeklyBehaviorTrendSection({
     super.key,
     required this.weekdaySummaries,
+    this.isDriverFiltered = false,
   });
 
   final List<WeekdayBehaviorSummary> weekdaySummaries;
+  final bool isDriverFiltered;
 
   @override
   State<ReportWeeklyBehaviorTrendSection> createState() =>
@@ -64,7 +66,7 @@ class _ReportWeeklyBehaviorTrendSectionState
         : null;
 
     return ReportCard(
-      padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+      padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -72,22 +74,24 @@ class _ReportWeeklyBehaviorTrendSectionState
             'Weekly Behavior Trend',
             style: TextStyle(
               color: ReportStyles.textPrimary,
-              fontSize: 17,
+              fontSize: 15,
               fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 4),
-          const Text(
-            'Aggregated behavior events by day of week',
-            style: TextStyle(
+          const SizedBox(height: 2),
+          Text(
+            widget.isDriverFiltered
+                ? 'Driver-filtered view of weekday behavior and contribution.'
+                : 'Understand behavior mix and top contributors by weekday.',
+            style: const TextStyle(
               color: ReportStyles.textSecondary,
-              fontSize: 12,
+              fontSize: 10,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           Wrap(
-            spacing: 8,
-            runSpacing: 8,
+            spacing: 6,
+            runSpacing: 6,
             children: [
               _InsightChip(
                 label: 'Peak Day',
@@ -108,27 +112,27 @@ class _ReportWeeklyBehaviorTrendSectionState
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 8),
           LayoutBuilder(
             builder: (context, constraints) {
-              final isWide = constraints.maxWidth >= 1180;
+              final isWide = constraints.maxWidth >= 1140;
 
               if (isWide) {
                 return SizedBox(
-                  height: 276,
+                  height: 248,
                   child: Row(
                     children: [
                       Expanded(
-                        flex: 58,
+                        flex: 52,
                         child: _WeeklyBehaviorChartPanel(
                           summaries: normalized,
                           selectedWeekdayIndex: selected.weekdayIndex,
                           onWeekdaySelected: _onWeekdaySelected,
                         ),
                       ),
-                      const SizedBox(width: 16),
+                      const SizedBox(width: 10),
                       Expanded(
-                        flex: 42,
+                        flex: 48,
                         child: _TopDriverContributorsPanel(
                           selectedSummary: selected,
                         ),
@@ -141,16 +145,16 @@ class _ReportWeeklyBehaviorTrendSectionState
               return Column(
                 children: [
                   SizedBox(
-                    height: 280,
+                    height: 242,
                     child: _WeeklyBehaviorChartPanel(
                       summaries: normalized,
                       selectedWeekdayIndex: selected.weekdayIndex,
                       onWeekdaySelected: _onWeekdaySelected,
                     ),
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 10),
                   SizedBox(
-                    height: 250,
+                    height: 214,
                     child: _TopDriverContributorsPanel(
                       selectedSummary: selected,
                     ),
@@ -186,10 +190,10 @@ class _WeeklyBehaviorChartPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
+      padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
       decoration: BoxDecoration(
-        color: ReportStyles.surfaceBackground,
-        borderRadius: BorderRadius.circular(14),
+        color: ReportStyles.surfaceBackgroundSoft,
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: ReportStyles.border),
       ),
       child: Column(
@@ -200,149 +204,159 @@ class _WeeklyBehaviorChartPanel extends StatelessWidget {
               Icon(
                 Icons.stacked_bar_chart_rounded,
                 color: ReportStyles.blue,
-                size: 18,
+                size: 16,
               ),
               SizedBox(width: 8),
               Text(
                 'Behavior Mix by Weekday',
                 style: TextStyle(
                   color: ReportStyles.textPrimary,
-                  fontSize: 14,
+                  fontSize: 12.5,
                   fontWeight: FontWeight.w700,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 10,
-            runSpacing: 8,
-            children: _behaviorSeries.map(_BehaviorLegendChip.new).toList(),
-          ),
-          const SizedBox(height: 12),
           Expanded(
-            child: BarChart(
-              BarChartData(
-                alignment: BarChartAlignment.spaceAround,
-                minY: 0,
-                maxY: _maxY(summaries),
-                gridData: FlGridData(
-                  show: true,
-                  drawVerticalLine: false,
-                  horizontalInterval: _gridInterval(summaries),
-                  getDrawingHorizontalLine: (value) => FlLine(
-                    color: ReportStyles.border.withOpacity(0.6),
-                    strokeWidth: 1,
-                  ),
-                ),
-                borderData: FlBorderData(show: false),
-                titlesData: FlTitlesData(
-                  leftTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  rightTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  topTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 24,
-                      getTitlesWidget: (value, meta) {
-                        final index = value.toInt();
-                        if (index < 0 || index >= summaries.length) {
-                          return const SizedBox.shrink();
-                        }
-
-                        final total = summaries[index].totalEvents;
-                        return Text(
-                          total == 0 ? '' : _integerFormat(total),
-                          style: const TextStyle(
-                            color: ReportStyles.textSecondary,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 28,
-                      getTitlesWidget: (value, meta) {
-                        final index = value.toInt();
-                        if (index < 0 || index >= summaries.length) {
-                          return const SizedBox.shrink();
-                        }
-
-                        final item = summaries[index];
-                        final isSelected =
-                            item.weekdayIndex == selectedWeekdayIndex;
-
-                        return Padding(
-                          padding: const EdgeInsets.only(top: 6),
-                          child: Text(
-                            item.shortLabel,
-                            style: TextStyle(
-                              color: isSelected
-                                  ? ReportStyles.textPrimary
-                                  : ReportStyles.textMuted,
-                              fontSize: 11,
-                              fontWeight:
-                                  isSelected ? FontWeight.w700 : FontWeight.w600,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-                barTouchData: BarTouchData(
-                  enabled: true,
-                  touchTooltipData: BarTouchTooltipData(
-                    tooltipRoundedRadius: 10,
-                    tooltipPadding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 8,
-                    ),
-                    tooltipBgColor: const Color(0xEE11161E),
-                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                      final summary = summaries[group.x.toInt()];
-                      return BarTooltipItem(
-                        '${summary.weekdayLabel}\n${_integerFormat(summary.totalEvents)} events',
-                        const TextStyle(
-                          color: ReportStyles.textPrimary,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
+            child: Row(
+              children: [
+                Expanded(
+                  child: BarChart(
+                    BarChartData(
+                      alignment: BarChartAlignment.spaceAround,
+                      minY: 0,
+                      maxY: _maxY(summaries),
+                      gridData: FlGridData(
+                        show: true,
+                        drawVerticalLine: false,
+                        horizontalInterval: _gridInterval(summaries),
+                        getDrawingHorizontalLine: (value) => FlLine(
+                          color: ReportStyles.border.withValues(alpha: 0.6),
+                          strokeWidth: 1,
                         ),
-                      );
-                    },
-                  ),
-                  touchCallback: (event, response) {
-                    final index = response?.spot?.touchedBarGroupIndex;
-                    if (index == null ||
-                        index < 0 ||
-                        index >= summaries.length ||
-                        !event.isInterestedForInteractions) {
-                      return;
-                    }
-
-                    onWeekdaySelected(summaries[index].weekdayIndex);
-                  },
-                ),
-                barGroups: summaries
-                    .asMap()
-                    .entries
-                    .map(
-                      (entry) => _buildBarGroup(
-                        x: entry.key,
-                        summary: entry.value,
-                        isSelected:
-                            entry.value.weekdayIndex == selectedWeekdayIndex,
                       ),
-                    )
-                    .toList(),
-              ),
+                      borderData: FlBorderData(show: false),
+                      titlesData: FlTitlesData(
+                        leftTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
+                        rightTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
+                        topTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 20,
+                            getTitlesWidget: (value, meta) {
+                              final index = value.toInt();
+                              if (index < 0 || index >= summaries.length) {
+                                return const SizedBox.shrink();
+                              }
+
+                              final total = summaries[index].totalEvents;
+                              return Text(
+                                total == 0 ? '' : _integerFormat(total),
+                                style: const TextStyle(
+                                  color: ReportStyles.textSecondary,
+                                  fontSize: 8.5,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        bottomTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 24,
+                            getTitlesWidget: (value, meta) {
+                              final index = value.toInt();
+                              if (index < 0 || index >= summaries.length) {
+                                return const SizedBox.shrink();
+                              }
+
+                              final item = summaries[index];
+                              final isSelected =
+                                  item.weekdayIndex == selectedWeekdayIndex;
+
+                              return Padding(
+                                padding: const EdgeInsets.only(top: 6),
+                                child: Text(
+                                  item.shortLabel,
+                                  style: TextStyle(
+                                    color: isSelected
+                                        ? ReportStyles.textPrimary
+                                        : ReportStyles.textMuted,
+                                    fontSize: 9.5,
+                                    fontWeight: isSelected
+                                        ? FontWeight.w700
+                                        : FontWeight.w600,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                      barTouchData: BarTouchData(
+                        enabled: true,
+                        touchTooltipData: BarTouchTooltipData(
+                          tooltipRoundedRadius: 10,
+                          tooltipPadding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 6,
+                          ),
+                          tooltipBgColor: const Color(0xEE11161E),
+                          getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                            final summary = summaries[group.x.toInt()];
+                            return BarTooltipItem(
+                              '${summary.weekdayLabel}\n${_integerFormat(summary.totalEvents)} events',
+                              const TextStyle(
+                                color: ReportStyles.textPrimary,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            );
+                          },
+                        ),
+                        touchCallback: (event, response) {
+                          final index = response?.spot?.touchedBarGroupIndex;
+                          if (index == null ||
+                              index < 0 ||
+                              index >= summaries.length ||
+                              !event.isInterestedForInteractions) {
+                            return;
+                          }
+
+                          onWeekdaySelected(summaries[index].weekdayIndex);
+                        },
+                      ),
+                      barGroups: summaries
+                          .asMap()
+                          .entries
+                          .map(
+                            (entry) => _buildBarGroup(
+                              x: entry.key,
+                              summary: entry.value,
+                              isSelected:
+                                  entry.value.weekdayIndex == selectedWeekdayIndex,
+                            ),
+                          )
+                          .toList(),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                SizedBox(
+                  width: 138,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children:
+                        _behaviorSeries.map(_BehaviorLegendRow.new).toList(),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -399,8 +413,8 @@ class _WeeklyBehaviorChartPanel extends StatelessWidget {
       barRods: [
         BarChartRodData(
           toY: math.max(summary.totalEvents.toDouble(), 0.0),
-          width: isSelected ? 34 : 28,
-          borderRadius: BorderRadius.circular(10),
+          width: isSelected ? 30 : 24,
+          borderRadius: BorderRadius.circular(8),
           borderSide: isSelected
               ? const BorderSide(color: Colors.white, width: 1.4)
               : BorderSide.none,
@@ -409,7 +423,8 @@ class _WeeklyBehaviorChartPanel extends StatelessWidget {
           backDrawRodData: BackgroundBarChartRodData(
             show: true,
             toY: _maxY(summaries),
-            color: Colors.white.withOpacity(isSelected ? 0.06 : 0.03),
+            color:
+                Colors.white.withValues(alpha: isSelected ? 0.06 : 0.03),
           ),
         ),
       ],
@@ -430,10 +445,10 @@ class _TopDriverContributorsPanel extends StatelessWidget {
     final contributors = _visibleContributors(selectedSummary);
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
+      padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
       decoration: BoxDecoration(
-        color: ReportStyles.surfaceBackground,
-        borderRadius: BorderRadius.circular(14),
+        color: ReportStyles.surfaceBackgroundSoft,
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: ReportStyles.border),
       ),
       child: Column(
@@ -443,19 +458,19 @@ class _TopDriverContributorsPanel extends StatelessWidget {
             'Top Driver Contributors',
             style: TextStyle(
               color: ReportStyles.textPrimary,
-              fontSize: 14,
+              fontSize: 12.5,
               fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 3),
           Text(
             'Selected: ${selectedSummary.weekdayLabel}',
             style: const TextStyle(
               color: ReportStyles.textSecondary,
-              fontSize: 12,
+              fontSize: 10,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           if (contributors.isEmpty)
             const Expanded(
               child: Center(
@@ -473,7 +488,8 @@ class _TopDriverContributorsPanel extends StatelessWidget {
               child: ListView.separated(
                 padding: EdgeInsets.zero,
                 itemCount: contributors.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 10),
+                separatorBuilder: (context, index) =>
+                    const SizedBox(height: 8),
                 itemBuilder: (context, index) {
                   return _ContributorRow(
                     rank: index + 1,
@@ -502,35 +518,30 @@ class _ContributorRow extends StatelessWidget {
     final percentage = contributor.percentage.clamp(0, 100).toDouble();
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1B202A),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: ReportStyles.border.withOpacity(0.85)),
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Container(
-                width: 26,
-                height: 26,
+                width: 24,
+                height: 24,
                 decoration: BoxDecoration(
-                  color: ReportStyles.blue.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(8),
+                  color: ReportStyles.blue.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(999),
                 ),
                 alignment: Alignment.center,
                 child: Text(
                   '#$rank',
                   style: const TextStyle(
                     color: ReportStyles.blue,
-                    fontSize: 11,
+                    fontSize: 10,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   _driverName(contributor),
@@ -538,30 +549,39 @@ class _ContributorRow extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: ReportStyles.textPrimary,
-                    fontSize: 12,
+                    fontSize: 11.5,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
+              const SizedBox(width: 8),
+              Text(
+                _formatPercent(contributor.percentage),
+                style: const TextStyle(
+                  color: ReportStyles.textPrimary,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
           Text(
-            '${_integerFormat(contributor.totalEvents)} events | ${_formatPercent(contributor.percentage)}',
+            '${_integerFormat(contributor.totalEvents)} events',
             style: const TextStyle(
               color: ReportStyles.textSecondary,
-              fontSize: 11,
+              fontSize: 9.5,
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           ClipRRect(
             borderRadius: BorderRadius.circular(999),
             child: LinearProgressIndicator(
-              minHeight: 7,
+              minHeight: 6,
               value: percentage / 100,
-              backgroundColor: Colors.white.withOpacity(0.07),
-              valueColor: const AlwaysStoppedAnimation<Color>(ReportStyles.green),
+              backgroundColor: Colors.white.withValues(alpha: 0.07),
+              valueColor: const AlwaysStoppedAnimation<Color>(ReportStyles.blue),
             ),
           ),
         ],
@@ -570,38 +590,34 @@ class _ContributorRow extends StatelessWidget {
   }
 }
 
-class _BehaviorLegendChip extends StatelessWidget {
-  const _BehaviorLegendChip(this.series);
+class _BehaviorLegendRow extends StatelessWidget {
+  const _BehaviorLegendRow(this.series);
 
   final _BehaviorSeries series;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.03),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: ReportStyles.border.withOpacity(0.8)),
-      ),
+      margin: const EdgeInsets.only(bottom: 8),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 8,
-            height: 8,
+            width: 10,
+            height: 10,
             decoration: BoxDecoration(
               color: series.color,
-              shape: BoxShape.circle,
+              borderRadius: BorderRadius.circular(2),
             ),
           ),
-          const SizedBox(width: 6),
-          Text(
-            series.label,
-            style: const TextStyle(
-              color: ReportStyles.textSecondary,
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              series.label,
+              style: const TextStyle(
+                color: ReportStyles.textSecondary,
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
@@ -626,16 +642,16 @@ class _InsightChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.24)),
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.24)),
       ),
       child: RichText(
         text: TextSpan(
           text: '$label: ',
           style: const TextStyle(
             color: ReportStyles.textMuted,
-            fontSize: 11,
+            fontSize: 10,
             fontWeight: FontWeight.w600,
           ),
           children: [

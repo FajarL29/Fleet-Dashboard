@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../models/drowsiness_driver_option.dart';
 import '../../models/drowsiness_report.dart';
 import '../../services/drowsiness_report_service.dart';
 import 'report_event_log_card.dart';
@@ -27,33 +28,76 @@ class _ReportContentState extends State<ReportContent> {
   late DateTime _endDate;
   late DateTime _startDate;
   late Future<_ReportData> _future;
+  List<DrowsinessDriverOption> _driverOptions = const [];
+  DrowsinessDriverOption? _selectedDriver;
+  bool _isLoadingDrivers = false;
+  String? _driverLoadError;
 
   @override
   void initState() {
     super.initState();
     _endDate = DateTime.now();
     _startDate = _endDate.subtract(const Duration(days: 30));
+    _driverOptions = [DrowsinessDriverOption.allDrivers()];
+    _selectedDriver = _driverOptions.first;
     _future = _loadData();
   }
 
   Future<_ReportData> _loadData() async {
-    final results = await Future.wait([
-      _service.getReport(
-        vehicleId: vehicleId,
-        startDate: _startDate,
-        endDate: _endDate,
-      ),
-      _service.getEvents(
-        vehicleId: vehicleId,
-        startDate: _startDate,
-        endDate: _endDate,
-      ),
-    ]);
+    await _loadDrivers();
 
-    return _ReportData(
-      report: results[0] as DrowsinessReport,
-      events: results[1] as List<DrowsinessEvent>,
-    );
+    try {
+      final results = await Future.wait([
+        _service.getReport(
+          vehicleId: vehicleId,
+          startDate: _startDate,
+          endDate: _endDate,
+          userId: _selectedDriver?.userId,
+        ),
+        _service.getEvents(
+          vehicleId: vehicleId,
+          startDate: _startDate,
+          endDate: _endDate,
+          userId: _selectedDriver?.userId,
+        ),
+      ]);
+
+      return _ReportData(
+        report: results[0] as DrowsinessReport,
+        events: results[1] as List<DrowsinessEvent>,
+      );
+    } catch (error) {
+      if (_selectedDriver?.userId != null && _isInvalidUserError(error)) {
+        if (mounted) {
+          setState(() {
+            _selectedDriver = _driverOptions.first;
+          });
+        }
+        _showDriverMessage(
+          'Selected driver is no longer valid. Reset to All Drivers.',
+        );
+
+        final results = await Future.wait([
+          _service.getReport(
+            vehicleId: vehicleId,
+            startDate: _startDate,
+            endDate: _endDate,
+          ),
+          _service.getEvents(
+            vehicleId: vehicleId,
+            startDate: _startDate,
+            endDate: _endDate,
+          ),
+        ]);
+
+        return _ReportData(
+          report: results[0] as DrowsinessReport,
+          events: results[1] as List<DrowsinessEvent>,
+        );
+      }
+
+      rethrow;
+    }
   }
 
   void _refresh() {
@@ -82,6 +126,75 @@ class _ReportContentState extends State<ReportContent> {
     });
   }
 
+  Future<void> _loadDrivers() async {
+    if (mounted) {
+      setState(() {
+        _isLoadingDrivers = true;
+        _driverLoadError = null;
+      });
+    }
+
+    try {
+      final options = await _service.fetchDrowsinessDrivers(
+        vehicleId: vehicleId,
+        startDate: _startDate,
+        endDate: _endDate,
+      );
+      final selectedUserId = _selectedDriver?.userId;
+      final nextSelected = options.firstWhere(
+        (option) => option.userId == selectedUserId,
+        orElse: () => options.first,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _driverOptions = options;
+        _selectedDriver = nextSelected;
+        _isLoadingDrivers = false;
+        _driverLoadError = null;
+      });
+    } catch (error) {
+      if (!mounted) return;
+
+      setState(() {
+        _driverOptions = [DrowsinessDriverOption.allDrivers()];
+        _selectedDriver = DrowsinessDriverOption.allDrivers();
+        _isLoadingDrivers = false;
+        _driverLoadError = error.toString();
+      });
+
+      _showDriverMessage(
+        'Driver list could not be loaded. Showing All Drivers only.',
+      );
+    }
+  }
+
+  void _onDriverChanged(DrowsinessDriverOption? value) {
+    if (value == null) return;
+    if (value.userId == _selectedDriver?.userId) return;
+
+    setState(() {
+      _selectedDriver = value;
+      _future = _loadData();
+    });
+  }
+
+  void _showDriverMessage(String message) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final messenger = ScaffoldMessenger.maybeOf(context);
+      messenger?.showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    });
+  }
+
+  bool _isInvalidUserError(Object error) {
+    final message = error.toString().toLowerCase();
+    return message.contains('400') && message.contains('user_id');
+  }
+
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<_ReportData>(
@@ -101,7 +214,7 @@ class _ReportContentState extends State<ReportContent> {
                     softWrap: false,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: 26,
+                      fontSize: 24,
                       fontWeight: FontWeight.w700,
                       color: ReportStyles.textPrimary,
                       letterSpacing: 0,
@@ -118,13 +231,22 @@ class _ReportContentState extends State<ReportContent> {
                   ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             ReportFilterBar(
               label: _dateRangeLabel(_startDate, _endDate),
+              driverOptions: _driverOptions,
+              selectedDriver: _selectedDriver,
+              isLoadingDrivers: _isLoadingDrivers,
               onDateRangeTap: _pickDateRange,
+              onDriverChanged: _onDriverChanged,
               onRefresh: _refresh,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
+            _DriverFocusBanner(
+              selectedDriver: _selectedDriver ?? DrowsinessDriverOption.allDrivers(),
+              driverLoadError: _driverLoadError,
+            ),
+            const SizedBox(height: 10),
             if (snapshot.hasError)
               _ReportErrorCard(
                 message: snapshot.error.toString(),
@@ -169,12 +291,12 @@ class _ReportContentState extends State<ReportContent> {
                       flags: [],
                     ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
               ReportStatsRow(
                 report: data?.report,
                 events: data?.events ?? const [],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
               ReportReviewSummarySection(
                 reviewSummary: data?.report.reviewSummary ??
                     const DrowsinessReviewSummary(
@@ -190,35 +312,65 @@ class _ReportContentState extends State<ReportContent> {
                       closureRate: 0.0,
                     ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
               ReportWeeklyBehaviorTrendSection(
                 weekdaySummaries:
                     data?.report.weekdayBehaviorSummary ?? const [],
+                isDriverFiltered: (_selectedDriver?.userId != null),
               ),
-              const SizedBox(height: 12),
-              SizedBox(
-                height: 330,
-                child: Row(
-                  children: [
-                    Expanded(
-                      flex: 52,
-                      child: ReportMapCard(events: data?.events ?? const []),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      flex: 48,
-                      child: ReportHourCard(
-                        report: data?.report,
-                        events: data?.events ?? const [],
+              const SizedBox(height: 10),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final isWide = constraints.maxWidth >= 1080;
+
+                  if (isWide) {
+                    return SizedBox(
+                      height: 316,
+                      child: Row(
+                        children: [
+                          Expanded(
+                            flex: 54,
+                            child:
+                                ReportMapCard(events: data?.events ?? const []),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            flex: 46,
+                            child: ReportHourCard(
+                              report: data?.report,
+                              events: data?.events ?? const [],
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                  ],
-                ),
+                    );
+                  }
+
+                  return Column(
+                    children: [
+                      SizedBox(
+                        height: 300,
+                        child: ReportMapCard(events: data?.events ?? const []),
+                      ),
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        height: 280,
+                        child: ReportHourCard(
+                          report: data?.report,
+                          events: data?.events ?? const [],
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
               SizedBox(
-                height: 310,
-                child: ReportEventLogCard(events: data?.events ?? const []),
+                height: 296,
+                child: ReportEventLogCard(
+                  events: data?.events ?? const [],
+                  emptyMessage: _emptyStateMessage(),
+                ),
               ),
             ],
           ],
@@ -230,6 +382,14 @@ class _ReportContentState extends State<ReportContent> {
   String _dateRangeLabel(DateTime start, DateTime end) {
     final formatter = DateFormat('MMM d, yyyy');
     return '${formatter.format(start)} - ${formatter.format(end)}';
+  }
+
+  String _emptyStateMessage() {
+    if (_selectedDriver == null || _selectedDriver!.isAllDrivers) {
+      return 'No drowsiness events found';
+    }
+
+    return 'No drowsiness data found for ${_selectedDriver!.driverName} in the selected period.';
   }
 }
 
@@ -276,6 +436,75 @@ class _ReportErrorCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _DriverFocusBanner extends StatelessWidget {
+  const _DriverFocusBanner({
+    required this.selectedDriver,
+    required this.driverLoadError,
+  });
+
+  final DrowsinessDriverOption selectedDriver;
+  final String? driverLoadError;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        RichText(
+          text: TextSpan(
+            text: 'Driver Focus: ',
+            style: const TextStyle(
+              color: ReportStyles.textMuted,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+            children: [
+              TextSpan(
+                text: selectedDriver.driverName,
+                style: const TextStyle(
+                  color: ReportStyles.textPrimary,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (!selectedDriver.isAllDrivers)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: ReportStyles.blue.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(
+                color: ReportStyles.blue.withValues(alpha: 0.24),
+              ),
+            ),
+            child: const Text(
+              'Filtered',
+              style: TextStyle(
+                color: ReportStyles.blue,
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        if (driverLoadError != null)
+          const Text(
+            'Driver list unavailable. Using All Drivers.',
+            style: TextStyle(
+              color: ReportStyles.orange,
+              fontSize: 10.5,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+      ],
     );
   }
 }

@@ -18,30 +18,31 @@ class ReportHourCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ReportCard(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Container(
-                width: 26,
-                height: 26,
+                width: 24,
+                height: 24,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: ReportStyles.green.withOpacity(0.16),
+                  color: ReportStyles.green.withValues(alpha: 0.16),
                 ),
                 child: const Icon(
                   Icons.speed_rounded,
                   color: ReportStyles.green,
-                  size: 18,
+                  size: 16,
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               const Text(
                 'Drowsy Events by Hour',
                 style: TextStyle(
                   color: ReportStyles.textPrimary,
-                  fontSize: 16,
+                  fontSize: 14,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -52,7 +53,7 @@ class ReportHourCard extends StatelessWidget {
                     'Low',
                     style: TextStyle(
                       color: ReportStyles.textMuted,
-                      fontSize: 11,
+                      fontSize: 10,
                     ),
                   ),
                   SizedBox(width: 8),
@@ -66,23 +67,23 @@ class ReportHourCard extends StatelessWidget {
                     'High',
                     style: TextStyle(
                       color: ReportStyles.textMuted,
-                      fontSize: 11,
+                      fontSize: 10,
                     ),
                   ),
                 ],
               ),
             ],
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 10),
           Expanded(
             child: _HourHeatmap(
               report: report,
               events: events,
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 6),
           const Divider(height: 1, color: ReportStyles.border),
-          const SizedBox(height: 10),
+          const SizedBox(height: 6),
           const Row(
             children: [
               Icon(
