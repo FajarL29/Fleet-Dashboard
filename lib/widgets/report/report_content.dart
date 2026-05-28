@@ -317,6 +317,9 @@ class _ReportContentState extends State<ReportContent> {
                 weekdaySummaries:
                     data?.report.weekdayBehaviorSummary ?? const [],
                 isDriverFiltered: (_selectedDriver?.userId != null),
+                selectedDriver: _selectedDriver,
+                reviewCompletionRate:
+                    data?.report.reviewSummary.reviewCompletionRate ?? 0.0,
               ),
               const SizedBox(height: 10),
               LayoutBuilder(

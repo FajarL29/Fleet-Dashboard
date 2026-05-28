@@ -4,6 +4,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../models/drowsiness_driver_option.dart';
 import '../../models/drowsiness_report.dart';
 import 'report_styles.dart';
 
@@ -12,10 +13,14 @@ class ReportWeeklyBehaviorTrendSection extends StatefulWidget {
     super.key,
     required this.weekdaySummaries,
     this.isDriverFiltered = false,
+    this.selectedDriver,
+    this.reviewCompletionRate = 0,
   });
 
   final List<WeekdayBehaviorSummary> weekdaySummaries;
   final bool isDriverFiltered;
+  final DrowsinessDriverOption? selectedDriver;
+  final double reviewCompletionRate;
 
   @override
   State<ReportWeeklyBehaviorTrendSection> createState() =>
@@ -36,6 +41,18 @@ class _ReportWeeklyBehaviorTrendSectionState
   void didUpdateWidget(covariant ReportWeeklyBehaviorTrendSection oldWidget) {
     super.didUpdateWidget(oldWidget);
 
+    final dataChanged = !_sameWeekdayData(
+      oldWidget.weekdaySummaries,
+      widget.weekdaySummaries,
+    );
+    final driverChanged =
+        oldWidget.selectedDriver?.userId != widget.selectedDriver?.userId;
+
+    if (dataChanged || driverChanged) {
+      _selectedWeekdayIndex = _defaultWeekdayIndex(widget.weekdaySummaries);
+      return;
+    }
+
     final availableIndexes = widget.weekdaySummaries
         .map((entry) => entry.weekdayIndex)
         .where((index) => index >= 1 && index <= 5)
@@ -50,7 +67,11 @@ class _ReportWeeklyBehaviorTrendSectionState
   @override
   Widget build(BuildContext context) {
     if (widget.weekdaySummaries.isEmpty) {
-      return const _WeeklyBehaviorEmptyState();
+      return _WeeklyBehaviorEmptyState(
+        message: widget.isDriverFiltered
+            ? 'No weekly behavior data for selected driver in this period.'
+            : 'No weekly behavior data available for selected period.',
+      );
     }
 
     final normalized = _normalizeWeekdaySummaries(widget.weekdaySummaries);
@@ -104,10 +125,12 @@ class _ReportWeeklyBehaviorTrendSectionState
                 color: ReportStyles.orange,
               ),
               _InsightChip(
-                label: 'Top Contributor',
-                value: topContributor == null
-                    ? 'None'
-                    : _driverName(topContributor),
+                label: widget.isDriverFiltered ? 'Driver' : 'Top Contributor',
+                value: widget.isDriverFiltered
+                    ? (widget.selectedDriver?.driverName ?? 'Selected driver')
+                    : topContributor == null
+                        ? 'None'
+                        : _driverName(topContributor),
                 color: ReportStyles.green,
               ),
             ],
@@ -135,6 +158,9 @@ class _ReportWeeklyBehaviorTrendSectionState
                         flex: 48,
                         child: _TopDriverContributorsPanel(
                           selectedSummary: selected,
+                          isDriverFiltered: widget.isDriverFiltered,
+                          selectedDriver: widget.selectedDriver,
+                          reviewCompletionRate: widget.reviewCompletionRate,
                         ),
                       ),
                     ],
@@ -157,6 +183,9 @@ class _ReportWeeklyBehaviorTrendSectionState
                     height: 214,
                     child: _TopDriverContributorsPanel(
                       selectedSummary: selected,
+                      isDriverFiltered: widget.isDriverFiltered,
+                      selectedDriver: widget.selectedDriver,
+                      reviewCompletionRate: widget.reviewCompletionRate,
                     ),
                   ),
                 ],
@@ -436,13 +465,20 @@ class _WeeklyBehaviorChartPanel extends StatelessWidget {
 class _TopDriverContributorsPanel extends StatelessWidget {
   const _TopDriverContributorsPanel({
     required this.selectedSummary,
+    required this.isDriverFiltered,
+    required this.selectedDriver,
+    required this.reviewCompletionRate,
   });
 
   final _WeekdayBarSummary selectedSummary;
+  final bool isDriverFiltered;
+  final DrowsinessDriverOption? selectedDriver;
+  final double reviewCompletionRate;
 
   @override
   Widget build(BuildContext context) {
     final contributors = _visibleContributors(selectedSummary);
+    final driverName = selectedDriver?.driverName ?? 'Selected driver';
 
     return Container(
       padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
@@ -454,9 +490,11 @@ class _TopDriverContributorsPanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Top Driver Contributors',
-            style: TextStyle(
+          Text(
+            isDriverFiltered
+                ? 'Driver Focus Summary'
+                : 'Top Driver Contributors',
+            style: const TextStyle(
               color: ReportStyles.textPrimary,
               fontSize: 12.5,
               fontWeight: FontWeight.w700,
@@ -464,14 +502,24 @@ class _TopDriverContributorsPanel extends StatelessWidget {
           ),
           const SizedBox(height: 3),
           Text(
-            'Selected: ${selectedSummary.weekdayLabel}',
+            isDriverFiltered
+                ? 'Report is scoped to $driverName'
+                : 'Selected: ${selectedSummary.weekdayLabel}',
             style: const TextStyle(
               color: ReportStyles.textSecondary,
               fontSize: 10,
             ),
           ),
           const SizedBox(height: 10),
-          if (contributors.isEmpty)
+          if (isDriverFiltered)
+            Expanded(
+              child: _DriverFocusSummary(
+                driverName: driverName,
+                selectedSummary: selectedSummary,
+                reviewCompletionRate: reviewCompletionRate,
+              ),
+            )
+          else if (contributors.isEmpty)
             const Expanded(
               child: Center(
                 child: Text(
@@ -670,15 +718,19 @@ class _InsightChip extends StatelessWidget {
 }
 
 class _WeeklyBehaviorEmptyState extends StatelessWidget {
-  const _WeeklyBehaviorEmptyState();
+  const _WeeklyBehaviorEmptyState({
+    required this.message,
+  });
+
+  final String message;
 
   @override
   Widget build(BuildContext context) {
-    return const ReportCard(
+    return ReportCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          const Text(
             'Weekly Behavior Trend',
             style: TextStyle(
               color: ReportStyles.textPrimary,
@@ -688,13 +740,162 @@ class _WeeklyBehaviorEmptyState extends StatelessWidget {
           ),
           SizedBox(height: 8),
           Text(
-            'No weekly behavior data available for selected period.',
+            message,
             style: TextStyle(
               color: ReportStyles.textMuted,
               fontSize: 12,
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _DriverFocusSummary extends StatelessWidget {
+  const _DriverFocusSummary({
+    required this.driverName,
+    required this.selectedSummary,
+    required this.reviewCompletionRate,
+  });
+
+  final String driverName;
+  final _WeekdayBarSummary selectedSummary;
+  final double reviewCompletionRate;
+
+  @override
+  Widget build(BuildContext context) {
+    final totalEvents = selectedSummary.totalEvents;
+    final dominantBehavior = _behaviorLabel(selectedSummary.dominantBehavior);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Wrap(
+          spacing: 8,
+          runSpacing: 6,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            Text(
+              driverName,
+              style: const TextStyle(
+                color: ReportStyles.textPrimary,
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            _InlineDividerLabel(
+              label: '${_integerFormat(totalEvents)} events',
+            ),
+            _InlineDividerLabel(
+              label: 'Review ${_formatPercent(reviewCompletionRate)}',
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            _SummaryChip(
+              label: 'Peak Day',
+              value: selectedSummary.weekdayLabel,
+              color: ReportStyles.blue,
+            ),
+            _SummaryChip(
+              label: 'Dominant',
+              value: dominantBehavior,
+              color: ReportStyles.orange,
+            ),
+            _SummaryChip(
+              label: 'Review',
+              value: _formatPercent(reviewCompletionRate),
+              color: ReportStyles.green,
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        const Text(
+          'Driver-filtered view',
+          style: TextStyle(
+            color: ReportStyles.textMuted,
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'Contributor breakdown is hidden because this report is already scoped to a single driver.',
+          style: TextStyle(
+            color: ReportStyles.textMuted,
+            fontSize: 10,
+            height: 1.35,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _InlineDividerLabel extends StatelessWidget {
+  const _InlineDividerLabel({
+    required this.label,
+  });
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      label,
+      style: const TextStyle(
+        color: ReportStyles.textSecondary,
+        fontSize: 11,
+        fontWeight: FontWeight.w600,
+      ),
+    );
+  }
+}
+
+class _SummaryChip extends StatelessWidget {
+  const _SummaryChip({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final String label;
+  final String value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.24)),
+      ),
+      child: RichText(
+        text: TextSpan(
+          text: '$label: ',
+          style: const TextStyle(
+            color: ReportStyles.textMuted,
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+          ),
+          children: [
+            TextSpan(
+              text: value,
+              style: const TextStyle(
+                color: ReportStyles.textPrimary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -805,18 +1006,39 @@ int _defaultWeekdayIndex(List<WeekdayBehaviorSummary> summaries) {
   }
 
   final normalized = _normalizeWeekdaySummaries(summaries);
-  final hasNonZero = normalized.any((entry) => entry.totalEvents > 0);
+  final nonZeroEntries = normalized.where((entry) => entry.totalEvents > 0);
 
-  if (!hasNonZero) {
+  if (nonZeroEntries.isEmpty) {
     return 1;
   }
 
-  return normalized
+  return nonZeroEntries
       .reduce(
         (best, current) =>
             current.totalEvents > best.totalEvents ? current : best,
       )
       .weekdayIndex;
+}
+
+bool _sameWeekdayData(
+  List<WeekdayBehaviorSummary> a,
+  List<WeekdayBehaviorSummary> b,
+) {
+  if (a.length != b.length) {
+    return false;
+  }
+
+  for (var i = 0; i < a.length; i++) {
+    final left = a[i];
+    final right = b[i];
+    if (left.weekdayIndex != right.weekdayIndex ||
+        left.totalEvents != right.totalEvents ||
+        left.dominantBehavior != right.dominantBehavior) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 List<DriverContributor> _visibleContributors(_WeekdayBarSummary summary) {
