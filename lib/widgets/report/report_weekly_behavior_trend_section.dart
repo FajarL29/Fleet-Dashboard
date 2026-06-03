@@ -768,72 +768,75 @@ class _DriverFocusSummary extends StatelessWidget {
     final totalEvents = selectedSummary.totalEvents;
     final dominantBehavior = _behaviorLabel(selectedSummary.dominantBehavior);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Wrap(
-          spacing: 8,
-          runSpacing: 6,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            Text(
-              driverName,
-              style: const TextStyle(
-                color: ReportStyles.textPrimary,
-                fontSize: 15,
-                fontWeight: FontWeight.w800,
+    return SingleChildScrollView(
+      padding: EdgeInsets.zero,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Text(
+                driverName,
+                style: const TextStyle(
+                  color: ReportStyles.textPrimary,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
-            ),
-            _InlineDividerLabel(
-              label: '${_integerFormat(totalEvents)} events',
-            ),
-            _InlineDividerLabel(
-              label: 'Review ${_formatPercent(reviewCompletionRate)}',
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            _SummaryChip(
-              label: 'Peak Day',
-              value: selectedSummary.weekdayLabel,
-              color: ReportStyles.blue,
-            ),
-            _SummaryChip(
-              label: 'Dominant',
-              value: dominantBehavior,
-              color: ReportStyles.orange,
-            ),
-            _SummaryChip(
-              label: 'Review',
-              value: _formatPercent(reviewCompletionRate),
-              color: ReportStyles.green,
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        const Text(
-          'Driver-filtered view',
-          style: TextStyle(
-            color: ReportStyles.textMuted,
-            fontSize: 10,
-            fontWeight: FontWeight.w600,
+              _InlineDividerLabel(
+                label: '${_integerFormat(totalEvents)} events',
+              ),
+              _InlineDividerLabel(
+                label: 'Review ${_formatPercent(reviewCompletionRate)}',
+              ),
+            ],
           ),
-        ),
-        const SizedBox(height: 4),
-        const Text(
-          'Contributor breakdown is hidden because this report is already scoped to a single driver.',
-          style: TextStyle(
-            color: ReportStyles.textMuted,
-            fontSize: 10,
-            height: 1.35,
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _SummaryChip(
+                label: 'Peak Day',
+                value: selectedSummary.weekdayLabel,
+                color: ReportStyles.blue,
+              ),
+              _SummaryChip(
+                label: 'Dominant',
+                value: dominantBehavior,
+                color: ReportStyles.orange,
+              ),
+              _SummaryChip(
+                label: 'Review',
+                value: _formatPercent(reviewCompletionRate),
+                color: ReportStyles.green,
+              ),
+            ],
           ),
-        ),
-      ],
+          const SizedBox(height: 10),
+          const Text(
+            'Driver-filtered view',
+            style: TextStyle(
+              color: ReportStyles.textMuted,
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Contributor breakdown is hidden because this report is already scoped to a single driver.',
+            style: TextStyle(
+              color: ReportStyles.textMuted,
+              fontSize: 10,
+              height: 1.35,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

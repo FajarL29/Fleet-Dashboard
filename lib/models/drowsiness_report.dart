@@ -1,7 +1,5 @@
 import 'package:intl/intl.dart';
 
-import 'api_helpers.dart';
-
 class DrowsinessReport {
   const DrowsinessReport({
     required this.summary,
@@ -517,7 +515,7 @@ ReportRiskSummary _fallbackRiskSummary({
 
   final rawScore =
       (highSeverityRate * 0.55) + ((100 - backlogRate) * 0.25) + (peakShare * 0.2);
-  final riskScore = rawScore.round().clamp(0, 100) as int;
+  final riskScore = rawScore.round().clamp(0, 100);
   final riskLevel = _riskLevelFromScore(riskScore);
 
   final primaryDescription = peakDay == null
@@ -772,9 +770,7 @@ class DrowsinessEvent {
   String? get formattedSpeed =>
       speedAtEvent == null ? null : '${speedAtEvent!.toStringAsFixed(0)} km/h';
   String? get formattedTelemetryTime =>
-      telemetryTimestamp == null
-          ? null
-          : telemetryTimestamp!.toLocal().toIso8601String();
+      telemetryTimestamp?.toLocal().toIso8601String();
   String? get formattedReviewedAt => _formatDisplayDate(reviewedAt);
   String? get formattedFollowedUpAt => _formatDisplayDate(followedUpAt);
 
