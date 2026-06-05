@@ -57,7 +57,10 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
   }
 
   /// --- LOGIKA DROWSINESS POLLING (HTTP) ---
-  void _startDrowsinessPolling({required dynamic userId, required String token}) {
+  void _startDrowsinessPolling({
+    required dynamic userId,
+    required String token,
+  }) {
     _drowsinessTimer?.cancel();
     _drowsinessTimer = Timer.periodic(const Duration(seconds: 10), (
       timer,
@@ -320,7 +323,9 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     Emitter<DashboardState> emit, {
     Vehicle? vehicle,
   }) async {
-    final fallbackVehicle = state.vehicles.isEmpty ? null : state.vehicles.first;
+    final fallbackVehicle = state.vehicles.isEmpty
+        ? null
+        : state.vehicles.first;
     final targetVehicle = vehicle ?? state.selectedVehicle ?? fallbackVehicle;
 
     if (targetVehicle == null) {
@@ -329,6 +334,7 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
           recentDrowsinessEvents: const [],
           clearCurrentDrowsinessReport: true,
           driverBehaviorSummaries: const [],
+          isOverviewLoading: false,
         ),
       );
       return;
@@ -338,6 +344,7 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     final todayStart = DateTime(now.year, now.month, now.day);
 
     try {
+      emit(state.copyWith(isOverviewLoading: true));
       DrowsinessReport? report;
       List<DriverBehaviorSummary> driverBehaviorSummaries =
           state.driverBehaviorSummaries;
@@ -375,6 +382,7 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
           recentDrowsinessEvents: sortedEvents,
           currentDrowsinessReport: report,
           driverBehaviorSummaries: driverBehaviorSummaries,
+          isOverviewLoading: false,
         ),
       );
     } catch (e) {
@@ -384,12 +392,15 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
           recentDrowsinessEvents: state.recentDrowsinessEvents,
           currentDrowsinessReport: state.currentDrowsinessReport,
           driverBehaviorSummaries: state.driverBehaviorSummaries,
+          isOverviewLoading: false,
         ),
       );
     }
   }
 
-  Future<DrowsinessReport?> _fetchDrowsinessReport(Vehicle targetVehicle) async {
+  Future<DrowsinessReport?> _fetchDrowsinessReport(
+    Vehicle targetVehicle,
+  ) async {
     for (final vehicleId in _eventVehicleIds(targetVehicle)) {
       final report = await _drowsinessReportService.getReport(
         vehicleId: vehicleId,
@@ -430,11 +441,8 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     Vehicle targetVehicle,
   ) async {
     for (final vehicleId in _eventVehicleIds(targetVehicle)) {
-      final behaviorSummaries =
-          await _drowsinessReportService.getDriverBehavior(
-        vehicleId: vehicleId,
-        limit: 100,
-      );
+      final behaviorSummaries = await _drowsinessReportService
+          .getDriverBehavior(vehicleId: vehicleId, limit: 100);
 
       if (behaviorSummaries.isNotEmpty) {
         return List<DriverBehaviorSummary>.from(behaviorSummaries);

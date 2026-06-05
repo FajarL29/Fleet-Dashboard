@@ -7,10 +7,7 @@ import '../../models/drowsiness_report.dart';
 import 'report_styles.dart';
 
 class ReportMapCard extends StatelessWidget {
-  const ReportMapCard({
-    super.key,
-    required this.events,
-  });
+  const ReportMapCard({super.key, required this.events});
 
   final List<DrowsinessEvent> events;
 
@@ -37,7 +34,8 @@ class ReportMapCard extends StatelessWidget {
                 ),
                 children: [
                   TileLayer(
-                    urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    urlTemplate:
+                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                     userAgentPackageName: 'com.fleet.dashboard',
                   ),
                   MarkerLayer(
@@ -58,13 +56,16 @@ class ReportMapCard extends StatelessWidget {
             Positioned(
               left: 16,
               top: 12,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: ReportStyles.cardBackground.withValues(alpha: 0.86),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: ReportStyles.border),
-                  ),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 5,
+                ),
+                decoration: BoxDecoration(
+                  color: ReportStyles.cardBackground.withValues(alpha: 0.86),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: ReportStyles.border),
+                ),
                 child: const Text(
                   'Drowsiness Event Map',
                   style: TextStyle(
@@ -80,7 +81,10 @@ class ReportMapCard extends StatelessWidget {
                 right: 16,
                 top: 14,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
                   decoration: BoxDecoration(
                     color: ReportStyles.cardBackground.withValues(alpha: 0.92),
                     borderRadius: BorderRadius.circular(10),
@@ -178,10 +182,8 @@ class ReportMapCard extends StatelessWidget {
 
     final total = markerEvents.fold<({double lat, double lng})>(
       (lat: 0.0, lng: 0.0),
-      (sum, event) => (
-        lat: sum.lat + event.latitude!,
-        lng: sum.lng + event.longitude!,
-      ),
+      (sum, event) =>
+          (lat: sum.lat + event.latitude!, lng: sum.lng + event.longitude!),
     );
 
     return LatLng(
@@ -192,9 +194,7 @@ class ReportMapCard extends StatelessWidget {
 }
 
 class _DrowsinessMapMarker extends StatelessWidget {
-  const _DrowsinessMapMarker({
-    required this.event,
-  });
+  const _DrowsinessMapMarker({required this.event});
 
   final DrowsinessEvent event;
 

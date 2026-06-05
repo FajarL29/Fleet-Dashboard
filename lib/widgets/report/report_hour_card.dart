@@ -6,11 +6,7 @@ import '../../models/drowsiness_report.dart';
 import 'report_styles.dart';
 
 class ReportHourCard extends StatelessWidget {
-  const ReportHourCard({
-    super.key,
-    this.report,
-    required this.events,
-  });
+  const ReportHourCard({super.key, this.report, required this.events});
 
   final DrowsinessReport? report;
   final List<DrowsinessEvent> events;
@@ -76,10 +72,7 @@ class ReportHourCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Expanded(
-            child: _HourHeatmap(
-              report: report,
-              events: events,
-            ),
+            child: _HourHeatmap(report: report, events: events),
           ),
           const SizedBox(height: 6),
           const Divider(height: 1, color: ReportStyles.border),
@@ -94,10 +87,7 @@ class ReportHourCard extends StatelessWidget {
               SizedBox(width: 6),
               Text(
                 'All times shown in local time',
-                style: TextStyle(
-                  color: ReportStyles.textMuted,
-                  fontSize: 11,
-                ),
+                style: TextStyle(color: ReportStyles.textMuted, fontSize: 11),
               ),
             ],
           ),
@@ -127,10 +117,7 @@ class _LegendCell extends StatelessWidget {
 }
 
 class _HourHeatmap extends StatelessWidget {
-  const _HourHeatmap({
-    this.report,
-    required this.events,
-  });
+  const _HourHeatmap({this.report, required this.events});
 
   final DrowsinessReport? report;
   final List<DrowsinessEvent> events;
@@ -182,8 +169,9 @@ class _HourHeatmap extends StatelessWidget {
 
                             return Expanded(
                               child: Container(
-                                margin:
-                                    const EdgeInsets.symmetric(horizontal: 2),
+                                margin: const EdgeInsets.symmetric(
+                                  horizontal: 2,
+                                ),
                                 decoration: BoxDecoration(
                                   color: _cellColor(value),
                                   borderRadius: BorderRadius.circular(4),
@@ -228,10 +216,7 @@ class _HourHeatmap extends StatelessWidget {
         const SizedBox(height: 6),
         const Text(
           'Hour of Day',
-          style: TextStyle(
-            color: ReportStyles.textMuted,
-            fontSize: 11,
-          ),
+          style: TextStyle(color: ReportStyles.textMuted, fontSize: 11),
         ),
       ],
     );
@@ -246,8 +231,7 @@ class _HourHeatmap extends StatelessWidget {
 
     for (final event in events) {
       final weekdayIndex = event.time.weekday - 1;
-      if (weekdayIndex < 0 ||
-          weekdayIndex >= _DerivedHourHeatmap.days.length) {
+      if (weekdayIndex < 0 || weekdayIndex >= _DerivedHourHeatmap.days.length) {
         continue;
       }
 
@@ -286,19 +270,11 @@ class _HourHeatmap extends StatelessWidget {
 }
 
 class _DerivedHourHeatmap {
-  static const List<String> days = [
-    'Mon',
-    'Tue',
-    'Wed',
-    'Thu',
-    'Fri',
-  ];
+  static const List<String> days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
 }
 
 class _AggregateHourHeatmap extends StatelessWidget {
-  const _AggregateHourHeatmap({
-    required this.values,
-  });
+  const _AggregateHourHeatmap({required this.values});
 
   final List<double> values;
 
@@ -352,10 +328,7 @@ class _AggregateHourHeatmap extends StatelessWidget {
               const SizedBox(height: 14),
               const Text(
                 'Using aggregate report events_by_hour',
-                style: TextStyle(
-                  color: ReportStyles.textMuted,
-                  fontSize: 11,
-                ),
+                style: TextStyle(color: ReportStyles.textMuted, fontSize: 11),
               ),
             ],
           ),
@@ -388,10 +361,7 @@ class _AggregateHourHeatmap extends StatelessWidget {
         const SizedBox(height: 6),
         const Text(
           'Hour of Day',
-          style: TextStyle(
-            color: ReportStyles.textMuted,
-            fontSize: 11,
-          ),
+          style: TextStyle(color: ReportStyles.textMuted, fontSize: 11),
         ),
       ],
     );

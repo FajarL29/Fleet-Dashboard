@@ -5,6 +5,7 @@ import '../../models/drowsiness_report.dart';
 import '../../models/vehicle.dart';
 import '../../services/drowsiness_report_service.dart';
 import '../report/report_styles.dart';
+import 'safety_skeleton_loading.dart';
 import 'safety_empty_state.dart';
 import 'safety_event_detail_panel.dart';
 import 'safety_events_table.dart';
@@ -191,8 +192,13 @@ class _SafetyContentState extends State<SafetyContent> {
   Widget build(BuildContext context) {
     final filteredEvents = _applyFilters(_events);
     final selectedEvent = _resolveSelectedEvent(filteredEvents);
+    final showInitialSkeleton = _isLoading && _events.isEmpty;
 
-    return Column(
+    if (showInitialSkeleton) {
+      return const SafetyContentSkeleton();
+    }
+
+    final content = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
@@ -206,10 +212,7 @@ class _SafetyContentState extends State<SafetyContent> {
         const SizedBox(height: 8),
         const Text(
           'Review drowsiness and driver safety events',
-          style: TextStyle(
-            fontSize: 14,
-            color: ReportStyles.textSecondary,
-          ),
+          style: TextStyle(fontSize: 14, color: ReportStyles.textSecondary),
         ),
         const SizedBox(height: 18),
         SafetyFilterBar(
@@ -254,10 +257,6 @@ class _SafetyContentState extends State<SafetyContent> {
                 );
               }
 
-              if (_isLoading && _events.isEmpty) {
-                return const _SafetyLoadingState();
-              }
-
               if (filteredEvents.isEmpty) {
                 return SafetyEmptyState(
                   title: _events.isEmpty
@@ -272,56 +271,77 @@ class _SafetyContentState extends State<SafetyContent> {
               return LayoutBuilder(
                 builder: (context, constraints) {
                   final isCompact = constraints.maxWidth < 1180;
-                  if (isCompact) {
-                    return Column(
-                      children: [
-                        Expanded(
-                          flex: 12,
-                          child: SafetyEventsTable(
-                            events: filteredEvents,
-                            selectedEventId: selectedEvent?.id,
-                            onEventSelected: (event) {
-                              setState(() {
-                                _selectedEventId = event.id;
-                              });
-                            },
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Expanded(
-                          flex: 11,
-                          child: SafetyEventDetailPanel(
-                            event: selectedEvent,
-                            isUpdatingReview: _isReviewUpdating,
-                            onReviewAction: _handleReviewAction,
-                          ),
-                        ),
-                      ],
-                    );
+                  final body = isCompact
+                      ? Column(
+                          children: [
+                            Expanded(
+                              flex: 12,
+                              child: SafetyEventsTable(
+                                events: filteredEvents,
+                                selectedEventId: selectedEvent?.id,
+                                onEventSelected: (event) {
+                                  setState(() {
+                                    _selectedEventId = event.id;
+                                  });
+                                },
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Expanded(
+                              flex: 11,
+                              child: SafetyEventDetailPanel(
+                                event: selectedEvent,
+                                isUpdatingReview: _isReviewUpdating,
+                                onReviewAction: _handleReviewAction,
+                              ),
+                            ),
+                          ],
+                        )
+                      : Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Expanded(
+                              flex: 58,
+                              child: SafetyEventsTable(
+                                events: filteredEvents,
+                                selectedEventId: selectedEvent?.id,
+                                onEventSelected: (event) {
+                                  setState(() {
+                                    _selectedEventId = event.id;
+                                  });
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              flex: 42,
+                              child: SafetyEventDetailPanel(
+                                event: selectedEvent,
+                                isUpdatingReview: _isReviewUpdating,
+                                onReviewAction: _handleReviewAction,
+                              ),
+                            ),
+                          ],
+                        );
+
+                  if (!_isLoading) {
+                    return body;
                   }
 
-                  return Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                  return Stack(
                     children: [
-                      Expanded(
-                        flex: 58,
-                        child: SafetyEventsTable(
-                          events: filteredEvents,
-                          selectedEventId: selectedEvent?.id,
-                          onEventSelected: (event) {
-                            setState(() {
-                              _selectedEventId = event.id;
-                            });
-                          },
+                      AbsorbPointer(
+                        absorbing: true,
+                        child: AnimatedOpacity(
+                          opacity: 0.62,
+                          duration: const Duration(milliseconds: 180),
+                          child: body,
                         ),
                       ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        flex: 42,
-                        child: SafetyEventDetailPanel(
-                          event: selectedEvent,
-                          isUpdatingReview: _isReviewUpdating,
-                          onReviewAction: _handleReviewAction,
+                      const IgnorePointer(
+                        child: SafetyContentSkeleton(
+                          overlay: true,
+                          contentOnly: true,
                         ),
                       ),
                     ],
@@ -333,6 +353,8 @@ class _SafetyContentState extends State<SafetyContent> {
         ),
       ],
     );
+
+    return content;
   }
 
   Future<void> _handleReviewAction(SafetyReviewActionRequest request) async {
@@ -361,9 +383,9 @@ class _SafetyContentState extends State<SafetyContent> {
         _isReviewUpdating = false;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Review updated')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Review updated')));
     } catch (_) {
       if (!mounted) {
         return;
@@ -373,9 +395,9 @@ class _SafetyContentState extends State<SafetyContent> {
         _isReviewUpdating = false;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to update review')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Failed to update review')));
     }
   }
 
@@ -423,39 +445,8 @@ class _SafetyContentState extends State<SafetyContent> {
   }
 }
 
-class _SafetyLoadingState extends StatelessWidget {
-  const _SafetyLoadingState();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox(
-            width: 28,
-            height: 28,
-            child: CircularProgressIndicator(strokeWidth: 2.4),
-          ),
-          SizedBox(height: 14),
-          Text(
-            'Loading safety events...',
-            style: TextStyle(
-              color: ReportStyles.textSecondary,
-              fontSize: 14,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _SafetyErrorState extends StatelessWidget {
-  const _SafetyErrorState({
-    required this.message,
-    required this.onRetry,
-  });
+  const _SafetyErrorState({required this.message, required this.onRetry});
 
   final String message;
   final VoidCallback onRetry;
@@ -466,7 +457,7 @@ class _SafetyErrorState extends StatelessWidget {
       decoration: BoxDecoration(
         color: ReportStyles.cardBackground,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: ReportStyles.border.withOpacity(0.65)),
+        border: Border.all(color: ReportStyles.border.withValues(alpha: 0.65)),
       ),
       child: Center(
         child: Padding(

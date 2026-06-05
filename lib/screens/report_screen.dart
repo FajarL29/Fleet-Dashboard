@@ -13,12 +13,12 @@ class ReportScreen extends StatelessWidget {
         child: Column(
           children: [
             Padding(
-              padding: EdgeInsets.fromLTRB(20, 12, 20, 0),
+              padding: EdgeInsets.fromLTRB(24, 16, 24, 0),
               // child: Header(),
             ),
             Expanded(
               child: SingleChildScrollView(
-                padding: EdgeInsets.fromLTRB(20, 16, 20, 20),
+                padding: EdgeInsets.fromLTRB(24, 16, 24, 20),
                 child: ReportContent(),
               ),
             ),

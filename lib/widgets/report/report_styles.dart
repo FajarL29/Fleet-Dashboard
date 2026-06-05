@@ -23,21 +23,14 @@ class ReportStyles {
   static const Color purple = Color(0xFF8F6BFF);
 
   static LinearGradient get cardGradient => const LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [
-          Color(0xFF121C2A),
-          Color(0xFF0C1420),
-        ],
-      );
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [Color(0xFF121C2A), Color(0xFF0C1420)],
+  );
 
   static List<BoxShadow> get cardShadow => const [
-        BoxShadow(
-          color: Color(0x2A020711),
-          blurRadius: 24,
-          offset: Offset(0, 12),
-        ),
-      ];
+    BoxShadow(color: Color(0x2A020711), blurRadius: 24, offset: Offset(0, 12)),
+  ];
 }
 
 class ReportCard extends StatelessWidget {

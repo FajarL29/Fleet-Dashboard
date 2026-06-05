@@ -58,41 +58,39 @@ class SafetyWorkflowStepper extends StatelessWidget {
               children: _steps
                   .asMap()
                   .entries
-                  .map((entry) => SizedBox(
-                        width: constraints.maxWidth > 540
-                            ? (constraints.maxWidth - 12) / 2
-                            : constraints.maxWidth,
-                        child: _WorkflowStepTile(
-                          index: entry.key + 1,
-                          step: entry.value,
-                        ),
-                      ))
+                  .map(
+                    (entry) => SizedBox(
+                      width: constraints.maxWidth > 540
+                          ? (constraints.maxWidth - 12) / 2
+                          : constraints.maxWidth,
+                      child: _WorkflowStepTile(
+                        index: entry.key + 1,
+                        step: entry.value,
+                      ),
+                    ),
+                  )
                   .toList(),
             );
           }
 
           return Row(
-            children: _steps
-                .asMap()
-                .entries
-                .expand((entry) sync* {
-                  yield Expanded(
-                    child: _WorkflowStepTile(
-                      index: entry.key + 1,
-                      step: entry.value,
-                    ),
-                  );
-                  if (entry.key != _steps.length - 1) {
-                    yield const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 6),
-                      child: Icon(
-                        Icons.arrow_forward_rounded,
-                        color: ReportStyles.textMuted,
-                      ),
-                    );
-                  }
-                })
-                .toList(),
+            children: _steps.asMap().entries.expand((entry) sync* {
+              yield Expanded(
+                child: _WorkflowStepTile(
+                  index: entry.key + 1,
+                  step: entry.value,
+                ),
+              );
+              if (entry.key != _steps.length - 1) {
+                yield const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 6),
+                  child: Icon(
+                    Icons.arrow_forward_rounded,
+                    color: ReportStyles.textMuted,
+                  ),
+                );
+              }
+            }).toList(),
           );
         },
       ),
@@ -101,10 +99,7 @@ class SafetyWorkflowStepper extends StatelessWidget {
 }
 
 class _WorkflowStepTile extends StatelessWidget {
-  const _WorkflowStepTile({
-    required this.index,
-    required this.step,
-  });
+  const _WorkflowStepTile({required this.index, required this.step});
 
   final int index;
   final _WorkflowStep step;

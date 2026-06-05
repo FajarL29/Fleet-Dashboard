@@ -80,7 +80,8 @@ class _ReportWeeklyBehaviorTrendSectionState
       orElse: () => normalized.first,
     );
     final peakDay = normalized.reduce(
-      (best, current) => current.totalEvents > best.totalEvents ? current : best,
+      (best, current) =>
+          current.totalEvents > best.totalEvents ? current : best,
     );
     final topContributor = _visibleContributors(selected).isNotEmpty
         ? _visibleContributors(selected).first
@@ -129,8 +130,8 @@ class _ReportWeeklyBehaviorTrendSectionState
                 value: widget.isDriverFiltered
                     ? (widget.selectedDriver?.driverName ?? 'Selected driver')
                     : topContributor == null
-                        ? 'None'
-                        : _driverName(topContributor),
+                    ? 'None'
+                    : _driverName(topContributor),
                 color: ReportStyles.green,
               ),
             ],
@@ -368,7 +369,8 @@ class _WeeklyBehaviorChartPanel extends StatelessWidget {
                               x: entry.key,
                               summary: entry.value,
                               isSelected:
-                                  entry.value.weekdayIndex == selectedWeekdayIndex,
+                                  entry.value.weekdayIndex ==
+                                  selectedWeekdayIndex,
                             ),
                           )
                           .toList(),
@@ -381,8 +383,9 @@ class _WeeklyBehaviorChartPanel extends StatelessWidget {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children:
-                        _behaviorSeries.map(_BehaviorLegendRow.new).toList(),
+                    children: _behaviorSeries
+                        .map(_BehaviorLegendRow.new)
+                        .toList(),
                   ),
                 ),
               ],
@@ -430,9 +433,7 @@ class _WeeklyBehaviorChartPanel extends StatelessWidget {
     for (final series in _behaviorSeries) {
       final value = series.valueOf(counts).toDouble();
       if (value <= 0) continue;
-      segments.add(
-        BarChartRodStackItem(start, start + value, series.color),
-      );
+      segments.add(BarChartRodStackItem(start, start + value, series.color));
       start += value;
     }
 
@@ -452,8 +453,7 @@ class _WeeklyBehaviorChartPanel extends StatelessWidget {
           backDrawRodData: BackgroundBarChartRodData(
             show: true,
             toY: _maxY(summaries),
-            color:
-                Colors.white.withValues(alpha: isSelected ? 0.06 : 0.03),
+            color: Colors.white.withValues(alpha: isSelected ? 0.06 : 0.03),
           ),
         ),
       ],
@@ -524,10 +524,7 @@ class _TopDriverContributorsPanel extends StatelessWidget {
               child: Center(
                 child: Text(
                   'No contributor data for selected day.',
-                  style: TextStyle(
-                    color: ReportStyles.textMuted,
-                    fontSize: 12,
-                  ),
+                  style: TextStyle(color: ReportStyles.textMuted, fontSize: 12),
                 ),
               ),
             )
@@ -536,8 +533,7 @@ class _TopDriverContributorsPanel extends StatelessWidget {
               child: ListView.separated(
                 padding: EdgeInsets.zero,
                 itemCount: contributors.length,
-                separatorBuilder: (context, index) =>
-                    const SizedBox(height: 8),
+                separatorBuilder: (context, index) => const SizedBox(height: 8),
                 itemBuilder: (context, index) {
                   return _ContributorRow(
                     rank: index + 1,
@@ -553,10 +549,7 @@ class _TopDriverContributorsPanel extends StatelessWidget {
 }
 
 class _ContributorRow extends StatelessWidget {
-  const _ContributorRow({
-    required this.rank,
-    required this.contributor,
-  });
+  const _ContributorRow({required this.rank, required this.contributor});
 
   final int rank;
   final DriverContributor contributor;
@@ -629,7 +622,9 @@ class _ContributorRow extends StatelessWidget {
               minHeight: 6,
               value: percentage / 100,
               backgroundColor: Colors.white.withValues(alpha: 0.07),
-              valueColor: const AlwaysStoppedAnimation<Color>(ReportStyles.blue),
+              valueColor: const AlwaysStoppedAnimation<Color>(
+                ReportStyles.blue,
+              ),
             ),
           ),
         ],
@@ -718,9 +713,7 @@ class _InsightChip extends StatelessWidget {
 }
 
 class _WeeklyBehaviorEmptyState extends StatelessWidget {
-  const _WeeklyBehaviorEmptyState({
-    required this.message,
-  });
+  const _WeeklyBehaviorEmptyState({required this.message});
 
   final String message;
 
@@ -741,10 +734,7 @@ class _WeeklyBehaviorEmptyState extends StatelessWidget {
           SizedBox(height: 8),
           Text(
             message,
-            style: TextStyle(
-              color: ReportStyles.textMuted,
-              fontSize: 12,
-            ),
+            style: TextStyle(color: ReportStyles.textMuted, fontSize: 12),
           ),
         ],
       ),
@@ -842,9 +832,7 @@ class _DriverFocusSummary extends StatelessWidget {
 }
 
 class _InlineDividerLabel extends StatelessWidget {
-  const _InlineDividerLabel({
-    required this.label,
-  });
+  const _InlineDividerLabel({required this.label});
 
   final String label;
 
@@ -975,7 +963,8 @@ List<_WeekdayBarSummary> _normalizeWeekdaySummaries(
 ) {
   final byIndex = <int, WeekdayBehaviorSummary>{
     for (final item in summaries)
-      if (item.weekdayIndex >= 1 && item.weekdayIndex <= 5) item.weekdayIndex: item,
+      if (item.weekdayIndex >= 1 && item.weekdayIndex <= 5)
+        item.weekdayIndex: item,
   };
 
   return List<_WeekdayBarSummary>.generate(5, (index) {
@@ -989,7 +978,8 @@ List<_WeekdayBarSummary> _normalizeWeekdaySummaries(
           : _weekdayName(weekdayIndex),
       shortLabel: _weekdayShortLabel(weekdayIndex),
       totalEvents: item?.totalEvents ?? 0,
-      behaviors: item?.behaviors ??
+      behaviors:
+          item?.behaviors ??
           const WeekdayBehaviorCounts(
             drowsiness: 0,
             yawn: 0,
@@ -1116,7 +1106,9 @@ String _behaviorLabel(String raw) {
 String _driverName(DriverContributor contributor) {
   final name = contributor.driverName.trim();
   if (name.isEmpty) {
-    return contributor.userId == null ? 'Unassigned' : 'User #${contributor.userId}';
+    return contributor.userId == null
+        ? 'Unassigned'
+        : 'User #${contributor.userId}';
   }
   return name;
 }

@@ -5,11 +5,7 @@ import '../../models/drowsiness_report.dart';
 import 'report_styles.dart';
 
 class ReportStatsRow extends StatelessWidget {
-  const ReportStatsRow({
-    super.key,
-    this.report,
-    required this.events,
-  });
+  const ReportStatsRow({super.key, this.report, required this.events});
 
   final DrowsinessReport? report;
   final List<DrowsinessEvent> events;
@@ -19,9 +15,9 @@ class ReportStatsRow extends StatelessWidget {
     final summary = report?.summary;
     final reviewSummary = report?.reviewSummary;
     final totalEvents = _resolveTotalEvents(summary, reviewSummary, events);
-    final highRiskEvents = summary?.highRiskEvents ?? events
-        .where((event) => event.riskLevel.toLowerCase() == 'high')
-        .length;
+    final highRiskEvents =
+        summary?.highRiskEvents ??
+        events.where((event) => event.riskLevel.toLowerCase() == 'high').length;
     final peakHour = summary?.peakHour ?? _peakHour(events) ?? 0;
     final peakDate = summary?.peakDate ?? _peakDate(events);
     final highRiskRatio = totalEvents == 0
@@ -71,8 +67,8 @@ class ReportStatsRow extends StatelessWidget {
         final cardWidth = constraints.maxWidth >= 1320
             ? (constraints.maxWidth - 42) / 4
             : constraints.maxWidth >= 980
-                ? (constraints.maxWidth - 14) / 2
-                : constraints.maxWidth;
+            ? (constraints.maxWidth - 14) / 2
+            : constraints.maxWidth;
 
         return Wrap(
           spacing: 8,
@@ -147,9 +143,7 @@ class ReportStatsRow extends StatelessWidget {
 }
 
 class _StatCard extends StatelessWidget {
-  const _StatCard({
-    required this.data,
-  });
+  const _StatCard({required this.data});
 
   final _StatCardData data;
 

@@ -32,12 +32,7 @@ class SafetyFilterBar extends StatelessWidget {
   final ValueChanged<String> onSearchChanged;
   final bool isLoading;
 
-  static const List<String> severityOptions = [
-    'All',
-    'High',
-    'Medium',
-    'Low',
-  ];
+  static const List<String> severityOptions = ['All', 'High', 'Medium', 'Low'];
 
   static const List<String> eventTypeOptions = [
     'All',
@@ -80,15 +75,10 @@ class SafetyFilterBar extends StatelessWidget {
           ),
           SizedBox(
             width: 280,
-            child: _SearchField(
-              value: searchQuery,
-              onChanged: onSearchChanged,
-            ),
+            child: _SearchField(value: searchQuery, onChanged: onSearchChanged),
           ),
           _VehicleBadge(label: selectedVehicleLabel),
-          _CountBadge(
-            label: isLoading ? 'Loading...' : '$eventCount events',
-          ),
+          _CountBadge(label: isLoading ? 'Loading...' : '$eventCount events'),
           _IconActionButton(
             icon: Icons.refresh_rounded,
             tooltip: 'Refresh',
@@ -126,11 +116,7 @@ class _ActionChip extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              icon,
-              color: ReportStyles.textSecondary,
-              size: 18,
-            ),
+            Icon(icon, color: ReportStyles.textSecondary, size: 18),
             const SizedBox(width: 10),
             Text(
               label,
@@ -212,10 +198,7 @@ class _LabeledDropdown extends StatelessWidget {
 }
 
 class _SearchField extends StatelessWidget {
-  const _SearchField({
-    required this.value,
-    required this.onChanged,
-  });
+  const _SearchField({required this.value, required this.onChanged});
 
   final String value;
   final ValueChanged<String> onChanged;

@@ -3,10 +3,7 @@ import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 
 class HighRiskDriversPanel extends StatelessWidget {
-  const HighRiskDriversPanel({
-    super.key,
-    required this.drivers,
-  });
+  const HighRiskDriversPanel({super.key, required this.drivers});
 
   final List<Map<String, dynamic>> drivers;
 
@@ -35,10 +32,7 @@ class HighRiskDriversPanel extends StatelessWidget {
               Spacer(),
               Text(
                 'Priority score',
-                style: TextStyle(
-                  color: AppTheme.textSecondary,
-                  fontSize: 12,
-                ),
+                style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
               ),
             ],
           ),
@@ -46,10 +40,8 @@ class HighRiskDriversPanel extends StatelessWidget {
           Expanded(
             child: ListView.separated(
               itemCount: drivers.length,
-              separatorBuilder: (_, __) => Divider(
-                color: Colors.white.withOpacity(0.06),
-                height: 1,
-              ),
+              separatorBuilder: (_, __) =>
+                  Divider(color: Colors.white.withOpacity(0.06), height: 1),
               itemBuilder: (context, index) {
                 final driver = drivers[index];
                 final score = driver['riskScore'] as int? ?? 0;
@@ -124,10 +116,7 @@ class HighRiskDriversPanel extends StatelessWidget {
           const SizedBox(height: 10),
           const Text(
             'Higher score indicates higher intervention priority.',
-            style: TextStyle(
-              color: AppTheme.textSecondary,
-              fontSize: 12,
-            ),
+            style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
           ),
         ],
       ),

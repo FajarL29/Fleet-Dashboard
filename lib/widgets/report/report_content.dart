@@ -5,8 +5,9 @@ import 'package:intl/intl.dart';
 import '../../models/drowsiness_driver_option.dart';
 import '../../models/drowsiness_report.dart';
 import '../../services/drowsiness_report_service.dart';
-import 'report_executive_dashboard.dart';
 import 'report_filter_bar.dart';
+import 'report_mockup_dashboard.dart';
+import 'report_skeleton_loading.dart';
 import 'report_styles.dart';
 
 class ReportContent extends StatefulWidget {
@@ -30,6 +31,7 @@ class _ReportContentState extends State<ReportContent> {
   String? _driverLoadError;
   bool _isExportingCsv = false;
   bool _isExportingPdf = false;
+  _ReportData? _lastData;
 
   @override
   void initState() {
@@ -80,6 +82,7 @@ class _ReportContentState extends State<ReportContent> {
         'Applied report seq=$requestSeq userId=${filters.userId ?? 'all'} '
         'totalEvents=${data.report.summary.totalEvents} events=${data.events.length}',
       );
+      _lastData = data;
       return data;
     } catch (error) {
       if (filters.userId != null && _isInvalidUserError(error)) {
@@ -353,7 +356,8 @@ class _ReportContentState extends State<ReportContent> {
     return FutureBuilder<_ReportData>(
       future: _future,
       builder: (context, snapshot) {
-        final data = snapshot.data;
+        final data = snapshot.data ?? _lastData;
+        final isLoading = snapshot.connectionState == ConnectionState.waiting;
         if (data != null) {
           _debugLog(
             'Executive dashboard rebuild userId=${_selectedDriver?.userId ?? 'all'} '
@@ -389,24 +393,15 @@ class _ReportContentState extends State<ReportContent> {
                 ),
               ),
             ],
-            const SizedBox(height: 12),
-            if (snapshot.connectionState == ConnectionState.waiting)
-              const Padding(
-                padding: EdgeInsets.only(bottom: 12),
-                child: LinearProgressIndicator(
-                  minHeight: 2,
-                  color: ReportStyles.blue,
-                  backgroundColor: ReportStyles.surfaceBackgroundSoft,
-                ),
-              ),
-            if (snapshot.hasError)
+            const SizedBox(height: 10),
+            if (snapshot.hasError && data == null)
               _ReportErrorCard(
                 message: snapshot.error.toString(),
                 onRetry: _refresh,
               )
             else ...[
               if (data != null)
-                ReportExecutiveDashboard(
+                ReportMockupDashboard(
                   key: ValueKey<String>(
                     '${_selectedDriver?.userId ?? 'all'}-'
                     '${_startDate.toIso8601String()}-'
@@ -416,7 +411,10 @@ class _ReportContentState extends State<ReportContent> {
                   events: data.events,
                   selectedDriver: _selectedDriver,
                   dateRangeLabel: _dateRangeLabel(_startDate, _endDate),
+                  isRefreshing: isLoading,
                 )
+              else if (isLoading)
+                const ReportDashboardSkeleton()
               else
                 ReportCard(
                   child: Text(

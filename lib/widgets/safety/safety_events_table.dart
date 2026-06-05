@@ -178,7 +178,10 @@ class SafetyEventsTable extends StatelessWidget {
     return source
         .split(RegExp(r'[_\s]+'))
         .where((part) => part.isNotEmpty)
-        .map((part) => '${part[0].toUpperCase()}${part.substring(1).toLowerCase()}')
+        .map(
+          (part) =>
+              '${part[0].toUpperCase()}${part.substring(1).toLowerCase()}',
+        )
         .join(' ');
   }
 
@@ -201,7 +204,10 @@ class SafetyEventsTable extends StatelessWidget {
     return value
         .split(RegExp(r'[_\s]+'))
         .where((part) => part.isNotEmpty)
-        .map((part) => '${part[0].toUpperCase()}${part.substring(1).toLowerCase()}')
+        .map(
+          (part) =>
+              '${part[0].toUpperCase()}${part.substring(1).toLowerCase()}',
+        )
         .join(' ');
   }
 }
@@ -239,10 +245,7 @@ class _HeaderRow extends StatelessWidget {
 }
 
 class _TableCell extends StatelessWidget {
-  const _TableCell({
-    required this.flex,
-    required this.child,
-  });
+  const _TableCell({required this.flex, required this.child});
 
   final int flex;
   final Widget child;
@@ -327,11 +330,7 @@ class _ReviewStatusText extends StatelessWidget {
 
     return Text(
       _reviewStatusLabel(status),
-      style: TextStyle(
-        color: color,
-        fontSize: 11,
-        fontWeight: FontWeight.w700,
-      ),
+      style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w700),
     );
   }
 
@@ -340,7 +339,10 @@ class _ReviewStatusText extends StatelessWidget {
         .replaceAll('_', ' ')
         .split(RegExp(r'[\s]+'))
         .where((part) => part.isNotEmpty)
-        .map((part) => '${part[0].toUpperCase()}${part.substring(1).toLowerCase()}')
+        .map(
+          (part) =>
+              '${part[0].toUpperCase()}${part.substring(1).toLowerCase()}',
+        )
         .join(' ');
   }
 }

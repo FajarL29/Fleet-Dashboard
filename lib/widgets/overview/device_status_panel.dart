@@ -113,12 +113,13 @@ class DeviceStatusPanel extends StatelessWidget {
                       const SizedBox(height: 12),
                       _StatusRow(
                         label: 'Inactive',
-                        count: (totalDevices -
-                                onlineDevices -
-                                warningDevices -
-                                errorDevices)
-                            .clamp(0, totalDevices)
-                            .toInt(),
+                        count:
+                            (totalDevices -
+                                    onlineDevices -
+                                    warningDevices -
+                                    errorDevices)
+                                .clamp(0, totalDevices)
+                                .toInt(),
                         color: Colors.blueGrey.shade400,
                       ),
                     ],
@@ -130,10 +131,7 @@ class DeviceStatusPanel extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             'Last updated: $lastUpdatedLabel',
-            style: const TextStyle(
-              color: AppTheme.textSecondary,
-              fontSize: 12,
-            ),
+            style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
           ),
         ],
       ),
@@ -159,19 +157,13 @@ class _StatusRow extends StatelessWidget {
         Container(
           width: 10,
           height: 10,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-          ),
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         const SizedBox(width: 10),
         Expanded(
           child: Text(
             label,
-            style: const TextStyle(
-              color: AppTheme.textPrimary,
-              fontSize: 14,
-            ),
+            style: const TextStyle(color: AppTheme.textPrimary, fontSize: 14),
           ),
         ),
         Text(

@@ -4,10 +4,7 @@ import 'package:intl/intl.dart';
 import '../../theme/app_theme.dart';
 
 class LatestSafetyAlertsPanel extends StatelessWidget {
-  const LatestSafetyAlertsPanel({
-    super.key,
-    required this.alerts,
-  });
+  const LatestSafetyAlertsPanel({super.key, required this.alerts});
 
   final List<Map<String, dynamic>> alerts;
 
@@ -38,10 +35,7 @@ class LatestSafetyAlertsPanel extends StatelessWidget {
               Spacer(),
               Text(
                 'Live feed',
-                style: TextStyle(
-                  color: AppTheme.textSecondary,
-                  fontSize: 12,
-                ),
+                style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
               ),
             ],
           ),
@@ -93,7 +87,8 @@ class LatestSafetyAlertsPanel extends StatelessWidget {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    alert['eventType']?.toString() ?? 'Safety Alert',
+                                    alert['eventType']?.toString() ??
+                                        'Safety Alert',
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(
@@ -107,11 +102,22 @@ class LatestSafetyAlertsPanel extends StatelessWidget {
                                     spacing: 10,
                                     runSpacing: 4,
                                     children: [
-                                      _MetaText(alert['driverName']?.toString() ?? '-'),
-                                      _MetaText(alert['vehicleLabel']?.toString() ?? '-'),
-                                      _MetaText(alert['location']?.toString() ?? '-'),
-                                      if ((alert['speedLabel']?.toString() ?? '').isNotEmpty)
-                                        _MetaText('Speed: ${alert['speedLabel']}'),
+                                      _MetaText(
+                                        alert['driverName']?.toString() ?? '-',
+                                      ),
+                                      _MetaText(
+                                        alert['vehicleLabel']?.toString() ??
+                                            '-',
+                                      ),
+                                      _MetaText(
+                                        alert['location']?.toString() ?? '-',
+                                      ),
+                                      if ((alert['speedLabel']?.toString() ??
+                                              '')
+                                          .isNotEmpty)
+                                        _MetaText(
+                                          'Speed: ${alert['speedLabel']}',
+                                        ),
                                     ],
                                   ),
                                 ],
@@ -147,9 +153,8 @@ class LatestSafetyAlertsPanel extends StatelessWidget {
     }
 
     final now = DateTime.now();
-    final isToday = time.year == now.year &&
-        time.month == now.month &&
-        time.day == now.day;
+    final isToday =
+        time.year == now.year && time.month == now.month && time.day == now.day;
 
     return isToday
         ? DateFormat('HH:mm').format(time)
@@ -179,10 +184,7 @@ class _MetaText extends StatelessWidget {
       value,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
-      style: const TextStyle(
-        color: AppTheme.textSecondary,
-        fontSize: 12,
-      ),
+      style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
     );
   }
 }

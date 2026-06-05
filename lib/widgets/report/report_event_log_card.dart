@@ -301,10 +301,7 @@ class _DriverAvatar extends StatelessWidget {
     return Container(
       width: 24,
       height: 24,
-      decoration: BoxDecoration(
-        color: bg,
-        shape: BoxShape.circle,
-      ),
+      decoration: BoxDecoration(color: bg, shape: BoxShape.circle),
       alignment: Alignment.center,
       child: Text(
         name.substring(0, 1),
@@ -319,9 +316,7 @@ class _DriverAvatar extends StatelessWidget {
 }
 
 class _ReviewStatusChip extends StatelessWidget {
-  const _ReviewStatusChip({
-    required this.status,
-  });
+  const _ReviewStatusChip({required this.status});
 
   final String status;
 
@@ -349,10 +344,7 @@ class _ReviewStatusChip extends StatelessWidget {
 }
 
 class _StatusPalette {
-  const _StatusPalette({
-    required this.label,
-    required this.color,
-  });
+  const _StatusPalette({required this.label, required this.color});
 
   final String label;
   final Color color;

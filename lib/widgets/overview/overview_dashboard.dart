@@ -1,18 +1,15 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:intl/intl.dart';
 
 import '../../models/driver_behavior_summary.dart';
-import '../../models/drowsiness_report.dart';
 import '../../models/driver_health.dart';
+import '../../models/drowsiness_report.dart';
 import '../../models/vehicle.dart';
-import '../../theme/app_theme.dart';
+import 'overview_skeleton_loading.dart';
 import '../map_section.dart';
-import 'device_status_panel.dart';
-import 'high_risk_drivers_panel.dart';
-import 'latest_safety_alerts_panel.dart';
-import 'overview_kpi_card.dart';
-import 'recent_events_preview_panel.dart';
+import '../report/report_styles.dart';
 
 class OverviewDashboard extends StatelessWidget {
   const OverviewDashboard({
@@ -30,6 +27,7 @@ class OverviewDashboard extends StatelessWidget {
     required this.onClearSelection,
     required this.onFollowModeChanged,
     required this.onOpenMapFullscreen,
+    this.isLoading = false,
   });
 
   final MapController mapController;
@@ -45,473 +43,421 @@ class OverviewDashboard extends StatelessWidget {
   final VoidCallback onClearSelection;
   final ValueChanged<bool> onFollowModeChanged;
   final VoidCallback onOpenMapFullscreen;
+  final bool isLoading;
 
   @override
   Widget build(BuildContext context) {
-    final overviewData = _buildOverviewData();
-    final kpiCards = _buildKpiCards(overviewData);
-    final eventSourceLabel = _eventSourceLabel();
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final contentWidth = constraints.maxWidth;
-          final isDesktop = contentWidth >= 1280;
-          final useDesktopKpiRow = contentWidth >= 1200;
+    final hasOverviewData =
+        currentDrowsinessReport != null ||
+        recentDrowsinessEvents.isNotEmpty ||
+        driverBehaviorSummaries.isNotEmpty;
 
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 14),
-              const _OverviewHeading(),
-              const SizedBox(height: 2),
-              Text(
-                'Recent events from $eventSourceLabel',
-                style: const TextStyle(
-                  color: AppTheme.textSecondary,
-                  fontSize: 11,
-                ),
-              ),
-              const SizedBox(height: 14),
-              if (useDesktopKpiRow)
-                SizedBox(
-                  height: 112,
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      for (var i = 0; i < kpiCards.length; i++) ...[
-                        Expanded(
-                          child: SizedBox(
-                            height: 112,
-                            child: kpiCards[i],
-                          ),
-                        ),
-                        if (i != kpiCards.length - 1) const SizedBox(width: 14),
-                      ],
-                    ],
-                  ),
-                )
-              else
-                Wrap(
-                  spacing: 14,
-                  runSpacing: 14,
-                  children: kpiCards
-                      .map(
-                        (card) => SizedBox(
-                          width: contentWidth >= 760
-                              ? (contentWidth - 14) / 2
-                              : contentWidth,
-                          height: 112,
-                          child: card,
-                        ),
-                      )
-                      .toList(),
-                ),
-              const SizedBox(height: 14),
-              if (isDesktop)
-                SizedBox(
-                  height: 318,
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Expanded(
-                        flex: 3,
-                        child: _OverviewMapCard(
-                          map: _buildMapSection(),
-                        ),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        flex: 2,
-                        child: LatestSafetyAlertsPanel(
-                          alerts: overviewData.latestAlerts,
-                        ),
-                      ),
-                    ],
-                  ),
-                )
-              else ...[
-                SizedBox(
-                  height: 318,
-                  child: _OverviewMapCard(
-                    map: _buildMapSection(),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                SizedBox(
-                  height: 320,
-                  child: LatestSafetyAlertsPanel(
-                    alerts: overviewData.latestAlerts,
-                  ),
-                ),
-              ],
-              const SizedBox(height: 14),
-              if (isDesktop)
-                SizedBox(
-                  height: 228,
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Expanded(
-                        child: HighRiskDriversPanel(
-                          drivers: overviewData.highRiskDrivers,
-                        ),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: DeviceStatusPanel(
-                          totalDevices: overviewData.totalDevices,
-                          onlineDevices: overviewData.onlineDevices,
-                          warningDevices: overviewData.warningDevices,
-                          errorDevices: overviewData.errorDevices,
-                          healthPercentage: overviewData.deviceHealthPercentage,
-                          lastUpdatedLabel: overviewData.lastUpdatedLabel,
-                        ),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: RecentEventsPreviewPanel(
-                          events: overviewData.recentEvents,
-                        ),
-                      ),
-                    ],
-                  ),
-                )
-              else ...[
-                SizedBox(
-                  height: 228,
-                  child: HighRiskDriversPanel(
-                    drivers: overviewData.highRiskDrivers,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                SizedBox(
-                  height: 228,
-                  child: DeviceStatusPanel(
-                    totalDevices: overviewData.totalDevices,
-                    onlineDevices: overviewData.onlineDevices,
-                    warningDevices: overviewData.warningDevices,
-                    errorDevices: overviewData.errorDevices,
-                    healthPercentage: overviewData.deviceHealthPercentage,
-                    lastUpdatedLabel: overviewData.lastUpdatedLabel,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                SizedBox(
-                  height: 228,
-                  child: RecentEventsPreviewPanel(
-                    events: overviewData.recentEvents,
-                  ),
-                ),
-              ],
-            ],
-          );
-        },
+    if (isLoading && !hasOverviewData) {
+      return const OverviewDashboardSkeleton();
+    }
+
+    final overviewData = _buildOverviewData();
+
+    final dashboard = Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF05111F), Color(0xFF071427)],
+        ),
       ),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final width = constraints.maxWidth;
+            final useWideHeader = width >= 960;
+            final kpiPerRow = width >= 1200
+                ? 4
+                : width >= 900
+                ? 2
+                : 1;
+            final useTwoColumns = width >= 1180;
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _OverviewHeader(
+                  lastUpdatedLabel: overviewData.lastUpdatedLabel,
+                  isFleetHealthy:
+                      overviewData.highRiskDrivers.isEmpty &&
+                      overviewData.drowsyCount == 0 &&
+                      overviewData.distractionCount == 0,
+                  useWideLayout: useWideHeader,
+                ),
+                const SizedBox(height: 16),
+                _KpiGrid(
+                  perRow: kpiPerRow,
+                  children: _buildKpiCards(overviewData),
+                ),
+                const SizedBox(height: 16),
+                if (useTwoColumns)
+                  Column(
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            flex: 11,
+                            child: _LiveMapCard(
+                              map: _buildMapContent(),
+                              hasVehicleData: vehicles.isNotEmpty,
+                              onViewFullMap: onOpenMapFullscreen,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            flex: 10,
+                            child: _HighRiskRankingCard(
+                              drivers: overviewData.highRiskDrivers,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: _SafetySnapshotCard(data: overviewData),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: _RecentLogCard(
+                              recentLog: overviewData.recentLog,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  )
+                else
+                  Column(
+                    children: [
+                      _LiveMapCard(
+                        map: _buildMapContent(),
+                        hasVehicleData: vehicles.isNotEmpty,
+                        onViewFullMap: onOpenMapFullscreen,
+                      ),
+                      const SizedBox(height: 16),
+                      _HighRiskRankingCard(
+                        drivers: overviewData.highRiskDrivers,
+                      ),
+                      const SizedBox(height: 16),
+                      _SafetySnapshotCard(data: overviewData),
+                      const SizedBox(height: 16),
+                      _RecentLogCard(recentLog: overviewData.recentLog),
+                    ],
+                  ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+
+    if (!isLoading) {
+      return dashboard;
+    }
+
+    return Stack(
+      children: [
+        AbsorbPointer(
+          absorbing: true,
+          child: AnimatedOpacity(
+            opacity: 0.62,
+            duration: const Duration(milliseconds: 180),
+            child: dashboard,
+          ),
+        ),
+        const IgnorePointer(child: OverviewDashboardSkeleton(overlay: true)),
+      ],
     );
   }
 
-  Widget _buildMapSection() {
-    return MapSection(
-      mapController: mapController,
-      vehicles: vehicles,
-      onVehicleSelected: onVehicleSelected,
-      isFullScreen: false,
-      onFullScreenToggle: onOpenMapFullscreen,
-      showVehicleList: false,
-      selectedVehicleId: selectedVehicle?.id,
-      onClearSelection: onClearSelection,
-      onFollowModeChanged: onFollowModeChanged,
+  Widget _buildMapContent() {
+    if (vehicles.isEmpty) {
+      return const _MapUnavailableState();
+    }
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: MapSection(
+        mapController: mapController,
+        vehicles: vehicles,
+        onVehicleSelected: onVehicleSelected,
+        isFullScreen: false,
+        onFullScreenToggle: onOpenMapFullscreen,
+        showVehicleList: false,
+        selectedVehicleId: selectedVehicle?.id,
+        onClearSelection: onClearSelection,
+        onFollowModeChanged: onFollowModeChanged,
+      ),
     );
   }
 
   List<Widget> _buildKpiCards(_OverviewData data) {
+    final totalVehicles = data.totalVehicles;
+    final onlinePercent = totalVehicles == 0
+        ? 0
+        : ((data.onlineVehicles / totalVehicles) * 100).round();
+
     return [
-      OverviewKpiCard(
+      _CompactKpiCard(
         title: 'Online Vehicles',
-        value: '${data.onlineVehicles}',
-        subtitle: 'of ${data.totalVehicles} vehicles',
-        trendText: '${data.onlineVehiclePercentage.toStringAsFixed(1)}%',
-        trendColor: AppTheme.success,
+        value: '${data.onlineVehicles} / $totalVehicles',
+        subtitle: totalVehicles == 0 ? 'No vehicles available' : 'All active',
         icon: Icons.local_shipping_rounded,
-        accentColor: AppTheme.success,
+        accentColor: ReportStyles.green,
+        trailing: _RingPercent(
+          percent: onlinePercent,
+          color: ReportStyles.green,
+        ),
       ),
-      OverviewKpiCard(
+      _CompactKpiCard(
         title: 'Drowsy Events Today',
-        value: '${data.drowsyEventsToday}',
-        subtitle: 'Safety monitoring feed',
-        trendText: '${data.drowsyEventsDeltaLabel} vs baseline',
-        trendColor: AppTheme.warning,
-        icon: Icons.nightlight_round,
-        accentColor: const Color(0xFF8B5CF6),
+        value: '${data.drowsyCount}',
+        subtitle: 'Today only',
+        icon: Icons.mood_bad_rounded,
+        accentColor: ReportStyles.blue,
+        footer: _StatusPill(
+          label: data.drowsyCount == 0 ? 'Clear' : 'Alert',
+          color: data.drowsyCount == 0
+              ? ReportStyles.green
+              : ReportStyles.orange,
+        ),
       ),
-      OverviewKpiCard(
-        // TODO: Replace with real review queue count when backend provides review status.
-        title: 'Recent Events',
-        value: '${data.eventsNeedReview}',
-        subtitle: 'Recent vehicle activity',
-        trendText: data.eventsNeedReviewTrendLabel,
-        trendColor: AppTheme.error,
-        icon: Icons.warning_amber_rounded,
-        accentColor: const Color(0xFFF59E0B),
+      _CompactKpiCard(
+        title: 'Distraction Today',
+        value: '${data.distractionCount}',
+        subtitle: 'Today only',
+        icon: Icons.phonelink_lock_rounded,
+        accentColor: ReportStyles.blue,
+        footer: _StatusPill(
+          label: data.distractionCount == 0 ? 'Clear' : 'Alert',
+          color: data.distractionCount == 0
+              ? ReportStyles.green
+              : ReportStyles.orange,
+        ),
       ),
-      // TODO: Replace this proxy with real driver risk data when the backend exposes it.
-      OverviewKpiCard(
+      _CompactKpiCard(
         title: 'High-Risk Drivers',
-        value: '${data.highRiskDriverCount}',
-        subtitle: data.highRiskDriversSubtitle,
-        trendText: data.highRiskDriversTrendLabel,
-        trendColor: AppTheme.error,
-        icon: Icons.groups_rounded,
-        accentColor: const Color(0xFFEF4444),
-      ),
-      // TODO: Replace this proxy with real device health data when the backend exposes it.
-      OverviewKpiCard(
-        title: 'Device Health',
-        value: '${data.deviceHealthPercentage}%',
-        subtitle: 'Fleet telemetry availability',
-        trendText: '${data.onlineDevices}/${data.totalDevices} online',
-        trendColor: AppTheme.success,
-        icon: Icons.memory_rounded,
-        accentColor: AppTheme.accentBlue,
+        value: '${data.highRiskDrivers.length}',
+        subtitle: data.highRiskSubtitle,
+        icon: Icons.person_rounded,
+        accentColor: ReportStyles.purple,
+        footer: const _StatusPill(
+          label: 'LIVE',
+          color: ReportStyles.purple,
+          withDot: true,
+        ),
       ),
     ];
   }
 
   _OverviewData _buildOverviewData() {
-    final onlineVehicles =
-        vehicles.where((vehicle) => vehicle.status == VehicleStatus.active).length;
-    final warningVehicles =
-        vehicles.where((vehicle) => vehicle.status == VehicleStatus.warning).length;
-    final errorVehicles =
-        vehicles.where((vehicle) => vehicle.status == VehicleStatus.error).length;
+    final now = DateTime.now();
+    final todayEvents =
+        recentDrowsinessEvents
+            .where((event) => _isSameDay(event.time, now))
+            .toList()
+          ..sort((a, b) => b.time.compareTo(a.time));
 
-    final latestAlerts = _buildLatestAlerts();
-    final recentEvents = _buildRecentEvents();
+    final onlineVehicles = vehicles
+        .where((vehicle) => vehicle.status == VehicleStatus.active)
+        .length;
+
+    final behaviorByName = _buildBehaviorCountMap(todayEvents);
     final highRiskDrivers = _buildHighRiskDrivers();
-    final realHighRiskDrivers = _buildRealHighRiskDrivers();
-    final drowsyEventsToday = recentDrowsinessEvents
-        .where(_isTodayEvent)
-        .length;
-    final eventBasedRecentCount = recentDrowsinessEvents
-        .where((event) => _severityFromRisk(event.riskLevel) != 'Low')
-        .length;
-    final aggregateReport = currentDrowsinessReport;
-    final reportSummary = aggregateReport?.summary;
-    final recentEventsKpiValue = reportSummary?.totalEvents ??
-        (eventBasedRecentCount == 0 ? latestAlerts.length : eventBasedRecentCount);
-    final highRiskEventCount = reportSummary?.highRiskEvents ?? 0;
-    final peakHourLabel = _peakHourLabel(reportSummary?.peakHour);
-    final realHighRiskDriverCount = driverBehaviorSummaries
-        .where((summary) => summary.userId != null)
-        .where((summary) => summary.riskLevel == 'High')
-        .where((summary) => summary.totalEvents >= 20 || summary.priorityScore >= 50)
-        .length;
+    final recentLog = todayEvents.take(5).map(_mapRecentLog).toList();
+    final snapshotMax = [
+      behaviorByName['drowsy'] ?? 0,
+      behaviorByName['yawn'] ?? 0,
+      behaviorByName['distraction'] ?? 0,
+      behaviorByName['one_hand_off_wheel'] ?? 0,
+    ].fold<int>(0, math.max);
+    final healthyFallback = highRiskDrivers.isEmpty
+        ? 'No high-risk drivers'
+        : highRiskDrivers.first['driver'] as String;
 
     return _OverviewData(
       totalVehicles: vehicles.length,
       onlineVehicles: onlineVehicles,
-      onlineVehiclePercentage: vehicles.isEmpty
-          ? 0
-          : (onlineVehicles / vehicles.length) * 100,
-      drowsyEventsToday: drowsyEventsToday,
-      eventsNeedReview: recentEventsKpiValue,
-      // TODO: Handle unassigned behavior events separately.
-      highRiskDriverCount: realHighRiskDrivers.isNotEmpty
-          ? realHighRiskDriverCount
-          : highRiskDrivers
-              .where((driver) => (driver['riskScore'] as int) >= 55)
-              .length,
-      totalDevices: vehicles.length,
-      onlineDevices: onlineVehicles,
-      warningDevices: warningVehicles,
-      errorDevices: errorVehicles,
-      deviceHealthPercentage: vehicles.isEmpty
-          ? 0
-          : ((onlineVehicles / vehicles.length) * 100).round(),
-      drowsyEventsDeltaLabel: drowsyEventsToday == 0 ? '0' : '+$drowsyEventsToday',
-      eventsNeedReviewDeltaLabel:
-          recentEventsKpiValue == 0 ? '0' : '+$recentEventsKpiValue',
-      eventsNeedReviewTrendLabel: peakHourLabel != null
-          ? 'Peak hour: $peakHourLabel'
-          : '${recentEventsKpiValue == 0 ? '0' : '+$recentEventsKpiValue'} recent items',
-      highRiskDriversSubtitle: realHighRiskDrivers.isNotEmpty
-          ? 'Based on driver behavior'
-          : 'Warning or alert status',
-      highRiskDriversDeltaLabel: realHighRiskDrivers.isNotEmpty
-          ? '${realHighRiskDrivers.length}'
-          : highRiskDrivers.isEmpty
-              ? (highRiskEventCount == 0 ? '0' : '$highRiskEventCount')
-              : '${highRiskDrivers.length}',
-      highRiskDriversTrendLabel: realHighRiskDrivers.isNotEmpty
-          ? 'Top ${realHighRiskDrivers.length} shown'
-          : '${highRiskDrivers.isEmpty ? (highRiskEventCount == 0 ? '0' : highRiskEventCount) : highRiskDrivers.length} monitored',
-      latestAlerts: latestAlerts,
-      highRiskDrivers:
-          realHighRiskDrivers.isNotEmpty ? realHighRiskDrivers : highRiskDrivers,
-      recentEvents: recentEvents,
-      lastUpdatedLabel: _lastUpdatedLabel(latestAlerts),
+      drowsyCount: behaviorByName['drowsy'] ?? 0,
+      distractionCount: behaviorByName['distraction'] ?? 0,
+      snapshotRows: [
+        _SnapshotRowData(
+          icon: Icons.mood_bad_rounded,
+          label: 'Drowsy',
+          count: behaviorByName['drowsy'] ?? 0,
+          progress: _snapshotProgress(
+            behaviorByName['drowsy'] ?? 0,
+            snapshotMax,
+          ),
+        ),
+        _SnapshotRowData(
+          icon: Icons.sentiment_dissatisfied_rounded,
+          label: 'Yawn',
+          count: behaviorByName['yawn'] ?? 0,
+          progress: _snapshotProgress(behaviorByName['yawn'] ?? 0, snapshotMax),
+        ),
+        _SnapshotRowData(
+          icon: Icons.phonelink_lock_rounded,
+          label: 'Distraction',
+          count: behaviorByName['distraction'] ?? 0,
+          progress: _snapshotProgress(
+            behaviorByName['distraction'] ?? 0,
+            snapshotMax,
+          ),
+        ),
+        _SnapshotRowData(
+          icon: Icons.pan_tool_rounded,
+          label: 'One Hand Off Wheel',
+          count: behaviorByName['one_hand_off_wheel'] ?? 0,
+          progress: _snapshotProgress(
+            behaviorByName['one_hand_off_wheel'] ?? 0,
+            snapshotMax,
+          ),
+        ),
+      ],
+      highRiskDrivers: highRiskDrivers,
+      highRiskSubtitle: highRiskDrivers.isEmpty
+          ? 'No high-risk drivers'
+          : healthyFallback,
+      recentLog: recentLog,
+      lastUpdatedLabel: '${_twoDigits(now.hour)}:${_twoDigits(now.minute)} WIB',
     );
   }
 
-  List<Map<String, dynamic>> _buildLatestAlerts() {
-    final events = List<DrowsinessEvent>.from(recentDrowsinessEvents)
-      ..sort((a, b) => b.time.compareTo(a.time));
+  Map<String, int> _buildBehaviorCountMap(List<DrowsinessEvent> events) {
+    final counts = <String, int>{
+      'drowsy': 0,
+      'yawn': 0,
+      'distraction': 0,
+      'one_hand_off_wheel': 0,
+    };
 
-    return events.take(3).map(_mapEventForOverview).toList();
-  }
-
-  List<Map<String, dynamic>> _buildHighRiskDrivers() {
-    final items = driversHealth.asMap().entries.map((entry) {
-      final index = entry.key;
-      final driver = entry.value;
-      final vehicle = _vehicleForDriver(driver, null);
-      final driverId = int.tryParse(driver.driverId);
-      final hasActiveAlert = driverId != null && driverAlerts.containsKey(driverId);
-
-      var riskScore = switch (driver.status) {
-        HealthStatus.alert => 72,
-        HealthStatus.warning => 58,
-        HealthStatus.normal => 34,
-      };
-
-      if (hasActiveAlert) {
-        riskScore += 18;
+    for (final event in events) {
+      final behavior = _normalizeBehavior(event);
+      if (behavior == null) {
+        continue;
       }
-      if (driver.heartRate > 95) {
-        riskScore += 6;
-      }
-      if (driver.temperature >= 37.5) {
-        riskScore += 4;
-      }
+      counts[behavior] = (counts[behavior] ?? 0) + 1;
+    }
 
-      riskScore = riskScore.clamp(24, 96);
-
-      return {
-        'name': driver.name,
-        'initials': _initials(driver.name),
-        'vehicleLabel': vehicle?.plateNumber ?? _fallbackPlate(index),
-        'riskScore': riskScore,
-        'statusText': hasActiveAlert ? 'Active alert' : driver.getStatusText(),
-      };
-    }).toList();
-
-    items.sort(
-      (a, b) => (b['riskScore'] as int).compareTo(a['riskScore'] as int),
-    );
-
-    return items.take(5).toList();
-  }
-
-  List<Map<String, dynamic>> _buildRealHighRiskDrivers() {
-    final rankedDrivers = driverBehaviorSummaries
-        .where((summary) => summary.userId != null)
-        .where((summary) => summary.priorityScore > 0)
-        .toList()
-      ..sort((a, b) {
-        final priorityCompare = b.priorityScore.compareTo(a.priorityScore);
-        if (priorityCompare != 0) return priorityCompare;
-        final scoreCompare = b.interventionScore.compareTo(a.interventionScore);
-        if (scoreCompare != 0) return scoreCompare;
-        return b.totalEvents.compareTo(a.totalEvents);
-      });
-
-    return rankedDrivers.take(3).map((summary) {
-      final linkedDriver = _driverForBehavior(summary);
-      final linkedVehicle = _vehicleForBehavior(summary);
-      final score = summary.priorityScore;
-
-      return {
-        'name': linkedDriver?.name ?? summary.driverLabel,
-        'initials': _initials(linkedDriver?.name ?? summary.driverLabel),
-        'vehicleLabel': summary.vehicleId ??
-            linkedVehicle?.plateNumber ??
-            linkedVehicle?.apiVehicleId ??
-            '-',
-        'riskScore': score,
-        'statusText':
-            '${summary.riskLevel} · ${summary.dominantBehavior} · ${summary.totalEvents} events',
-      };
-    }).toList();
-  }
-
-  List<Map<String, dynamic>> _buildRecentEvents() {
-    final events = List<DrowsinessEvent>.from(recentDrowsinessEvents)
-      ..sort((a, b) => b.time.compareTo(a.time));
-
-    return events.take(3).map(_mapEventForOverview).toList();
-  }
-
-  Vehicle? _vehicleForDriver(DriverHealth? driver, String? vehicleId) {
-    if (vehicleId != null && vehicleId.isNotEmpty) {
-      for (final vehicle in vehicles) {
-        if (vehicle.id == vehicleId ||
-            vehicle.plateNumber == vehicleId ||
-            vehicle.apiVehicleId == vehicleId) {
-          return vehicle;
+    final report = currentDrowsinessReport;
+    if (report != null) {
+      for (final summary in report.weekdayBehaviorSummary) {
+        if (summary.weekdayIndex != DateTime.now().weekday) {
+          continue;
         }
+
+        counts['drowsy'] = math.max(
+          counts['drowsy'] ?? 0,
+          summary.behaviors.drowsiness,
+        );
+        counts['yawn'] = math.max(counts['yawn'] ?? 0, summary.behaviors.yawn);
+        counts['distraction'] = math.max(
+          counts['distraction'] ?? 0,
+          summary.behaviors.distraction,
+        );
+        counts['one_hand_off_wheel'] = math.max(
+          counts['one_hand_off_wheel'] ?? 0,
+          summary.behaviors.other,
+        );
       }
     }
 
-    if (driver != null) {
-      for (final vehicle in vehicles) {
-        if (vehicle.driverName.toLowerCase() == driver.name.toLowerCase()) {
-          return vehicle;
-        }
-      }
+    return counts;
+  }
+
+  String? _normalizeBehavior(DrowsinessEvent event) {
+    final raw = '${event.behaviorType ?? ''} ${event.status}'.toLowerCase();
+    if (raw.contains('drows')) return 'drowsy';
+    if (raw.contains('yawn')) return 'yawn';
+    if (raw.contains('distraction')) return 'distraction';
+    if (raw.contains('one_hand_off_wheel') ||
+        raw.contains('one hand off wheel') ||
+        raw.contains('hands_off') ||
+        raw.contains('hand off wheel')) {
+      return 'one_hand_off_wheel';
+    }
+    return null;
+  }
+
+  List<Map<String, String>> _buildHighRiskDrivers() {
+    final ranked =
+        driverBehaviorSummaries
+            .where(
+              (summary) => summary.userId != null || summary.totalEvents > 0,
+            )
+            .toList()
+          ..sort((a, b) {
+            final riskCompare = _riskWeight(
+              b.riskLevel,
+            ).compareTo(_riskWeight(a.riskLevel));
+            if (riskCompare != 0) return riskCompare;
+            return b.priorityScore.compareTo(a.priorityScore);
+          });
+
+    if (ranked.isNotEmpty) {
+      return ranked.take(5).map((summary) {
+        final driver = _driverForBehavior(summary);
+        final vehicle = _vehicleForBehavior(summary);
+        return {
+          'driver': driver?.name ?? summary.driverLabel,
+          'vehicle': vehicle?.plateNumber ?? summary.vehicleId ?? '-',
+          'risk': summary.riskLevel,
+          'issue': summary.totalEvents == 0
+              ? 'No issues detected'
+              : '${summary.dominantBehavior} - ${summary.totalEvents} events',
+          'initials': _initials(driver?.name ?? summary.driverLabel),
+        };
+      }).toList();
     }
 
-    return vehicles.isEmpty ? null : vehicles.first;
+    final fallback =
+        driversHealth.map((driver) {
+          final vehicle = vehicles.cast<Vehicle?>().firstWhere(
+            (item) =>
+                item?.driverName.toLowerCase() == driver.name.toLowerCase(),
+            orElse: () => null,
+          );
+          final risk = switch (driver.status) {
+            HealthStatus.alert => 'High',
+            HealthStatus.warning => 'Medium',
+            HealthStatus.normal => 'Low',
+          };
+          return {
+            'driver': driver.name,
+            'vehicle': vehicle?.plateNumber ?? '-',
+            'risk': risk,
+            'issue': driver.status == HealthStatus.normal
+                ? 'No issues detected'
+                : driver.getStatusText(),
+            'initials': _initials(driver.name),
+          };
+        }).toList()..sort(
+          (a, b) => _riskWeight(b['risk']!).compareTo(_riskWeight(a['risk']!)),
+        );
+
+    return fallback.take(5).toList();
   }
 
-  String _formatEventType(String? rawType) {
-    if (rawType == null || rawType.isEmpty) {
-      return 'Drowsiness Detected';
-    }
-
-    final normalized = rawType.replaceAll('_', ' ').trim();
-    final lower = normalized.toLowerCase();
-
-    if (lower.contains('drows')) return 'Drowsiness Detected';
-    if (lower.contains('speed')) return 'Overspeed';
-    if (lower.contains('brake')) return 'Hard Braking';
-
-    return normalized
-        .split(' ')
-        .where((part) => part.isNotEmpty)
-        .map((part) => '${part[0].toUpperCase()}${part.substring(1).toLowerCase()}')
-        .join(' ');
-  }
-
-  String _severityFromRisk(String? riskLevel) {
-    final lower = riskLevel?.toLowerCase().trim() ?? '';
-    if (lower == 'high') return 'High';
-    if (lower == 'medium') return 'Medium';
-    if (lower == 'low') return 'Low';
-    return 'Medium';
-  }
-
-  bool _isTodayEvent(DrowsinessEvent event) {
-    final now = DateTime.now();
-    return event.time.year == now.year &&
-        event.time.month == now.month &&
-        event.time.day == now.day;
-  }
-
-  Map<String, dynamic> _mapEventForOverview(DrowsinessEvent event) {
-    final vehicle = _vehicleForEvent(event);
+  Map<String, String> _mapRecentLog(DrowsinessEvent event) {
     final driver = _driverForEvent(event);
-
+    final vehicle = _vehicleForEvent(event);
     return {
-      'driverName': driver?.name ?? event.driverLabel,
-      'vehicleLabel': event.vehicleId.isNotEmpty
-          ? event.vehicleId
-          : (vehicle?.plateNumber ?? '-'),
-      'location': _eventLocationLabel(event, vehicle),
-      'time': event.time,
-      'eventType': _eventTitle(event),
-      'severity': _severityFromRisk(event.riskLevel),
-      'speedLabel': event.formattedSpeed,
+      'time': '${_twoDigits(event.time.hour)}:${_twoDigits(event.time.minute)}',
+      'type': _eventLabel(event),
+      'driver': driver?.name ?? event.driverLabel,
+      'vehicle': vehicle?.plateNumber ?? event.vehicleId,
+      'severity': _severityLabel(event.riskLevel),
     };
   }
 
@@ -525,14 +471,16 @@ class OverviewDashboard extends StatelessWidget {
   }
 
   DriverHealth? _driverForBehavior(DriverBehaviorSummary summary) {
-    if (summary.userId == null) return null;
+    final userId = summary.userId;
+    if (userId == null) {
+      return null;
+    }
 
     for (final driver in driversHealth) {
-      if (driver.driverId == summary.userId.toString()) {
+      if (driver.driverId == userId.toString()) {
         return driver;
       }
     }
-
     return null;
   }
 
@@ -549,7 +497,6 @@ class OverviewDashboard extends StatelessWidget {
         return vehicle;
       }
     }
-
     return null;
   }
 
@@ -564,266 +511,413 @@ class OverviewDashboard extends StatelessWidget {
     return null;
   }
 
-  String _eventTitle(DrowsinessEvent event) {
-    if (event.status.trim().isNotEmpty) {
-      return _formatEventType(event.status);
-    }
-    if ((event.behaviorType ?? '').trim().isNotEmpty) {
-      return _formatEventType(event.behaviorType);
-    }
-    return 'Drowsiness Detected';
+  bool _isSameDay(DateTime left, DateTime right) {
+    return left.year == right.year &&
+        left.month == right.month &&
+        left.day == right.day;
   }
 
-  String _eventLocationLabel(DrowsinessEvent event, Vehicle? vehicle) {
-    if (event.location != null && event.location!.trim().isNotEmpty) {
-      return event.location!;
-    }
-    if (event.latitude != null && event.longitude != null) {
-      return '${event.latitude!.toStringAsFixed(5)}, ${event.longitude!.toStringAsFixed(5)}';
-    }
-    return _locationForVehicle(vehicle, 'Unknown location');
-  }
-
-  String _locationForVehicle(Vehicle? vehicle, String fallback) {
-    if (vehicle == null) return fallback;
-
-    switch (vehicle.id) {
-      case '1210':
-        return 'Sunter, Jakarta Utara';
-      case '999':
-        return 'Cikarang, Bekasi';
-      case '1234':
-        return 'Karawang, Jawa Barat';
+  int _riskWeight(String risk) {
+    switch (risk.toLowerCase()) {
+      case 'high':
+        return 3;
+      case 'medium':
+        return 2;
       default:
-        return fallback;
+        return 1;
     }
   }
 
-  DateTime _normalizeDateTime(dynamic value) {
-    if (value is DateTime) {
-      return value;
-    }
-    if (value is String) {
-      return DateTime.tryParse(value)?.toLocal() ?? DateTime.now();
-    }
-    return DateTime.now();
+  String _severityLabel(String risk) {
+    final normalized = risk.trim().toLowerCase();
+    if (normalized == 'high') return 'High';
+    if (normalized == 'medium') return 'Medium';
+    return 'Low';
   }
 
-  String _lastUpdatedLabel(List<Map<String, dynamic>> alerts) {
-    final formatter = DateFormat('HH:mm');
-    if (alerts.isEmpty) {
-      return '${formatter.format(DateTime.now())} WIB';
+  String _eventLabel(DrowsinessEvent event) {
+    final raw = (event.behaviorType?.isNotEmpty ?? false)
+        ? event.behaviorType!
+        : event.status;
+    if (raw.trim().isEmpty) {
+      return 'Safety Event';
     }
-    return '${formatter.format(_normalizeDateTime(alerts.first['time']))} WIB';
+
+    return raw
+        .replaceAll('_', ' ')
+        .split(' ')
+        .where((part) => part.isNotEmpty)
+        .map(
+          (part) =>
+              '${part[0].toUpperCase()}${part.substring(1).toLowerCase()}',
+        )
+        .join(' ');
   }
 
-  String _initials(String name) {
-    final parts = name.trim().split(RegExp(r'\s+'));
+  String _initials(String value) {
+    final parts = value
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((part) => part.isNotEmpty)
+        .toList();
     if (parts.isEmpty) return '?';
     if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
     return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
   }
 
-  String _fallbackPlate(int index) {
-    const plates = [
-      'B 7041 UDB',
-      'B 9999 XYZ',
-      'B 1234 ABC',
-      'B 1111 UOB',
-      'B 5678 DEF',
-    ];
-    return plates[index % plates.length];
-  }
+  String _twoDigits(int value) => value.toString().padLeft(2, '0');
 
-  String _eventSourceLabel() {
-    final selectedApiId = selectedVehicle?.apiVehicleId?.trim();
-    if (selectedApiId != null && selectedApiId.isNotEmpty) {
-      return selectedApiId;
+  double _snapshotProgress(int count, int maxCount) {
+    if (count <= 0 || maxCount <= 0) {
+      return 0;
     }
-
-    for (final vehicle in vehicles) {
-      final apiId = vehicle.apiVehicleId?.trim();
-      if (apiId != null && apiId.isNotEmpty) {
-        return apiId;
-      }
-    }
-
-    return 'VIN-0001';
+    return (count / maxCount).clamp(0, 1).toDouble();
   }
-
-  String? _peakHourLabel(int? peakHour) {
-    if (peakHour == null || peakHour < 0 || peakHour > 23) {
-      return null;
-    }
-
-    final time = DateTime(2026, 1, 1, peakHour);
-    return DateFormat('HH:mm').format(time);
-  }
-
 }
 
-class _OverviewHeading extends StatelessWidget {
-  const _OverviewHeading();
+class _OverviewHeader extends StatelessWidget {
+  const _OverviewHeader({
+    required this.lastUpdatedLabel,
+    required this.isFleetHealthy,
+    required this.useWideLayout,
+  });
+
+  final String lastUpdatedLabel;
+  final bool isFleetHealthy;
+  final bool useWideLayout;
 
   @override
   Widget build(BuildContext context) {
-    return const Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    final statusColor = isFleetHealthy
+        ? ReportStyles.green
+        : ReportStyles.orange;
+
+    final statusCard = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: statusColor.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: statusColor.withValues(alpha: 0.45)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: statusColor),
+            ),
+            child: Icon(
+              isFleetHealthy ? Icons.check_rounded : Icons.warning_rounded,
+              color: statusColor,
+              size: 18,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Text(
+            isFleetHealthy ? 'GREEN - FLEET HEALTHY' : 'ATTENTION REQUIRED',
+            style: TextStyle(
+              color: statusColor,
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    final timestamp = Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          'Driver Safety & Telematics',
-          style: TextStyle(
-            color: AppTheme.textPrimary,
-            fontSize: 28,
-            fontWeight: FontWeight.w700,
-          ),
+        const Icon(
+          Icons.access_time_rounded,
+          color: ReportStyles.textMuted,
+          size: 16,
         ),
-        SizedBox(height: 4),
+        const SizedBox(width: 6),
         Text(
-          'Overview of fleet health, live tracking, and safety monitoring.',
-          style: TextStyle(
-            color: AppTheme.textSecondary,
-            fontSize: 13,
-          ),
-        ),
-        SizedBox(height: 3),
-        Text(
-          'Live overview · recent data',
-          style: TextStyle(
-            color: AppTheme.textSecondary,
-            fontSize: 11,
+          'Last updated: $lastUpdatedLabel',
+          style: const TextStyle(
+            color: ReportStyles.textSecondary,
+            fontSize: 12,
           ),
         ),
       ],
     );
-  }
-}
 
-class _OverviewHeadingWithSource extends StatelessWidget {
-  const _OverviewHeadingWithSource({
-    required this.eventSourceLabel,
-  });
+    if (useWideLayout) {
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Driver Safety & Telematics Overview',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                SizedBox(height: 6),
+                Text(
+                  'Today live monitoring for driver condition, vehicle position, and safety events.',
+                  style: TextStyle(
+                    color: ReportStyles.textSecondary,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 16),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [statusCard, const SizedBox(height: 8), timestamp],
+          ),
+        ],
+      );
+    }
 
-  final String eventSourceLabel;
-
-  @override
-  Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Driver Safety & Telematics',
+          'Driver Safety & Telematics Overview',
           style: TextStyle(
-            color: AppTheme.textPrimary,
-            fontSize: 28,
+            color: Colors.white,
+            fontSize: 24,
             fontWeight: FontWeight.w700,
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 6),
         const Text(
-          'Overview of fleet health, live tracking, and safety monitoring.',
-          style: TextStyle(
-            color: AppTheme.textSecondary,
-            fontSize: 13,
-          ),
+          'Today live monitoring for driver condition, vehicle position, and safety events.',
+          style: TextStyle(color: ReportStyles.textSecondary, fontSize: 12),
         ),
-        const SizedBox(height: 3),
-        const Text(
-          'Live overview · recent data',
-          style: TextStyle(
-            color: AppTheme.textSecondary,
-            fontSize: 11,
-          ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          'Recent events from $eventSourceLabel',
-          style: const TextStyle(
-            color: AppTheme.textSecondary,
-            fontSize: 11,
-          ),
-        ),
+        const SizedBox(height: 12),
+        statusCard,
+        const SizedBox(height: 8),
+        timestamp,
       ],
     );
   }
 }
 
-class _OverviewMapCard extends StatelessWidget {
-  const _OverviewMapCard({
-    required this.map,
+class _KpiGrid extends StatelessWidget {
+  const _KpiGrid({required this.children, required this.perRow});
+
+  final List<Widget> children;
+  final int perRow;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const spacing = 12.0;
+        final width = constraints.maxWidth;
+        final itemWidth = perRow <= 1
+            ? width
+            : (width - (spacing * (perRow - 1))) / perRow;
+
+        return Wrap(
+          spacing: spacing,
+          runSpacing: spacing,
+          children: children
+              .map((child) => SizedBox(width: itemWidth, child: child))
+              .toList(),
+        );
+      },
+    );
+  }
+}
+
+class _CompactKpiCard extends StatelessWidget {
+  const _CompactKpiCard({
+    required this.title,
+    required this.value,
+    required this.subtitle,
+    required this.icon,
+    required this.accentColor,
+    this.trailing,
+    this.footer,
   });
 
-  final Widget map;
+  final String title;
+  final String value;
+  final String subtitle;
+  final IconData icon;
+  final Color accentColor;
+  final Widget? trailing;
+  final Widget? footer;
 
   @override
   Widget build(BuildContext context) {
     return Container(
+      height: 96,
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppTheme.slateGrey,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withOpacity(0.06)),
+        color: ReportStyles.cardBackground,
+        gradient: ReportStyles.cardGradient,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: ReportStyles.border.withValues(alpha: 0.9)),
+        boxShadow: ReportStyles.cardShadow,
       ),
-      child: Stack(
+      child: Row(
         children: [
-          Positioned.fill(
+          Container(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: accentColor.withValues(alpha: 0.12),
+              border: Border.all(color: accentColor.withValues(alpha: 0.32)),
+            ),
+            child: Icon(icon, color: accentColor, size: 22),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: ReportStyles.textSecondary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    height: 1,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  subtitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: ReportStyles.textMuted,
+                    fontSize: 11,
+                    height: 1.1,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (trailing != null) ...[const SizedBox(width: 10), trailing!],
+          if (footer != null) ...[const SizedBox(width: 10), footer!],
+        ],
+      ),
+    );
+  }
+}
+
+class _LiveMapCard extends StatelessWidget {
+  const _LiveMapCard({
+    required this.map,
+    required this.hasVehicleData,
+    required this.onViewFullMap,
+  });
+
+  final Widget map;
+  final bool hasVehicleData;
+  final VoidCallback onViewFullMap;
+
+  @override
+  Widget build(BuildContext context) {
+    return _DashboardCard(
+      height: 320,
+      child: Column(
+        children: [
+          Row(
+            children: [
+              const _TitleIcon(icon: Icons.circle, color: ReportStyles.green),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'Live Map',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: hasVehicleData ? onViewFullMap : null,
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  backgroundColor: Colors.white.withValues(alpha: 0.05),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  textStyle: const TextStyle(fontSize: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    side: BorderSide(
+                      color: Colors.white.withValues(alpha: 0.08),
+                    ),
+                  ),
+                ),
+                child: const Text('View Full Map'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Expanded(
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(20),
-              child: SizedBox.expand(
-                child: map,
-              ),
-            ),
-          ),
-          Positioned(
-            left: 18,
-            top: 16,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.24),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: Colors.white.withOpacity(0.08)),
-              ),
-              child: const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              borderRadius: BorderRadius.circular(16),
+              child: Stack(
                 children: [
-                  Text(
-                    'Live Map',
-                    style: TextStyle(
-                      color: AppTheme.textPrimary,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
+                  Positioned.fill(child: map),
+                  Positioned(
+                    left: 14,
+                    bottom: 14,
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xCC0B1625),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.08),
+                        ),
+                      ),
+                      child: const Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _LegendRow(
+                            color: ReportStyles.green,
+                            label: 'Moving',
+                          ),
+                          SizedBox(height: 6),
+                          _LegendRow(
+                            color: ReportStyles.yellow,
+                            label: 'Warning',
+                          ),
+                          SizedBox(height: 6),
+                          _LegendRow(color: ReportStyles.red, label: 'Alert'),
+                        ],
+                      ),
                     ),
                   ),
-                  SizedBox(height: 2),
-                  Text(
-                    'Real-time vehicle locations',
-                    style: TextStyle(
-                      color: AppTheme.textSecondary,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          Positioned(
-            left: 18,
-            bottom: 18,
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.34),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: Colors.white.withOpacity(0.08)),
-              ),
-              child: const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _LegendRow(color: AppTheme.success, label: 'Moving'),
-                  SizedBox(height: 8),
-                  _LegendRow(color: AppTheme.warning, label: 'Warning'),
-                  SizedBox(height: 8),
-                  _LegendRow(color: AppTheme.error, label: 'Alert'),
                 ],
               ),
             ),
@@ -834,11 +928,359 @@ class _OverviewMapCard extends StatelessWidget {
   }
 }
 
-class _LegendRow extends StatelessWidget {
-  const _LegendRow({
-    required this.color,
+class _HighRiskRankingCard extends StatelessWidget {
+  const _HighRiskRankingCard({required this.drivers});
+
+  final List<Map<String, String>> drivers;
+
+  @override
+  Widget build(BuildContext context) {
+    return _DashboardCard(
+      height: 320,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const _TitleIcon(
+                icon: Icons.bar_chart_rounded,
+                color: Colors.white,
+              ),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'High-Risk Driver Ranking Today',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pushNamed('/drivers'),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  textStyle: const TextStyle(fontSize: 12),
+                ),
+                child: const Text('View All'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Expanded(
+            child: drivers.isEmpty
+                ? const _CenteredEmptyState(
+                    title: 'No driver risk data available',
+                    subtitle:
+                        'Driver ranking will appear when risk data is received.',
+                  )
+                : Column(
+                    children: [
+                      _RankingHeader(),
+                      Expanded(
+                        child: ListView.separated(
+                          padding: EdgeInsets.zero,
+                          itemCount: drivers.length,
+                          separatorBuilder: (context, index) => Divider(
+                            color: Colors.white.withValues(alpha: 0.08),
+                            height: 1,
+                          ),
+                          itemBuilder: (context, index) {
+                            final item = drivers[index];
+                            return _RankingRow(
+                              rank: index + 1,
+                              driver: item['driver'] ?? '-',
+                              vehicle: item['vehicle'] ?? '-',
+                              risk: item['risk'] ?? 'Low',
+                              issue: item['issue'] ?? '-',
+                              initials: item['initials'] ?? '?',
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Showing top ${drivers.length} drivers',
+                        style: const TextStyle(
+                          color: ReportStyles.textMuted,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SafetySnapshotCard extends StatelessWidget {
+  const _SafetySnapshotCard({required this.data});
+
+  final _OverviewData data;
+
+  @override
+  Widget build(BuildContext context) {
+    return _DashboardCard(
+      height: 232,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              _TitleIcon(icon: Icons.shield_outlined, color: ReportStyles.blue),
+              SizedBox(width: 8),
+              Text(
+                "Today's Safety Snapshot",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Expanded(
+            child: Column(
+              children: data.snapshotRows.map((row) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: _SnapshotRow(row: row),
+                );
+              }).toList(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RecentLogCard extends StatelessWidget {
+  const _RecentLogCard({required this.recentLog});
+
+  final List<Map<String, String>> recentLog;
+
+  @override
+  Widget build(BuildContext context) {
+    return _DashboardCard(
+      height: 232,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const _TitleIcon(
+                icon: Icons.fact_check_outlined,
+                color: ReportStyles.blue,
+              ),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'Recent Log',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pushNamed('/safety'),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  textStyle: const TextStyle(fontSize: 12),
+                ),
+                child: const Text('View All Logs'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Expanded(
+            child: recentLog.isEmpty
+                ? const _CenteredEmptyState(
+                    title: 'All clear!',
+                    subtitle: 'No recent safety events to display.',
+                  )
+                : ListView.separated(
+                    padding: EdgeInsets.zero,
+                    itemCount: recentLog.length,
+                    separatorBuilder: (context, index) => Divider(
+                      color: Colors.white.withValues(alpha: 0.08),
+                      height: 1,
+                    ),
+                    itemBuilder: (context, index) {
+                      final item = recentLog[index];
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Row(
+                          children: [
+                            SizedBox(
+                              width: 48,
+                              child: Text(
+                                item['time'] ?? '--:--',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    item['type'] ?? 'Safety Event',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    '${item['driver'] ?? '-'} - ${item['vehicle'] ?? '-'}',
+                                    style: const TextStyle(
+                                      color: ReportStyles.textSecondary,
+                                      fontSize: 11,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            _RiskChip(label: item['severity'] ?? 'Low'),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DashboardCard extends StatelessWidget {
+  const _DashboardCard({required this.child, required this.height});
+
+  final Widget child;
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: height,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: ReportStyles.cardBackground,
+        gradient: ReportStyles.cardGradient,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: ReportStyles.border.withValues(alpha: 0.85)),
+        boxShadow: ReportStyles.cardShadow,
+      ),
+      child: child,
+    );
+  }
+}
+
+class _RingPercent extends StatelessWidget {
+  const _RingPercent({required this.percent, required this.color});
+
+  final int percent;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final clamped = percent.clamp(0, 100) / 100;
+
+    return SizedBox(
+      width: 54,
+      height: 54,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          SizedBox.expand(
+            child: CircularProgressIndicator(
+              value: clamped.toDouble(),
+              strokeWidth: 6,
+              backgroundColor: color.withValues(alpha: 0.18),
+              valueColor: AlwaysStoppedAnimation<Color>(color),
+            ),
+          ),
+          Text(
+            '$percent%',
+            style: TextStyle(
+              color: color,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatusPill extends StatelessWidget {
+  const _StatusPill({
     required this.label,
+    required this.color,
+    this.withDot = false,
   });
+
+  final String label;
+  final Color color;
+  final bool withDot;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (withDot) ...[
+            Container(
+              width: 7,
+              height: 7,
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+            ),
+            const SizedBox(width: 5),
+          ],
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LegendRow extends StatelessWidget {
+  const _LegendRow({required this.color, required this.label});
 
   final Color color;
   final String label;
@@ -849,19 +1291,226 @@ class _LegendRow extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 10,
-          height: 10,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
+          width: 9,
+          height: 9,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 7),
+        Text(label, style: const TextStyle(color: Colors.white, fontSize: 11)),
+      ],
+    );
+  }
+}
+
+class _RankingHeader extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.03),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+      ),
+      child: const Row(
+        children: [
+          SizedBox(
+            width: 34,
+            child: Text('Rank', style: _TableHeaderStyle.text),
+          ),
+          Expanded(
+            flex: 3,
+            child: Text('Driver', style: _TableHeaderStyle.text),
+          ),
+          Expanded(
+            flex: 2,
+            child: Text('Vehicle', style: _TableHeaderStyle.text),
+          ),
+          Expanded(flex: 2, child: Text('Risk', style: _TableHeaderStyle.text)),
+          Expanded(
+            flex: 3,
+            child: Text('Issue Summary', style: _TableHeaderStyle.text),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RankingRow extends StatelessWidget {
+  const _RankingRow({
+    required this.rank,
+    required this.driver,
+    required this.vehicle,
+    required this.risk,
+    required this.issue,
+    required this.initials,
+  });
+
+  final int rank;
+  final String driver;
+  final String vehicle;
+  final String risk;
+  final String issue;
+  final String initials;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 34,
+            child: Text(
+              '$rank',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 3,
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 13,
+                  backgroundColor: ReportStyles.blue.withValues(alpha: 0.7),
+                  child: Text(
+                    initials,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    driver,
+                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Text(
+              vehicle,
+              style: const TextStyle(color: Colors.white, fontSize: 12),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: _RiskChip(label: '$risk Risk'),
+            ),
+          ),
+          Expanded(
+            flex: 3,
+            child: Text(
+              issue,
+              style: const TextStyle(
+                color: ReportStyles.textSecondary,
+                fontSize: 11,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RiskChip extends StatelessWidget {
+  const _RiskChip({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final lower = label.toLowerCase();
+    final color = lower.contains('high')
+        ? ReportStyles.red
+        : lower.contains('medium')
+        ? ReportStyles.orange
+        : ReportStyles.green;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
+class _SnapshotRow extends StatelessWidget {
+  const _SnapshotRow({required this.row});
+
+  final _SnapshotRowData row;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        SizedBox(
+          width: 144,
+          child: Row(
+            children: [
+              Icon(row.icon, color: ReportStyles.blue, size: 18),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  row.label,
+                  style: const TextStyle(color: Colors.white, fontSize: 12),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
           ),
         ),
-        const SizedBox(width: 8),
-        Text(
-          label,
-          style: const TextStyle(
-            color: AppTheme.textPrimary,
-            fontSize: 12,
+        Expanded(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(
+              minHeight: 10,
+              value: row.progress,
+              backgroundColor: const Color(0xFF1C2B43),
+              valueColor: const AlwaysStoppedAnimation<Color>(
+                ReportStyles.blue,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        SizedBox(
+          width: 52,
+          child: Text(
+            '${row.count}',
+            textAlign: TextAlign.right,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
       ],
@@ -869,50 +1518,131 @@ class _LegendRow extends StatelessWidget {
   }
 }
 
+class _CenteredEmptyState extends StatelessWidget {
+  const _CenteredEmptyState({required this.title, required this.subtitle});
+
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 72,
+            height: 72,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                colors: [
+                  Colors.white.withValues(alpha: 0.08),
+                  Colors.white.withValues(alpha: 0.02),
+                ],
+              ),
+            ),
+            child: const Icon(
+              Icons.assignment_turned_in_outlined,
+              color: ReportStyles.textSecondary,
+              size: 34,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            title,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            subtitle,
+            style: const TextStyle(
+              color: ReportStyles.textSecondary,
+              fontSize: 11,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MapUnavailableState extends StatelessWidget {
+  const _MapUnavailableState();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: const Color(0xFF0A1524),
+      alignment: Alignment.center,
+      child: const Text(
+        'Vehicle location data unavailable',
+        style: TextStyle(color: ReportStyles.textSecondary, fontSize: 14),
+      ),
+    );
+  }
+}
+
+class _TitleIcon extends StatelessWidget {
+  const _TitleIcon({required this.icon, required this.color});
+
+  final IconData icon;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Icon(icon, color: color, size: 16);
+  }
+}
+
+class _TableHeaderStyle {
+  static const text = TextStyle(
+    color: ReportStyles.textSecondary,
+    fontSize: 11,
+    fontWeight: FontWeight.w600,
+  );
+}
+
+class _SnapshotRowData {
+  const _SnapshotRowData({
+    required this.icon,
+    required this.label,
+    required this.count,
+    required this.progress,
+  });
+
+  final IconData icon;
+  final String label;
+  final int count;
+  final double progress;
+}
+
 class _OverviewData {
   const _OverviewData({
     required this.totalVehicles,
     required this.onlineVehicles,
-    required this.onlineVehiclePercentage,
-    required this.drowsyEventsToday,
-    required this.eventsNeedReview,
-    required this.highRiskDriverCount,
-    required this.totalDevices,
-    required this.onlineDevices,
-    required this.warningDevices,
-    required this.errorDevices,
-    required this.deviceHealthPercentage,
-    required this.drowsyEventsDeltaLabel,
-    required this.eventsNeedReviewDeltaLabel,
-    required this.eventsNeedReviewTrendLabel,
-    required this.highRiskDriversSubtitle,
-    required this.highRiskDriversDeltaLabel,
-    required this.highRiskDriversTrendLabel,
-    required this.latestAlerts,
+    required this.drowsyCount,
+    required this.distractionCount,
+    required this.snapshotRows,
     required this.highRiskDrivers,
-    required this.recentEvents,
+    required this.highRiskSubtitle,
+    required this.recentLog,
     required this.lastUpdatedLabel,
   });
 
   final int totalVehicles;
   final int onlineVehicles;
-  final double onlineVehiclePercentage;
-  final int drowsyEventsToday;
-  final int eventsNeedReview;
-  final int highRiskDriverCount;
-  final int totalDevices;
-  final int onlineDevices;
-  final int warningDevices;
-  final int errorDevices;
-  final int deviceHealthPercentage;
-  final String drowsyEventsDeltaLabel;
-  final String eventsNeedReviewDeltaLabel;
-  final String eventsNeedReviewTrendLabel;
-  final String highRiskDriversSubtitle;
-  final String highRiskDriversDeltaLabel;
-  final String highRiskDriversTrendLabel;
-  final List<Map<String, dynamic>> latestAlerts;
-  final List<Map<String, dynamic>> highRiskDrivers;
-  final List<Map<String, dynamic>> recentEvents;
+  final int drowsyCount;
+  final int distractionCount;
+  final List<_SnapshotRowData> snapshotRows;
+  final List<Map<String, String>> highRiskDrivers;
+  final String highRiskSubtitle;
+  final List<Map<String, String>> recentLog;
   final String lastUpdatedLabel;
 }

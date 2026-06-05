@@ -106,7 +106,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     );
                   case '/vehicles':
                     return MaterialPageRoute(
-                      builder: (context) => _buildPlaceholderContent('Vehicles'),
+                      builder: (context) =>
+                          _buildPlaceholderContent('Vehicles'),
                       settings: settings,
                     );
                   case '/drivers':
@@ -121,7 +122,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     );
                   case '/settings':
                     return MaterialPageRoute(
-                      builder: (context) => _buildPlaceholderContent('Settings'),
+                      builder: (context) =>
+                          _buildPlaceholderContent('Settings'),
                       settings: settings,
                     );
                   default:
@@ -148,7 +150,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           prev.driversHealth != curr.driversHealth ||
           prev.recentDrowsinessEvents != curr.recentDrowsinessEvents ||
           prev.currentDrowsinessReport != curr.currentDrowsinessReport ||
-          prev.driverBehaviorSummaries != curr.driverBehaviorSummaries,
+          prev.driverBehaviorSummaries != curr.driverBehaviorSummaries ||
+          prev.isOverviewLoading != curr.isOverviewLoading,
       builder: (context, state) {
         return OverviewDashboard(
           mapController: _mapController,
@@ -167,6 +170,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           },
           onFollowModeChanged: _handleFollowModeChanged,
           onOpenMapFullscreen: _toggleMapFullScreen,
+          isLoading: state.isOverviewLoading,
         );
       },
     );
@@ -219,7 +223,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: Container(
             margin: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppTheme.slateGrey.withOpacity(0.95),
+              color: AppTheme.slateGrey.withValues(alpha: 0.95),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: Colors.white10),
             ),
@@ -229,7 +233,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: AppTheme.darkNavy.withOpacity(0.5),
+                    color: AppTheme.darkNavy.withValues(alpha: 0.5),
                     borderRadius: const BorderRadius.only(
                       topLeft: Radius.circular(12),
                       topRight: Radius.circular(12),
@@ -295,20 +299,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  // ignore: unused_element
   Widget _buildMapArea(BuildContext context) {
     return Expanded(
       flex: ResponsiveBreakpoints.isLarge(context) ? 3 : 2,
       child: BlocBuilder<DashboardBloc, DashboardState>(
         buildWhen: (prev, curr) {
-          final shouldRebuild = prev.vehicles != curr.vehicles ||
+          final shouldRebuild =
+              prev.vehicles != curr.vehicles ||
               prev.selectedVehicle != curr.selectedVehicle;
           if (shouldRebuild) {
-            print('🔄 BlocBuilder rebuild triggered: vehicles=${prev.vehicles.length != curr.vehicles.length}, selectedVehicle=${prev.selectedVehicle?.id} -> ${curr.selectedVehicle?.id}');
+            // ignore: avoid_print
+            print(
+              '🔄 BlocBuilder rebuild triggered: vehicles=${prev.vehicles.length != curr.vehicles.length}, selectedVehicle=${prev.selectedVehicle?.id} -> ${curr.selectedVehicle?.id}',
+            );
           }
           return shouldRebuild;
         },
         builder: (context, state) {
-          print('🏗️ Building MapSection with selectedVehicleId: ${state.selectedVehicle?.id}');
+          // ignore: avoid_print
+          print(
+            '🏗️ Building MapSection with selectedVehicleId: ${state.selectedVehicle?.id}',
+          );
           return MapSection(
             mapController: _mapController,
             vehicles: state.vehicles,

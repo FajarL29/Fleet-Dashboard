@@ -36,145 +36,103 @@ class ReportFilterBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ReportCard(
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final isCompact = constraints.maxWidth < 1140;
-          final controlWidth = isCompact ? constraints.maxWidth : 230.0;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isCompact = constraints.maxWidth < 1180;
+        final filterWidth = isCompact
+            ? constraints.maxWidth
+            : constraints.maxWidth * 0.22;
 
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Wrap(
-                spacing: 16,
-                runSpacing: 16,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                alignment: WrapAlignment.spaceBetween,
-                children: [
-                  ConstrainedBox(
-                    constraints: BoxConstraints(
-                      minWidth: 0,
-                      maxWidth: isCompact ? constraints.maxWidth : 420,
-                    ),
-                    child: _HeaderBlock(title: title),
-                  ),
-                  SizedBox(
-                    width: isCompact
-                        ? constraints.maxWidth
-                        : constraints.maxWidth - 456,
-                    child: Align(
-                      alignment: Alignment.centerRight,
-                      child: Wrap(
-                        spacing: 10,
-                        runSpacing: 10,
-                        alignment: WrapAlignment.end,
-                        children: [
-                          SizedBox(
-                            width: controlWidth,
-                            child: _DriverDropdown(
-                              options: driverOptions,
-                              selectedDriver: selectedDriver,
-                              isLoading: isLoadingDrivers,
-                              onChanged: onDriverChanged,
-                            ),
-                          ),
-                          _ToolbarButton(
-                            icon: Icons.refresh_rounded,
-                            label: 'Refresh',
-                            onTap: onRefresh,
-                          ),
-                          _ToolbarButton(
-                            icon: Icons.picture_as_pdf_outlined,
-                            label: 'Export PDF',
-                            onTap: isExportingPdf ? null : onExportPdf,
-                            isLoading: isExportingPdf,
-                          ),
-                          _ToolbarButton(
-                            icon: Icons.download_rounded,
-                            label: 'Export CSV',
-                            onTap: isExportingCsv ? null : onExportCsv,
-                            isLoading: isExportingCsv,
-                          ),
-                        ],
+        final actions = Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          alignment: WrapAlignment.end,
+          children: [
+            _ToolbarButton(
+              icon: Icons.refresh_rounded,
+              label: 'Refresh',
+              onTap: onRefresh,
+              accentColor: ReportStyles.blue,
+            ),
+            _ToolbarButton(
+              icon: Icons.picture_as_pdf_outlined,
+              label: 'Export PDF',
+              onTap: isExportingPdf ? null : onExportPdf,
+              isLoading: isExportingPdf,
+              accentColor: ReportStyles.blue,
+            ),
+            _ToolbarButton(
+              icon: Icons.download_rounded,
+              label: 'Export CSV',
+              onTap: isExportingCsv ? null : onExportCsv,
+              isLoading: isExportingCsv,
+              accentColor: ReportStyles.green,
+            ),
+          ],
+        );
+
+        final filters = Wrap(
+          spacing: 12,
+          runSpacing: 8,
+          children: [
+            SizedBox(
+              width: filterWidth,
+              child: _DateRangeButton(label: label, onTap: onDateRangeTap),
+            ),
+            SizedBox(
+              width: filterWidth,
+              child: _DriverDropdown(
+                options: driverOptions,
+                selectedDriver: selectedDriver,
+                isLoading: isLoadingDrivers,
+                onChanged: onDriverChanged,
+              ),
+            ),
+          ],
+        );
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          color: ReportStyles.textPrimary,
+                          fontSize: 25,
+                          fontWeight: FontWeight.w800,
+                          height: 1,
+                        ),
                       ),
-                    ),
+                      const SizedBox(height: 12),
+                      if (isCompact) filters,
+                    ],
+                  ),
+                ),
+                if (!isCompact) ...[
+                  const SizedBox(width: 16),
+                  Flexible(
+                    child: Align(alignment: Alignment.topRight, child: actions),
                   ),
                 ],
-              ),
-              const SizedBox(height: 16),
-              Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: [
-                  SizedBox(
-                    width: controlWidth,
-                    child: _DateRangeButton(
-                      label: label,
-                      onTap: onDateRangeTap,
-                    ),
-                  ),
-                  _ContextChip(
-                    icon: Icons.route_rounded,
-                    label: 'Vehicle',
-                    value: 'VIN-0001',
-                  ),
-                  _ContextChip(
-                    icon: Icons.person_pin_circle_outlined,
-                    label: 'Focus',
-                    value: selectedDriver?.driverName ?? 'All Drivers',
-                  ),
-                ],
-              ),
+              ],
+            ),
+            if (!isCompact) ...[
+              const SizedBox(height: 12),
+              Row(children: [Expanded(child: filters)]),
+            ] else ...[
+              const SizedBox(height: 10),
+              Align(alignment: Alignment.centerRight, child: actions),
             ],
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _HeaderBlock extends StatelessWidget {
-  const _HeaderBlock({required this.title});
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'EXECUTIVE OVERVIEW',
-          style: TextStyle(
-            color: ReportStyles.textMuted,
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1.6,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          title,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            color: ReportStyles.textPrimary,
-            fontSize: 28,
-            fontWeight: FontWeight.w800,
-            height: 1,
-          ),
-        ),
-        const SizedBox(height: 6),
-        const Text(
-          'Operational risk snapshot with behavior trend, contributor ranking, and hour-of-day exposure.',
-          style: TextStyle(
-            color: ReportStyles.textSecondary,
-            fontSize: 12,
-            height: 1.4,
-          ),
-        ),
-      ],
+          ],
+        );
+      },
     );
   }
 }
@@ -191,13 +149,13 @@ class _DateRangeButton extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        height: 50,
+        height: 46,
         padding: const EdgeInsets.symmetric(horizontal: 14),
         decoration: BoxDecoration(
-          color: ReportStyles.surfaceBackgroundSoft,
+          color: ReportStyles.surfaceBackground.withValues(alpha: 0.72),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: ReportStyles.borderStrong.withValues(alpha: 0.7),
+            color: ReportStyles.borderStrong.withValues(alpha: 0.82),
           ),
         ),
         child: Row(
@@ -207,7 +165,7 @@ class _DateRangeButton extends StatelessWidget {
               height: 28,
               decoration: BoxDecoration(
                 color: ReportStyles.blue.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(9),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: const Icon(
                 Icons.calendar_month_rounded,
@@ -215,32 +173,17 @@ class _DateRangeButton extends StatelessWidget {
                 color: ReportStyles.blue,
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 10),
             Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Date Range',
-                    style: TextStyle(
-                      color: ReportStyles.textMuted,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: ReportStyles.textPrimary,
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: ReportStyles.textPrimary,
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
             const Icon(
@@ -277,13 +220,13 @@ class _DriverDropdown extends StatelessWidget {
             : DrowsinessDriverOption.allDrivers());
 
     return Container(
-      height: 50,
+      height: 46,
       padding: const EdgeInsets.symmetric(horizontal: 14),
       decoration: BoxDecoration(
-        color: ReportStyles.surfaceBackgroundSoft,
+        color: ReportStyles.surfaceBackground.withValues(alpha: 0.72),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: ReportStyles.borderStrong.withValues(alpha: 0.7),
+          color: ReportStyles.borderStrong.withValues(alpha: 0.82),
         ),
       ),
       child: Row(
@@ -292,16 +235,16 @@ class _DriverDropdown extends StatelessWidget {
             width: 28,
             height: 28,
             decoration: BoxDecoration(
-              color: ReportStyles.red.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(9),
+              color: Colors.white.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(8),
             ),
             child: const Icon(
               Icons.person_rounded,
               size: 16,
-              color: ReportStyles.redSoft,
+              color: ReportStyles.textSecondary,
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
             child: DropdownButtonHideUnderline(
               child: DropdownButton<DrowsinessDriverOption>(
@@ -364,53 +307,6 @@ class _DriverDropdown extends StatelessWidget {
   }
 }
 
-class _ContextChip extends StatelessWidget {
-  const _ContextChip({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
-
-  final IconData icon;
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: ReportStyles.surfaceBackground.withValues(alpha: 0.7),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: ReportStyles.border.withValues(alpha: 0.7)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: ReportStyles.textMuted),
-          const SizedBox(width: 8),
-          Text(
-            '$label: ',
-            style: const TextStyle(
-              color: ReportStyles.textMuted,
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          Text(
-            value,
-            style: const TextStyle(
-              color: ReportStyles.textPrimary,
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class ToolbarButton extends StatelessWidget {
   const ToolbarButton({
     super.key,
@@ -418,12 +314,14 @@ class ToolbarButton extends StatelessWidget {
     required this.label,
     this.onTap,
     this.isLoading = false,
+    this.accentColor = ReportStyles.blue,
   });
 
   final IconData icon;
   final String label;
   final VoidCallback? onTap;
   final bool isLoading;
+  final Color accentColor;
 
   @override
   Widget build(BuildContext context) {
@@ -432,6 +330,7 @@ class ToolbarButton extends StatelessWidget {
       label: label,
       onTap: onTap,
       isLoading: isLoading,
+      accentColor: accentColor,
     );
   }
 }
@@ -442,12 +341,14 @@ class _ToolbarButton extends StatelessWidget {
     required this.label,
     this.onTap,
     this.isLoading = false,
+    this.accentColor = ReportStyles.blue,
   });
 
   final IconData icon;
   final String label;
   final VoidCallback? onTap;
   final bool isLoading;
+  final Color accentColor;
 
   @override
   Widget build(BuildContext context) {
@@ -455,31 +356,32 @@ class _ToolbarButton extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        height: 50,
+        height: 46,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         decoration: BoxDecoration(
-          color: ReportStyles.surfaceBackgroundSoft,
+          color: accentColor.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: ReportStyles.borderStrong.withValues(alpha: 0.7),
-          ),
+          border: Border.all(color: accentColor.withValues(alpha: 0.55)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 17, color: ReportStyles.textPrimary),
+            Icon(icon, size: 17, color: accentColor),
             const SizedBox(width: 8),
             if (isLoading)
-              const SizedBox(
+              SizedBox(
                 width: 14,
                 height: 14,
-                child: CircularProgressIndicator(strokeWidth: 2),
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(accentColor),
+                ),
               )
             else
               Text(
                 label,
-                style: const TextStyle(
-                  color: ReportStyles.textPrimary,
+                style: TextStyle(
+                  color: accentColor,
                   fontSize: 12.5,
                   fontWeight: FontWeight.w700,
                 ),

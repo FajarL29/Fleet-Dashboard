@@ -59,7 +59,9 @@ String _readableLabel(String value) {
   return source
       .split(RegExp(r'[_\s]+'))
       .where((part) => part.isNotEmpty)
-      .map((part) => '${part[0].toUpperCase()}${part.substring(1).toLowerCase()}')
+      .map(
+        (part) => '${part[0].toUpperCase()}${part.substring(1).toLowerCase()}',
+      )
       .join(' ');
 }
 
@@ -73,7 +75,8 @@ class SafetyEventDetailPanel extends StatelessWidget {
 
   final DrowsinessEvent? event;
   final bool isUpdatingReview;
-  final Future<void> Function(SafetyReviewActionRequest request)? onReviewAction;
+  final Future<void> Function(SafetyReviewActionRequest request)?
+  onReviewAction;
 
   @override
   Widget build(BuildContext context) {
@@ -123,7 +126,8 @@ class SafetyEventDetailPanel extends StatelessWidget {
                                   _EvidenceCard(event: event!),
                                   const SizedBox(height: 14),
                                   Row(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Expanded(
                                         child: _InfoCard(
@@ -196,7 +200,8 @@ class SafetyEventDetailPanel extends StatelessWidget {
                                       _MetaTile(
                                         icon: Icons.radar_rounded,
                                         label: 'Speed Source',
-                                        value: event!.speedSource
+                                        value:
+                                            event!.speedSource
                                                     ?.trim()
                                                     .isNotEmpty ==
                                                 true
@@ -321,7 +326,8 @@ class _ReviewActionsCard extends StatelessWidget {
 
   final DrowsinessEvent event;
   final bool isUpdatingReview;
-  final Future<void> Function(SafetyReviewActionRequest request)? onReviewAction;
+  final Future<void> Function(SafetyReviewActionRequest request)?
+  onReviewAction;
 
   @override
   Widget build(BuildContext context) {
@@ -334,19 +340,14 @@ class _ReviewActionsCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF12264A),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: ReportStyles.blue.withOpacity(0.5),
-        ),
+        border: Border.all(color: ReportStyles.blue.withOpacity(0.5)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(
-                Icons.rate_review_outlined,
-                color: ReportStyles.blue,
-              ),
+              const Icon(Icons.rate_review_outlined, color: ReportStyles.blue),
               const SizedBox(width: 12),
               const Expanded(
                 child: Column(
@@ -386,14 +387,14 @@ class _ReviewActionsCard extends StatelessWidget {
               FilledButton.icon(
                 onPressed: canRunActions
                     ? () => _promptForAction(
-                          context,
-                          status: 'confirmed',
-                          title: 'Confirm Event',
-                          message: 'Confirm this as a valid drowsiness event.',
-                          initialNote:
-                              'Valid drowsiness event from camera evidence',
-                          submitLabel: 'Confirm Event',
-                        )
+                        context,
+                        status: 'confirmed',
+                        title: 'Confirm Event',
+                        message: 'Confirm this as a valid drowsiness event.',
+                        initialNote:
+                            'Valid drowsiness event from camera evidence',
+                        submitLabel: 'Confirm Event',
+                      )
                     : null,
                 icon: const Icon(Icons.check_circle_outline_rounded),
                 label: const Text('Confirm Event'),
@@ -401,13 +402,13 @@ class _ReviewActionsCard extends StatelessWidget {
               OutlinedButton.icon(
                 onPressed: canRunActions
                     ? () => _promptForAction(
-                          context,
-                          status: 'false_alarm',
-                          title: 'Mark False Alarm',
-                          message: 'Record why this event is a false positive.',
-                          initialNote: 'False positive after evidence check',
-                          submitLabel: 'Mark False Alarm',
-                        )
+                        context,
+                        status: 'false_alarm',
+                        title: 'Mark False Alarm',
+                        message: 'Record why this event is a false positive.',
+                        initialNote: 'False positive after evidence check',
+                        submitLabel: 'Mark False Alarm',
+                      )
                     : null,
                 icon: const Icon(Icons.cancel_outlined),
                 label: const Text('Mark False Alarm'),
@@ -415,13 +416,13 @@ class _ReviewActionsCard extends StatelessWidget {
               OutlinedButton.icon(
                 onPressed: canRunActions
                     ? () => _promptForAction(
-                          context,
-                          status: 'follow_up_required',
-                          title: 'Follow-up Required',
-                          message: 'Add a note for supervisor follow-up.',
-                          initialNote: 'Needs supervisor follow-up',
-                          submitLabel: 'Save Follow-up Required',
-                        )
+                        context,
+                        status: 'follow_up_required',
+                        title: 'Follow-up Required',
+                        message: 'Add a note for supervisor follow-up.',
+                        initialNote: 'Needs supervisor follow-up',
+                        submitLabel: 'Save Follow-up Required',
+                      )
                     : null,
                 icon: const Icon(Icons.assignment_late_outlined),
                 label: const Text('Follow-up Required'),
@@ -429,14 +430,14 @@ class _ReviewActionsCard extends StatelessWidget {
               FilledButton.icon(
                 onPressed: canRunActions
                     ? () => _promptForAction(
-                          context,
-                          status: 'followed_up',
-                          title: 'Mark Followed Up',
-                          message: 'Add the outcome of the follow-up.',
-                          initialNote: 'Supervisor contacted driver',
-                          submitLabel: 'Mark Followed Up',
-                          isFollowUp: true,
-                        )
+                        context,
+                        status: 'followed_up',
+                        title: 'Mark Followed Up',
+                        message: 'Add the outcome of the follow-up.',
+                        initialNote: 'Supervisor contacted driver',
+                        submitLabel: 'Mark Followed Up',
+                        isFollowUp: true,
+                      )
                     : null,
                 style: FilledButton.styleFrom(
                   backgroundColor: event.isFollowUpRequired
@@ -665,10 +666,10 @@ class _EvidenceCard extends StatelessWidget {
               GestureDetector(
                 onTap: canPreview
                     ? () => _openPreviewDialog(
-                          context,
-                          imageUrl: imageUrl,
-                          previewBytes: previewBytes,
-                        )
+                        context,
+                        imageUrl: imageUrl,
+                        previewBytes: previewBytes,
+                      )
                     : null,
                 child: Stack(
                   children: [
@@ -907,7 +908,9 @@ class _EvidenceCard extends StatelessWidget {
     }
 
     final uri = Uri.tryParse(value);
-    if (uri == null || !uri.hasScheme || !(uri.isScheme('http') || uri.isScheme('https'))) {
+    if (uri == null ||
+        !uri.hasScheme ||
+        !(uri.isScheme('http') || uri.isScheme('https'))) {
       return null;
     }
 
@@ -971,7 +974,7 @@ class _NetworkFallbackImageState extends State<_NetworkFallbackImage> {
                   value: progress.expectedTotalBytes == null
                       ? null
                       : progress.cumulativeBytesLoaded /
-                          progress.expectedTotalBytes!,
+                            progress.expectedTotalBytes!,
                 ),
                 const SizedBox(height: 12),
                 const Text(
@@ -1148,10 +1151,7 @@ class _SeverityPill extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: TextStyle(
-          color: color,
-          fontWeight: FontWeight.w800,
-        ),
+        style: TextStyle(color: color, fontWeight: FontWeight.w800),
       ),
     );
   }

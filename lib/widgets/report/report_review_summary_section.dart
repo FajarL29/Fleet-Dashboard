@@ -5,10 +5,7 @@ import '../../models/drowsiness_report.dart';
 import 'report_styles.dart';
 
 class ReportReviewSummarySection extends StatelessWidget {
-  const ReportReviewSummarySection({
-    super.key,
-    required this.reviewSummary,
-  });
+  const ReportReviewSummarySection({super.key, required this.reviewSummary});
 
   final DrowsinessReviewSummary reviewSummary;
 
@@ -85,12 +82,16 @@ class ReportReviewSummarySection extends StatelessWidget {
                 child: const _ReviewSummaryHeader(),
               ),
               SizedBox(
-                width: isWide ? constraints.maxWidth - 238 : constraints.maxWidth,
+                width: isWide
+                    ? constraints.maxWidth - 238
+                    : constraints.maxWidth,
                 child: Wrap(
                   spacing: 6,
                   runSpacing: 6,
                   children: [
-                    ...statusCards.map((card) => _StatusSummaryChip(data: card)),
+                    ...statusCards.map(
+                      (card) => _StatusSummaryChip(data: card),
+                    ),
                     ...rateCards.map((card) => _RateSummaryPill(data: card)),
                   ],
                 ),
@@ -145,9 +146,7 @@ class _ReviewSummaryHeader extends StatelessWidget {
 }
 
 class _StatusSummaryChip extends StatelessWidget {
-  const _StatusSummaryChip({
-    required this.data,
-  });
+  const _StatusSummaryChip({required this.data});
 
   final _StatusChipData data;
 
@@ -210,9 +209,7 @@ class _StatusSummaryChip extends StatelessWidget {
 }
 
 class _RateSummaryPill extends StatelessWidget {
-  const _RateSummaryPill({
-    required this.data,
-  });
+  const _RateSummaryPill({required this.data});
 
   final _RateMetricData data;
 

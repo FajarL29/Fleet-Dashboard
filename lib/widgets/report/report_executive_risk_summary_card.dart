@@ -5,10 +5,7 @@ import '../../models/drowsiness_report.dart';
 import 'report_styles.dart';
 
 class ReportExecutiveRiskSummaryCard extends StatelessWidget {
-  const ReportExecutiveRiskSummaryCard({
-    super.key,
-    required this.riskSummary,
-  });
+  const ReportExecutiveRiskSummaryCard({super.key, required this.riskSummary});
 
   final ReportRiskSummary riskSummary;
 
@@ -26,22 +23,16 @@ class ReportExecutiveRiskSummaryCard extends StatelessWidget {
           final insightWidth = constraints.maxWidth >= 1200
               ? (constraints.maxWidth - 20) / 3
               : constraints.maxWidth >= 820
-                  ? (constraints.maxWidth - 10) / 2
-                  : constraints.maxWidth;
+              ? (constraints.maxWidth - 10) / 2
+              : constraints.maxWidth;
 
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (isNarrow)
-                _NarrowHeader(
-                  riskSummary: riskSummary,
-                  accent: palette.accent,
-                )
+                _NarrowHeader(riskSummary: riskSummary, accent: palette.accent)
               else
-                _WideHeader(
-                  riskSummary: riskSummary,
-                  accent: palette.accent,
-                ),
+                _WideHeader(riskSummary: riskSummary, accent: palette.accent),
               if (visibleFlags.isNotEmpty) ...[
                 const SizedBox(height: 10),
                 Wrap(
@@ -140,10 +131,7 @@ class ReportExecutiveRiskSummaryCard extends StatelessWidget {
 }
 
 class _NarrowHeader extends StatelessWidget {
-  const _NarrowHeader({
-    required this.riskSummary,
-    required this.accent,
-  });
+  const _NarrowHeader({required this.riskSummary, required this.accent});
 
   final ReportRiskSummary riskSummary;
   final Color accent;
@@ -153,10 +141,7 @@ class _NarrowHeader extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _RiskBadge(
-          label: _badgeLabel(riskSummary.riskLevel),
-          color: accent,
-        ),
+        _RiskBadge(label: _badgeLabel(riskSummary.riskLevel), color: accent),
         const SizedBox(height: 10),
         Text(
           riskSummary.headline,
@@ -188,10 +173,7 @@ class _NarrowHeader extends StatelessWidget {
 }
 
 class _WideHeader extends StatelessWidget {
-  const _WideHeader({
-    required this.riskSummary,
-    required this.accent,
-  });
+  const _WideHeader({required this.riskSummary, required this.accent});
 
   final ReportRiskSummary riskSummary;
   final Color accent;
@@ -243,10 +225,7 @@ class _WideHeader extends StatelessWidget {
 }
 
 class _RiskBadge extends StatelessWidget {
-  const _RiskBadge({
-    required this.label,
-    required this.color,
-  });
+  const _RiskBadge({required this.label, required this.color});
 
   final String label;
   final Color color;
@@ -418,10 +397,7 @@ class _InsightBlock extends StatelessWidget {
           SizedBox(
             width: 92,
             height: 40,
-            child: _Sparkline(
-              color: sparklineColor,
-              values: sparklineValues,
-            ),
+            child: _Sparkline(color: sparklineColor, values: sparklineValues),
           ),
         ],
       ),
@@ -430,9 +406,7 @@ class _InsightBlock extends StatelessWidget {
 }
 
 class _ActionStrip extends StatelessWidget {
-  const _ActionStrip({
-    required this.actions,
-  });
+  const _ActionStrip({required this.actions});
 
   final List<ReportRecommendedAction> actions;
 
@@ -452,11 +426,18 @@ class _ActionStrip extends StatelessWidget {
             children: [
               Container(
                 width: isWide ? 176 : constraints.maxWidth,
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   border: Border(
-                    right: isWide ? BorderSide(color: ReportStyles.border) : BorderSide.none,
-                    bottom: !isWide ? BorderSide(color: ReportStyles.border) : BorderSide.none,
+                    right: isWide
+                        ? BorderSide(color: ReportStyles.border)
+                        : BorderSide.none,
+                    bottom: !isWide
+                        ? BorderSide(color: ReportStyles.border)
+                        : BorderSide.none,
                   ),
                 ),
                 child: const Text(
@@ -470,7 +451,9 @@ class _ActionStrip extends StatelessWidget {
               ),
               ...actions.map(
                 (action) => SizedBox(
-                  width: isWide ? (constraints.maxWidth - 176) / actions.length : constraints.maxWidth,
+                  width: isWide
+                      ? (constraints.maxWidth - 176) / actions.length
+                      : constraints.maxWidth,
                   child: _RecommendedActionTile(action: action),
                 ),
               ),
@@ -483,9 +466,7 @@ class _ActionStrip extends StatelessWidget {
 }
 
 class _RecommendedActionTile extends StatelessWidget {
-  const _RecommendedActionTile({
-    required this.action,
-  });
+  const _RecommendedActionTile({required this.action});
 
   final ReportRecommendedAction action;
 
@@ -496,9 +477,7 @@ class _RecommendedActionTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        border: Border(
-          left: BorderSide(color: ReportStyles.border),
-        ),
+        border: Border(left: BorderSide(color: ReportStyles.border)),
       ),
       child: Row(
         children: [
@@ -557,10 +536,7 @@ class _RecommendedActionTile extends StatelessWidget {
 }
 
 class _Sparkline extends StatelessWidget {
-  const _Sparkline({
-    required this.color,
-    required this.values,
-  });
+  const _Sparkline({required this.color, required this.values});
 
   final Color color;
   final List<double> values;
@@ -568,19 +544,13 @@ class _Sparkline extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CustomPaint(
-      painter: _SparklinePainter(
-        color: color,
-        values: values,
-      ),
+      painter: _SparklinePainter(color: color, values: values),
     );
   }
 }
 
 class _SparklinePainter extends CustomPainter {
-  const _SparklinePainter({
-    required this.color,
-    required this.values,
-  });
+  const _SparklinePainter({required this.color, required this.values});
 
   final Color color;
   final List<double> values;
@@ -598,10 +568,7 @@ class _SparklinePainter extends CustomPainter {
       ..shader = LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
-        colors: [
-          color.withValues(alpha: 0.30),
-          color.withValues(alpha: 0.02),
-        ],
+        colors: [color.withValues(alpha: 0.30), color.withValues(alpha: 0.02)],
       ).createShader(Offset.zero & size);
 
     final linePath = Path();
@@ -635,10 +602,7 @@ class _SparklinePainter extends CustomPainter {
 }
 
 class _FlagChip extends StatelessWidget {
-  const _FlagChip({
-    required this.label,
-    required this.color,
-  });
+  const _FlagChip({required this.label, required this.color});
 
   final String label;
   final Color color;

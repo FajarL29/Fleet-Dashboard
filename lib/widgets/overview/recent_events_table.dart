@@ -4,10 +4,7 @@ import 'package:intl/intl.dart';
 import '../../theme/app_theme.dart';
 
 class RecentEventsTable extends StatelessWidget {
-  const RecentEventsTable({
-    super.key,
-    required this.events,
-  });
+  const RecentEventsTable({super.key, required this.events});
 
   final List<Map<String, dynamic>> events;
 
@@ -100,9 +97,7 @@ class _HeaderRow extends StatelessWidget {
 }
 
 class _EventRow extends StatelessWidget {
-  const _EventRow({
-    required this.event,
-  });
+  const _EventRow({required this.event});
 
   final Map<String, dynamic> event;
 
@@ -116,16 +111,11 @@ class _EventRow extends StatelessWidget {
       margin: const EdgeInsets.only(top: 8),
       padding: const EdgeInsets.symmetric(vertical: 12),
       decoration: BoxDecoration(
-        border: Border(
-          top: BorderSide(color: Colors.white.withOpacity(0.05)),
-        ),
+        border: Border(top: BorderSide(color: Colors.white.withOpacity(0.05))),
       ),
       child: Row(
         children: [
-          _TableCell(
-            flex: 20,
-            child: Text(time, style: _valueStyle()),
-          ),
+          _TableCell(flex: 20, child: Text(time, style: _valueStyle())),
           _TableCell(
             flex: 20,
             child: Text(
@@ -168,10 +158,7 @@ class _EventRow extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                Text(
-                  severity,
-                  style: _valueStyle(color: severityColor),
-                ),
+                Text(severity, style: _valueStyle(color: severityColor)),
               ],
             ),
           ),
@@ -200,11 +187,7 @@ class _EventRow extends StatelessWidget {
   }
 
   TextStyle _valueStyle({Color color = AppTheme.textSecondary}) {
-    return TextStyle(
-      color: color,
-      fontSize: 13,
-      fontWeight: FontWeight.w500,
-    );
+    return TextStyle(color: color, fontSize: 13, fontWeight: FontWeight.w500);
   }
 
   Color _severityColor(String severity) {
@@ -220,10 +203,7 @@ class _EventRow extends StatelessWidget {
 }
 
 class _TableCell extends StatelessWidget {
-  const _TableCell({
-    required this.flex,
-    required this.child,
-  });
+  const _TableCell({required this.flex, required this.child});
 
   final int flex;
   final Widget child;
@@ -232,10 +212,7 @@ class _TableCell extends StatelessWidget {
   Widget build(BuildContext context) {
     return Expanded(
       flex: flex,
-      child: Padding(
-        padding: const EdgeInsets.only(right: 12),
-        child: child,
-      ),
+      child: Padding(padding: const EdgeInsets.only(right: 12), child: child),
     );
   }
 }

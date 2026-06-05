@@ -4,10 +4,7 @@ import 'package:intl/intl.dart';
 import '../../theme/app_theme.dart';
 
 class RecentEventsPreviewPanel extends StatelessWidget {
-  const RecentEventsPreviewPanel({
-    super.key,
-    required this.events,
-  });
+  const RecentEventsPreviewPanel({super.key, required this.events});
 
   final List<Map<String, dynamic>> events;
 
@@ -46,10 +43,7 @@ class RecentEventsPreviewPanel extends StatelessWidget {
                 ),
                 child: const Text(
                   'View all events',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: AppTheme.textSecondary,
-                  ),
+                  style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
                 ),
               ),
             ],
@@ -85,9 +79,7 @@ class RecentEventsPreviewPanel extends StatelessWidget {
 }
 
 class _PreviewRow extends StatelessWidget {
-  const _PreviewRow({
-    required this.event,
-  });
+  const _PreviewRow({required this.event});
 
   final Map<String, dynamic> event;
 
@@ -176,9 +168,8 @@ class _PreviewRow extends StatelessWidget {
     }
 
     final now = DateTime.now();
-    final isToday = time.year == now.year &&
-        time.month == now.month &&
-        time.day == now.day;
+    final isToday =
+        time.year == now.year && time.month == now.month && time.day == now.day;
 
     return isToday
         ? DateFormat('HH:mm').format(time)

@@ -7,18 +7,12 @@ import '../../models/driver_health.dart';
 import '../../models/aqi_data.dart';
 
 /// Represents the status of the dashboard
-enum DashboardStatus {
-  initial,
-  loading,
-  connected,
-  disconnected,
-  error,
-}
+enum DashboardStatus { initial, loading, connected, disconnected, error }
 
 /// State class containing all dashboard data
 class DashboardState extends Equatable {
-
-  final Map<int, Map<String, dynamic>> driverAlerts; // Menyimpan data drowsiness per driver ID
+  final Map<int, Map<String, dynamic>>
+  driverAlerts; // Menyimpan data drowsiness per driver ID
   /// Current status of the dashboard
   final DashboardStatus status;
 
@@ -57,6 +51,7 @@ class DashboardState extends Equatable {
 
   /// Aggregate driver behavior summaries from the API
   final List<DriverBehaviorSummary> driverBehaviorSummaries;
+  final bool isOverviewLoading;
 
   /// Error message (if any)
   final String? errorMessage;
@@ -75,6 +70,7 @@ class DashboardState extends Equatable {
     this.recentDrowsinessEvents = const [],
     this.currentDrowsinessReport,
     this.driverBehaviorSummaries = const [],
+    this.isOverviewLoading = false,
     this.errorMessage,
     this.driverAlerts = const {},
   });
@@ -96,29 +92,35 @@ class DashboardState extends Equatable {
         ),
 
         Vehicle(
-        id: '999', 
-        // TODO: Replace with the real API vehicle identifier when available.
-        plateNumber: 'B 9999 XYZ',
-        type: 'HIACE Luxury',
-        driverName: 'Bahrudin',
-        position: LatLng(-6.35, 107.29), // Posisi awal bebas
-        status: VehicleStatus.active, activityTime: '11.00 ',
-      ),
-      Vehicle(
-        id: '1234', 
-        // TODO: Replace with the real API vehicle identifier when available.
-        plateNumber: 'B 1111 UOB',
-        type: 'Innova Ribon',
-        driverName: 'Gito',
-        position: LatLng(-6.265246, 106.883481), // Posisi awal bebas -6.265246, 106.883481
-        status: VehicleStatus.active, activityTime: '11.00 ',
-      ),
+          id: '999',
+          // TODO: Replace with the real API vehicle identifier when available.
+          plateNumber: 'B 9999 XYZ',
+          type: 'HIACE Luxury',
+          driverName: 'Bahrudin',
+          position: LatLng(-6.35, 107.29), // Posisi awal bebas
+          status: VehicleStatus.active,
+          activityTime: '11.00 ',
+        ),
+        Vehicle(
+          id: '1234',
+          // TODO: Replace with the real API vehicle identifier when available.
+          plateNumber: 'B 1111 UOB',
+          type: 'Innova Ribon',
+          driverName: 'Gito',
+          position: LatLng(
+            -6.265246,
+            106.883481,
+          ), // Posisi awal bebas -6.265246, 106.883481
+          status: VehicleStatus.active,
+          activityTime: '11.00 ',
+        ),
       ],
       driversHealth: [
         DriverHealth(
           driverId: '3034',
           name: 'Budi',
-          imageUrl: 'https://th.bing.com/th/id/OIP.3bw4A-iBUi5Pa3PeIGXRZQHaE8?o=7',
+          imageUrl:
+              'https://th.bing.com/th/id/OIP.3bw4A-iBUi5Pa3PeIGXRZQHaE8?o=7',
           heartRate: 75,
           temperature: 36.5,
           status: HealthStatus.normal,
@@ -127,7 +129,8 @@ class DashboardState extends Equatable {
         DriverHealth(
           driverId: '999',
           name: 'Bahrudin',
-          imageUrl: 'https://static.vecteezy.com/system/resources/previews/004/975/153/large_2x/driver-color-icon-transportation-service-isolated-illustration-vector.jpg',
+          imageUrl:
+              'https://static.vecteezy.com/system/resources/previews/004/975/153/large_2x/driver-color-icon-transportation-service-isolated-illustration-vector.jpg',
           heartRate: 75,
           temperature: 36.5,
           status: HealthStatus.normal,
@@ -136,7 +139,8 @@ class DashboardState extends Equatable {
         DriverHealth(
           driverId: '1234',
           name: 'Gito',
-          imageUrl: 'https://static.vecteezy.com/system/resources/previews/004/975/153/large_2x/driver-color-icon-transportation-service-isolated-illustration-vector.jpg',
+          imageUrl:
+              'https://static.vecteezy.com/system/resources/previews/004/975/153/large_2x/driver-color-icon-transportation-service-isolated-illustration-vector.jpg',
           heartRate: 75,
           temperature: 36.5,
           status: HealthStatus.normal,
@@ -154,6 +158,7 @@ class DashboardState extends Equatable {
       recentDrowsinessEvents: const [],
       currentDrowsinessReport: null,
       driverBehaviorSummaries: const [],
+      isOverviewLoading: false,
     );
   }
 
@@ -176,17 +181,21 @@ class DashboardState extends Equatable {
     DrowsinessReport? currentDrowsinessReport,
     bool clearCurrentDrowsinessReport = false,
     List<DriverBehaviorSummary>? driverBehaviorSummaries,
+    bool? isOverviewLoading,
     String? errorMessage,
-    bool clearErrorMessage = false, 
-    Map<int, Map<String, dynamic>>? driverAlerts, // Perbaikan: Pakai ? dan hapus required
+    bool clearErrorMessage = false,
+    Map<int, Map<String, dynamic>>?
+    driverAlerts, // Perbaikan: Pakai ? dan hapus required
   }) {
     return DashboardState(
       status: status ?? this.status,
       selectedMenuIndex: selectedMenuIndex ?? this.selectedMenuIndex,
-      selectedVehicle:
-          clearSelectedVehicle ? null : (selectedVehicle ?? this.selectedVehicle),
-      currentAlert:
-          clearCurrentAlert ? null : (currentAlert ?? this.currentAlert),
+      selectedVehicle: clearSelectedVehicle
+          ? null
+          : (selectedVehicle ?? this.selectedVehicle),
+      currentAlert: clearCurrentAlert
+          ? null
+          : (currentAlert ?? this.currentAlert),
       vehicles: vehicles ?? this.vehicles,
       driversHealth: driversHealth ?? this.driversHealth,
       aqiData: aqiData ?? this.aqiData,
@@ -200,28 +209,32 @@ class DashboardState extends Equatable {
           : (currentDrowsinessReport ?? this.currentDrowsinessReport),
       driverBehaviorSummaries:
           driverBehaviorSummaries ?? this.driverBehaviorSummaries,
-      errorMessage:
-          clearErrorMessage ? null : (errorMessage ?? this.errorMessage),
-      driverAlerts: driverAlerts ?? this.driverAlerts, // Perbaikan: Tambahkan ini
+      isOverviewLoading: isOverviewLoading ?? this.isOverviewLoading,
+      errorMessage: clearErrorMessage
+          ? null
+          : (errorMessage ?? this.errorMessage),
+      driverAlerts:
+          driverAlerts ?? this.driverAlerts, // Perbaikan: Tambahkan ini
     );
   }
 
   @override
   List<Object?> get props => [
-        status,
-        selectedMenuIndex,
-        selectedVehicle,
-        currentAlert,
-        vehicles,
-        driversHealth,
-        aqiData,
-        onlineDrivers,
-        highRiskAlerts,
-        alertLog,
-        recentDrowsinessEvents,
-        currentDrowsinessReport,
-        driverBehaviorSummaries,
-        errorMessage,
-        driverAlerts, // Perbaikan: Masukkan ke props agar UI sinkron
-      ];
+    status,
+    selectedMenuIndex,
+    selectedVehicle,
+    currentAlert,
+    vehicles,
+    driversHealth,
+    aqiData,
+    onlineDrivers,
+    highRiskAlerts,
+    alertLog,
+    recentDrowsinessEvents,
+    currentDrowsinessReport,
+    driverBehaviorSummaries,
+    isOverviewLoading,
+    errorMessage,
+    driverAlerts, // Perbaikan: Masukkan ke props agar UI sinkron
+  ];
 }

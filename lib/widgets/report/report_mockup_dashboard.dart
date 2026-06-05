@@ -1,26 +1,29 @@
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../models/drowsiness_driver_option.dart';
 import '../../models/drowsiness_report.dart';
+import 'report_skeleton_loading.dart';
 import 'report_styles.dart';
 
-class ReportExecutiveDashboard extends StatelessWidget {
-  const ReportExecutiveDashboard({
+class ReportMockupDashboard extends StatelessWidget {
+  const ReportMockupDashboard({
     super.key,
     required this.report,
     required this.events,
     required this.selectedDriver,
     required this.dateRangeLabel,
+    this.isRefreshing = false,
   });
 
   final DrowsinessReport report;
   final List<DrowsinessEvent> events;
   final DrowsinessDriverOption? selectedDriver;
   final String dateRangeLabel;
+  final bool isRefreshing;
 
   @override
   Widget build(BuildContext context) {
@@ -42,20 +45,13 @@ class ReportExecutiveDashboard extends StatelessWidget {
     final backlogRate = totalEvents == 0
         ? 0.0
         : (backlogCount / totalEvents) * 100;
-    if (kDebugMode) {
-      debugPrint(
-        '[Report] Executive dashboard render userId=${selectedDriver?.userId ?? 'all'} '
-        'totalEvents=$totalEvents weeklyRows=${weeklyData.rows.length} '
-        'contributors=${contributors.length} eventSamples=${events.length}',
-      );
-    }
 
-    return Column(
+    final dashboard = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _ResponsiveGrid(
-          minItemWidth: 210,
-          spacing: 14,
+          minItemWidth: 220,
+          spacing: 12,
           children: [
             _RiskScoreCard(
               score: report.riskSummary.riskScore,
@@ -68,8 +64,9 @@ class ReportExecutiveDashboard extends StatelessWidget {
               subtitle: highSeverityEvents > 0
                   ? '${_formatPercent(highSeverityRate)} High Severity'
                   : 'No high severity events',
-              accent: ReportStyles.redSoft,
-              icon: Icons.warning_amber_rounded,
+              accent: ReportStyles.blue,
+              secondaryAccent: ReportStyles.redSoft,
+              icon: Icons.assignment_outlined,
             ),
             _MetricCard(
               title: 'Unreviewed Events',
@@ -77,14 +74,15 @@ class ReportExecutiveDashboard extends StatelessWidget {
               subtitle: backlogCount > 0
                   ? '${_formatPercent(backlogRate)} Backlog'
                   : 'No review backlog',
-              accent: ReportStyles.blue,
-              icon: Icons.inventory_2_outlined,
+              accent: ReportStyles.purple,
+              secondaryAccent: ReportStyles.purple,
+              icon: Icons.feed_outlined,
             ),
           ],
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 12),
         _ResponsiveColumns(
-          spacing: 14,
+          spacing: 12,
           leftFlex: 55,
           rightFlex: 45,
           left: _WeeklyBehaviorCard(
@@ -96,9 +94,9 @@ class ReportExecutiveDashboard extends StatelessWidget {
             isDriverFiltered: isDriverFiltered,
           ),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 12),
         _ResponsiveColumns(
-          spacing: 14,
+          spacing: 12,
           leftFlex: 45,
           rightFlex: 55,
           left: _TrendBehaviorCard(dataset: weeklyData),
@@ -108,6 +106,24 @@ class ReportExecutiveDashboard extends StatelessWidget {
             dateRangeLabel: dateRangeLabel,
           ),
         ),
+      ],
+    );
+
+    if (!isRefreshing) {
+      return dashboard;
+    }
+
+    return Stack(
+      children: [
+        AbsorbPointer(
+          absorbing: true,
+          child: AnimatedOpacity(
+            opacity: 0.62,
+            duration: const Duration(milliseconds: 180),
+            child: dashboard,
+          ),
+        ),
+        const IgnorePointer(child: ReportDashboardSkeleton(overlay: true)),
       ],
     );
   }
@@ -128,22 +144,18 @@ class _ResponsiveGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final forcedDesktopColumns = constraints.maxWidth >= 1200 ? 4 : null;
-        final columns = math.max(
-          1,
-          math.min(
-            children.length,
-            forcedDesktopColumns ??
-                ((constraints.maxWidth + spacing) / (minItemWidth + spacing))
-                    .floor(),
-          ),
-        );
-        final availableWidth =
-            (constraints.maxWidth - (spacing * (columns - 1))).clamp(
-              0.0,
-              double.infinity,
-            );
-        final itemWidth = (availableWidth / columns).toDouble();
+        final columns = constraints.maxWidth >= 1200
+            ? 4
+            : math.max(
+                1,
+                math.min(
+                  children.length,
+                  ((constraints.maxWidth + spacing) / (minItemWidth + spacing))
+                      .floor(),
+                ),
+              );
+        final itemWidth =
+            (constraints.maxWidth - (spacing * (columns - 1))) / columns;
 
         return Wrap(
           spacing: spacing,
@@ -176,7 +188,7 @@ class _ResponsiveColumns extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        if (constraints.maxWidth < 1080) {
+        if (constraints.maxWidth < 1100) {
           return Column(
             children: [
               left,
@@ -199,6 +211,21 @@ class _ResponsiveColumns extends StatelessWidget {
   }
 }
 
+class _ReportPanel extends StatelessWidget {
+  const _ReportPanel({required this.child, required this.height});
+
+  final Widget child;
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    return ReportCard(
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+      child: SizedBox(height: height, child: child),
+    );
+  }
+}
+
 class _RiskScoreCard extends StatelessWidget {
   const _RiskScoreCard({required this.score, required this.riskLevel});
 
@@ -209,55 +236,82 @@ class _RiskScoreCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = _riskAccent(riskLevel);
 
-    return ReportCard(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-      child: SizedBox(
-        height: 140,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const _CardEyebrow('Risk Score'),
-            const SizedBox(height: 8),
-            Expanded(
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  SizedBox.expand(
-                    child: CustomPaint(
-                      painter: _GaugePainter(
-                        progress: score.clamp(0, 100) / 100,
-                        color: color,
-                      ),
+    return _ReportPanel(
+      height: 126,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _CardEyebrow('Risk Score'),
+          const SizedBox(height: 4),
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final gaugeWidth = constraints.maxWidth.clamp(220.0, 280.0);
+                final gaugeHeight = constraints.maxHeight.clamp(84.0, 94.0);
+
+                return Center(
+                  child: SizedBox(
+                    width: gaugeWidth,
+                    height: gaugeHeight,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Positioned.fill(
+                          child: CustomPaint(
+                            painter: _GaugePainter(
+                              progress: score.clamp(0, 100) / 100,
+                              color: color,
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          top: gaugeHeight * 0.42,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              RichText(
+                                text: TextSpan(
+                                  children: [
+                                    TextSpan(
+                                      text: '$score',
+                                      style: const TextStyle(
+                                        color: ReportStyles.textPrimary,
+                                        fontSize: 28,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                    const TextSpan(
+                                      text: '/100',
+                                      style: TextStyle(
+                                        color: ReportStyles.textSecondary,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                _displayRiskLevel(riskLevel).toUpperCase(),
+                                style: TextStyle(
+                                  color: color,
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 1.1,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        '$score/100',
-                        style: const TextStyle(
-                          color: ReportStyles.textPrimary,
-                          fontSize: 24,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        _displayRiskLevel(riskLevel).toUpperCase(),
-                        style: TextStyle(
-                          color: color,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1.2,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+                );
+              },
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -272,67 +326,41 @@ class _RiskLevelCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = _riskAccent(riskLevel);
 
-    return ReportCard(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-      child: SizedBox(
-        height: 140,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const _CardEyebrow('Risk Level'),
-            const Spacer(),
-            Row(
-              children: [
-                Container(
-                  width: 52,
-                  height: 52,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: color.withValues(alpha: 0.1),
-                    border: Border.all(color: color.withValues(alpha: 0.24)),
-                  ),
-                  child: Icon(Icons.shield_outlined, color: color, size: 28),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Text(
-                    _displayRiskLevel(riskLevel),
-                    style: TextStyle(
-                      color: color,
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      height: 1.05,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 11,
-                  vertical: 5,
-                ),
+    return _ReportPanel(
+      height: 126,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _CardEyebrow('Risk Level'),
+          const Spacer(),
+          Row(
+            children: [
+              Container(
+                width: 56,
+                height: 56,
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(color: color.withValues(alpha: 0.18)),
+                  shape: BoxShape.circle,
+                  color: color.withValues(alpha: 0.1),
+                  border: Border.all(color: color.withValues(alpha: 0.2)),
                 ),
+                child: Icon(Icons.gpp_bad_outlined, color: color, size: 30),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
                 child: Text(
-                  'Fleet risk posture',
+                  _displayRiskLevel(riskLevel),
                   style: TextStyle(
-                    color: color.withValues(alpha: 0.95),
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
+                    color: color,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    height: 1,
                   ),
                 ),
               ),
-            ),
-            const Spacer(),
-          ],
-        ),
+            ],
+          ),
+          const Spacer(),
+        ],
       ),
     );
   }
@@ -344,6 +372,7 @@ class _MetricCard extends StatelessWidget {
     required this.value,
     required this.subtitle,
     required this.accent,
+    required this.secondaryAccent,
     required this.icon,
   });
 
@@ -351,50 +380,60 @@ class _MetricCard extends StatelessWidget {
   final String value;
   final String subtitle;
   final Color accent;
+  final Color secondaryAccent;
   final IconData icon;
 
   @override
   Widget build(BuildContext context) {
-    return ReportCard(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-      child: SizedBox(
-        height: 140,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _CardEyebrow(title),
-            const SizedBox(height: 10),
-            Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: accent.withValues(alpha: 0.14),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: accent.withValues(alpha: 0.18)),
+    return _ReportPanel(
+      height: 126,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _CardEyebrow(title),
+          const Spacer(),
+          Row(
+            children: [
+              Container(
+                width: 54,
+                height: 54,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: accent.withValues(alpha: 0.12),
+                  border: Border.all(color: accent.withValues(alpha: 0.18)),
+                ),
+                child: Icon(icon, color: accent, size: 28),
               ),
-              child: Icon(icon, color: accent, size: 20),
-            ),
-            const Spacer(),
-            Text(
-              value,
-              style: const TextStyle(
-                color: ReportStyles.textPrimary,
-                fontSize: 30,
-                fontWeight: FontWeight.w800,
-                height: 1,
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      value,
+                      style: const TextStyle(
+                        color: ReportStyles.textPrimary,
+                        fontSize: 28,
+                        fontWeight: FontWeight.w800,
+                        height: 1,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        color: secondaryAccent,
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              subtitle,
-              style: const TextStyle(
-                color: ReportStyles.textSecondary,
-                fontSize: 11.5,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
+            ],
+          ),
+          const Spacer(),
+        ],
       ),
     );
   }
@@ -411,28 +450,23 @@ class _WeeklyBehaviorCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ReportCard(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+    return _ReportPanel(
+      height: 255,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Weekly Behavior Trend',
-                      style: TextStyle(
-                        color: ReportStyles.textPrimary,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ],
+              const Text(
+                'Weekly Behavior Trend',
+                style: TextStyle(
+                  color: ReportStyles.textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
+              const Spacer(),
               if (dataset.topContributorLabel.isNotEmpty)
                 Container(
                   padding: const EdgeInsets.symmetric(
@@ -458,67 +492,63 @@ class _WeeklyBehaviorCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
+          const Row(
+            children: [
+              _LegendDot(color: ReportStyles.redSoft, label: 'Drowsiness'),
+              SizedBox(width: 16),
+              _LegendDot(color: Color(0xFFB8BEC8), label: 'Other Behavior'),
+            ],
+          ),
+          const SizedBox(height: 12),
           if (dataset.rows.isEmpty)
-            const _CardEmptyState('No weekly behavior data available')
+            const Expanded(
+              child: _CardEmptyState('No weekly behavior data available'),
+            )
           else
-            SizedBox(
-              height: 252,
-              child: Column(
-                children: [
-                  const Row(
-                    children: [
-                      _LegendDot(
-                        color: ReportStyles.redSoft,
-                        label: 'Drowsiness',
-                      ),
-                      SizedBox(width: 16),
-                      _LegendDot(
-                        color: Color(0xFFB8BEC8),
-                        label: 'Other Behavior',
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Expanded(
-                    child: Row(
-                      children: [
-                        _ChartYAxis(maxTotal: dataset.maxTotal),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Stack(
-                            children: [
-                              const Positioned.fill(child: _ChartGridLines()),
-                              Positioned.fill(
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: dataset.rows
-                                      .map(
-                                        (row) => Expanded(
-                                          child: Padding(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 6,
-                                            ),
-                                            child: _WeekdayStackBar(
-                                              label: row.shortLabel,
-                                              drowsiness: row.drowsiness
-                                                  .toDouble(),
-                                              others: row.others.toDouble(),
-                                              maxTotal: dataset.maxTotal
-                                                  .toDouble(),
-                                            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Row(
+                  children: [
+                    _ChartYAxis(maxTotal: dataset.maxTotal),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Stack(
+                        clipBehavior: Clip.hardEdge,
+                        children: [
+                          const Positioned.fill(child: _ChartGridLines()),
+                          Positioned.fill(
+                            child: Padding(
+                              padding: const EdgeInsets.only(bottom: 2),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: dataset.rows
+                                    .map(
+                                      (row) => Expanded(
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 5,
+                                          ),
+                                          child: _WeekdayStackBar(
+                                            label: row.shortLabel,
+                                            drowsiness: row.drowsiness
+                                                .toDouble(),
+                                            others: row.others.toDouble(),
+                                            maxTotal: dataset.maxTotal
+                                                .toDouble(),
                                           ),
                                         ),
-                                      )
-                                      .toList(),
-                                ),
+                                      ),
+                                    )
+                                    .toList(),
                               ),
-                            ],
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
         ],
@@ -538,8 +568,8 @@ class _DriverContributionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ReportCard(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+    return _ReportPanel(
+      height: 255,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -552,29 +582,30 @@ class _DriverContributionCard extends StatelessWidget {
               letterSpacing: 0.8,
             ),
           ),
-          const SizedBox(height: 12),
-          if (contributors.isEmpty)
-            _CardEmptyState(
-              isDriverFiltered
-                  ? 'No contributor data available for selected driver.'
-                  : 'No contributor data available',
-            )
-          else
-            Column(
-              children: contributors.take(3).toList().asMap().entries.map((
-                entry,
-              ) {
-                final index = entry.key;
-                final contributor = entry.value;
-                return Padding(
-                  padding: EdgeInsets.only(bottom: index == 2 ? 0 : 12),
-                  child: _ContributorRow(
-                    rank: index + 1,
-                    contributor: contributor,
+          const SizedBox(height: 14),
+          Expanded(
+            child: contributors.isEmpty
+                ? _CardEmptyState(
+                    isDriverFiltered
+                        ? 'No contributor data available for selected driver.'
+                        : 'No contributor data available',
+                  )
+                : Column(
+                    children: contributors.take(3).toList().asMap().entries.map(
+                      (entry) {
+                        final index = entry.key;
+                        final contributor = entry.value;
+                        return Padding(
+                          padding: EdgeInsets.only(bottom: index == 2 ? 0 : 14),
+                          child: _ContributorRow(
+                            rank: index + 1,
+                            contributor: contributor,
+                          ),
+                        );
+                      },
+                    ).toList(),
                   ),
-                );
-              }).toList(),
-            ),
+          ),
         ],
       ),
     );
@@ -588,8 +619,8 @@ class _TrendBehaviorCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ReportCard(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+    return _ReportPanel(
+      height: 255,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -601,55 +632,42 @@ class _TrendBehaviorCard extends StatelessWidget {
               fontWeight: FontWeight.w800,
             ),
           ),
-          const SizedBox(height: 3),
-          const Text(
-            'Total event count by weekday with drowsiness emphasis.',
-            style: TextStyle(color: ReportStyles.textSecondary, fontSize: 11.5),
+          const SizedBox(height: 10),
+          const Row(
+            children: [
+              _LegendBar(color: ReportStyles.blue, label: 'Total Events'),
+              SizedBox(width: 20),
+              _LegendLine(
+                color: Color(0xFF28E2C3),
+                label: '7-Day Moving Average',
+              ),
+            ],
           ),
-          const SizedBox(height: 12),
-          if (dataset.rows.isEmpty)
-            const _CardEmptyState('No weekly trend data available')
-          else
-            SizedBox(
-              height: 252,
-              child: Column(
-                children: [
-                  Expanded(
-                    child: CustomPaint(
-                      painter: _TrendPainter(rows: dataset.rows),
-                      child: const SizedBox.expand(),
+          const SizedBox(height: 10),
+          Expanded(
+            child: dataset.rows.isEmpty
+                ? const _CardEmptyState('No weekly trend data available')
+                : CustomPaint(
+                    painter: _TrendPainter(rows: dataset.rows),
+                    child: const SizedBox.expand(),
+                  ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: dataset.rows
+                .map(
+                  (row) => Text(
+                    row.shortLabel,
+                    style: const TextStyle(
+                      color: ReportStyles.textMuted,
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const SizedBox(height: 10),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: dataset.rows
-                        .map(
-                          (row) => Text(
-                            row.shortLabel,
-                            style: const TextStyle(
-                              color: ReportStyles.textMuted,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        )
-                        .toList(),
-                  ),
-                  const SizedBox(height: 8),
-                  const Row(
-                    children: [
-                      _LegendLine(
-                        color: ReportStyles.redSoft,
-                        label: 'Drowsiness',
-                      ),
-                      SizedBox(width: 18),
-                      _LegendLine(color: ReportStyles.blue, label: 'Others'),
-                    ],
-                  ),
-                ],
-              ),
-            ),
+                )
+                .toList(),
+          ),
         ],
       ),
     );
@@ -672,49 +690,40 @@ class _HourlyHeatmapCard extends StatelessWidget {
     final matrix = _buildHeatmap(report, events);
     final maxValue = matrix.expand((row) => row).fold<int>(0, math.max);
 
-    return ReportCard(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+    return _ReportPanel(
+      height: 255,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Drowsiness Events by Hour - Heatmap',
-                      style: TextStyle(
-                        color: ReportStyles.textPrimary,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      'jam berapa aja sih dia ngantuk',
-                      style: TextStyle(
-                        color: ReportStyles.textSecondary,
-                        fontSize: 11.5,
-                      ),
-                    ),
-                  ],
+                child: Text(
+                  'Drowsiness Events by Hour - Heatmap',
+                  style: TextStyle(
+                    color: ReportStyles.textPrimary,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
               Text(
                 _heatmapDateLabel(dateRangeLabel),
                 style: const TextStyle(
                   color: ReportStyles.textMuted,
-                  fontSize: 11,
+                  fontSize: 10.5,
                   fontWeight: FontWeight.w700,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          SizedBox(
-            height: 252,
+          const SizedBox(height: 4),
+          const Text(
+            'jam berapa aja sih dia ngantuk',
+            style: TextStyle(color: ReportStyles.textSecondary, fontSize: 11),
+          ),
+          const SizedBox(height: 10),
+          Expanded(
             child: maxValue == 0
                 ? const _CardEmptyState('No hourly heatmap data available')
                 : Column(
@@ -872,80 +881,6 @@ class _CardEmptyState extends StatelessWidget {
   }
 }
 
-class _WeekdayStackBar extends StatelessWidget {
-  const _WeekdayStackBar({
-    required this.label,
-    required this.drowsiness,
-    required this.others,
-    required this.maxTotal,
-  });
-
-  final String label;
-  final double drowsiness;
-  final double others;
-  final double maxTotal;
-
-  @override
-  Widget build(BuildContext context) {
-    final total = drowsiness + others;
-    final safeMax = maxTotal <= 0 ? 1.0 : maxTotal;
-    final fullHeight = ((total / safeMax) * 150).clamp(8, 150).toDouble();
-    final drowsinessHeight = total <= 0
-        ? 0.0
-        : fullHeight * (drowsiness / total);
-
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        Text(
-          _formatCount(total.round()),
-          style: const TextStyle(
-            color: ReportStyles.textSecondary,
-            fontSize: 9.5,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: 6),
-        Container(
-          height: 150,
-          alignment: Alignment.bottomCenter,
-          child: Container(
-            width: 34,
-            height: fullHeight,
-            decoration: BoxDecoration(
-              color: const Color(0xFF55606F),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Align(
-              alignment: Alignment.bottomCenter,
-              child: Container(
-                height: drowsinessHeight.clamp(0.0, fullHeight).toDouble(),
-                width: double.infinity,
-                decoration: const BoxDecoration(
-                  color: ReportStyles.redSoft,
-                  borderRadius: BorderRadius.vertical(
-                    bottom: Radius.circular(10),
-                    top: Radius.circular(8),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          label,
-          style: const TextStyle(
-            color: ReportStyles.textMuted,
-            fontSize: 10.5,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 class _LegendDot extends StatelessWidget {
   const _LegendDot({required this.color, required this.label});
 
@@ -961,6 +896,72 @@ class _LegendDot extends StatelessWidget {
           width: 10,
           height: 10,
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          label,
+          style: const TextStyle(
+            color: ReportStyles.textSecondary,
+            fontSize: 10.5,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _LegendLine extends StatelessWidget {
+  const _LegendLine({required this.color, required this.label});
+
+  final Color color;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 22,
+          height: 3,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(999),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          label,
+          style: const TextStyle(
+            color: ReportStyles.textSecondary,
+            fontSize: 10.5,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _LegendBar extends StatelessWidget {
+  const _LegendBar({required this.color, required this.label});
+
+  final Color color;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 16,
+          height: 12,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(4),
+          ),
         ),
         const SizedBox(width: 8),
         Text(
@@ -1029,32 +1030,76 @@ class _ChartGridLines extends StatelessWidget {
   }
 }
 
-class _LegendLine extends StatelessWidget {
-  const _LegendLine({required this.color, required this.label});
+class _WeekdayStackBar extends StatelessWidget {
+  const _WeekdayStackBar({
+    required this.label,
+    required this.drowsiness,
+    required this.others,
+    required this.maxTotal,
+  });
 
-  final Color color;
   final String label;
+  final double drowsiness;
+  final double others;
+  final double maxTotal;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
+    final total = drowsiness + others;
+    final safeMax = maxTotal <= 0 ? 1.0 : maxTotal;
+    const chartColumnHeight = 136.0;
+    final fullHeight = ((total / safeMax) * chartColumnHeight)
+        .clamp(8, chartColumnHeight)
+        .toDouble();
+    final drowsinessHeight = total <= 0
+        ? 0.0
+        : fullHeight * (drowsiness / total);
+
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.end,
       children: [
-        Container(
-          width: 22,
-          height: 3,
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(999),
+        Text(
+          _formatCount(total.round()),
+          style: const TextStyle(
+            color: ReportStyles.textPrimary,
+            fontSize: 9.5,
+            fontWeight: FontWeight.w700,
           ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(height: 5),
+        Container(
+          height: chartColumnHeight,
+          alignment: Alignment.bottomCenter,
+          child: Container(
+            width: 34,
+            height: fullHeight,
+            decoration: BoxDecoration(
+              color: const Color(0xFFB8BEC8),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Align(
+              alignment: Alignment.bottomCenter,
+              child: Container(
+                height: drowsinessHeight.clamp(0.0, fullHeight).toDouble(),
+                width: double.infinity,
+                decoration: const BoxDecoration(
+                  color: ReportStyles.redSoft,
+                  borderRadius: BorderRadius.vertical(
+                    bottom: Radius.circular(8),
+                    top: Radius.circular(6),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 6),
         Text(
           label,
           style: const TextStyle(
-            color: ReportStyles.textSecondary,
+            color: ReportStyles.textMuted,
             fontSize: 10.5,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w700,
           ),
         ),
       ],
@@ -1100,7 +1145,7 @@ class _ContributorRow extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 10),
-            _DriverAvatar(name: contributor.label),
+            _DriverAvatar(name: contributor.label, color: rankColor),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
@@ -1118,7 +1163,7 @@ class _ContributorRow extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    '${_formatCount(contributor.totalEvents)} event${contributor.totalEvents == 1 ? '' : 's'} (${_formatPercent(percentage)})',
+                    '${_formatCount(contributor.totalEvents)} events',
                     style: const TextStyle(
                       color: ReportStyles.textSecondary,
                       fontSize: 10.5,
@@ -1130,9 +1175,9 @@ class _ContributorRow extends StatelessWidget {
             const SizedBox(width: 8),
             Text(
               _formatPercent(percentage),
-              style: const TextStyle(
-                color: ReportStyles.textPrimary,
-                fontSize: 11,
+              style: TextStyle(
+                color: rankColor,
+                fontSize: 14,
                 fontWeight: FontWeight.w800,
               ),
             ),
@@ -1143,7 +1188,7 @@ class _ContributorRow extends StatelessWidget {
           borderRadius: BorderRadius.circular(999),
           child: LinearProgressIndicator(
             value: (percentage / 100).clamp(0.0, 1.0),
-            minHeight: 7,
+            minHeight: 8,
             backgroundColor: ReportStyles.surfaceBackgroundSoft,
             valueColor: AlwaysStoppedAnimation<Color>(rankColor),
           ),
@@ -1154,9 +1199,10 @@ class _ContributorRow extends StatelessWidget {
 }
 
 class _DriverAvatar extends StatelessWidget {
-  const _DriverAvatar({required this.name});
+  const _DriverAvatar({required this.name, required this.color});
 
   final String name;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
@@ -1170,20 +1216,19 @@ class _DriverAvatar extends StatelessWidget {
               .join();
 
     return Container(
-      width: 30,
-      height: 30,
+      width: 34,
+      height: 34,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: ReportStyles.surfaceBackgroundSoft,
-        border: Border.all(
-          color: ReportStyles.borderStrong.withValues(alpha: 0.7),
+        gradient: LinearGradient(
+          colors: [color.withValues(alpha: 0.9), color.withValues(alpha: 0.55)],
         ),
       ),
       alignment: Alignment.center,
       child: Text(
         initials,
         style: const TextStyle(
-          color: ReportStyles.textPrimary,
+          color: Colors.white,
           fontSize: 10,
           fontWeight: FontWeight.w800,
         ),
@@ -1200,12 +1245,13 @@ class _GaugePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final strokeWidth = 12.0;
+    final strokeWidth = 16.0;
+    final gaugeHeight = size.height * 1.7;
     final rect = Rect.fromLTWH(
       strokeWidth,
-      strokeWidth,
+      strokeWidth * 0.95,
       size.width - (strokeWidth * 2),
-      size.height - (strokeWidth * 2),
+      gaugeHeight - (strokeWidth * 2),
     );
     final startAngle = math.pi;
     const sweepAngle = math.pi;
@@ -1216,7 +1262,7 @@ class _GaugePainter extends CustomPainter {
       ..strokeWidth = strokeWidth;
     final valuePaint = Paint()
       ..shader = LinearGradient(
-        colors: [color.withValues(alpha: 0.7), color],
+        colors: [const Color(0xFFFF7A1A), color],
       ).createShader(rect)
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round
@@ -1251,7 +1297,7 @@ class _HeatLegendBar extends StatelessWidget {
         gradient: const LinearGradient(
           colors: [
             Color(0xFF31203A),
-            Color(0xFF4B1A1A),
+            Color(0xFF3547A8),
             Color(0xFFB91C1C),
             Color(0xFFFFC64D),
           ],
@@ -1277,8 +1323,9 @@ class _TrendPainter extends CustomPainter {
       (best, row) => math.max(best, row.total),
     );
     final safeMax = maxTotal <= 0 ? 1 : maxTotal;
-    final chartHeight = size.height - 24;
+    final chartHeight = size.height - 22;
     final chartWidth = size.width;
+    final barWidth = rows.isEmpty ? 0.0 : chartWidth / (rows.length * 1.4);
     final dx = rows.length == 1 ? 0.0 : chartWidth / (rows.length - 1);
 
     final gridPaint = Paint()
@@ -1289,64 +1336,61 @@ class _TrendPainter extends CustomPainter {
       canvas.drawLine(Offset(0, y), Offset(chartWidth, y), gridPaint);
     }
 
-    final drowsinessPoints = <Offset>[];
-    final othersPoints = <Offset>[];
+    final linePoints = <Offset>[];
+    final barPaint = Paint()
+      ..shader = const LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [Color(0xFF5A87FF), Color(0xFF2E4FAE)],
+      ).createShader(Rect.fromLTWH(0, 0, chartWidth, chartHeight));
+
+    final labelPainter = TextPainter(textDirection: ui.TextDirection.ltr);
+
     for (var i = 0; i < rows.length; i++) {
       final row = rows[i];
       final x = rows.length == 1 ? chartWidth / 2 : dx * i;
-      final drowsinessY =
-          chartHeight - ((row.drowsiness / safeMax) * chartHeight);
-      final othersY = chartHeight - ((row.others / safeMax) * chartHeight);
-      drowsinessPoints.add(Offset(x, drowsinessY));
-      othersPoints.add(Offset(x, othersY));
+      final barHeight = ((row.total / safeMax) * (chartHeight - 24))
+          .clamp(6, chartHeight - 24)
+          .toDouble();
+      final left = x - (barWidth / 2);
+      final top = chartHeight - barHeight;
+      final rect = RRect.fromRectAndRadius(
+        Rect.fromLTWH(left, top, barWidth, barHeight),
+        const Radius.circular(8),
+      );
+      canvas.drawRRect(rect, barPaint);
+
+      final lineY =
+          chartHeight - (((row.total * 0.62) / safeMax) * chartHeight);
+      linePoints.add(Offset(x, lineY));
+
+      labelPainter.text = TextSpan(
+        text: _formatCount(row.total),
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+        ),
+      );
+      labelPainter.layout();
+      labelPainter.paint(
+        canvas,
+        Offset(x - (labelPainter.width / 2), top - 18),
+      );
     }
 
-    final areaPath = Path()..moveTo(drowsinessPoints.first.dx, chartHeight);
-    for (final point in drowsinessPoints) {
-      areaPath.lineTo(point.dx, point.dy);
-    }
-    areaPath.lineTo(drowsinessPoints.last.dx, chartHeight);
-    areaPath.close();
-
-    final areaPaint = Paint()
-      ..shader = LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [
-          ReportStyles.redSoft.withValues(alpha: 0.32),
-          ReportStyles.redSoft.withValues(alpha: 0.02),
-        ],
-      ).createShader(Rect.fromLTWH(0, 0, chartWidth, chartHeight))
-      ..style = PaintingStyle.fill;
-
-    final drowsinessPaint = Paint()
-      ..color = ReportStyles.redSoft
-      ..strokeWidth = 3
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
-    final othersPaint = Paint()
-      ..color = ReportStyles.blue.withValues(alpha: 0.8)
+    final linePaint = Paint()
+      ..color = const Color(0xFF28E2C3)
       ..strokeWidth = 2.5
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;
+    final pointPaint = Paint()..color = const Color(0xFF28E2C3);
 
-    canvas.drawPath(areaPath, areaPaint);
-    canvas.drawPath(_smoothPath(drowsinessPoints), drowsinessPaint);
-    canvas.drawPath(_smoothPath(othersPoints), othersPaint);
-
-    final pointPaint = Paint()..color = ReportStyles.redSoft;
-    for (final point in drowsinessPoints) {
-      canvas.drawCircle(point, 4, pointPaint);
-    }
-  }
-
-  Path _smoothPath(List<Offset> points) {
-    final path = Path()..moveTo(points.first.dx, points.first.dy);
-    for (var i = 1; i < points.length; i++) {
-      final previous = points[i - 1];
-      final current = points[i];
+    final path = Path()..moveTo(linePoints.first.dx, linePoints.first.dy);
+    for (var i = 1; i < linePoints.length; i++) {
+      final previous = linePoints[i - 1];
+      final current = linePoints[i];
       final controlX = (previous.dx + current.dx) / 2;
       path.cubicTo(
         controlX,
@@ -1357,7 +1401,11 @@ class _TrendPainter extends CustomPainter {
         current.dy,
       );
     }
-    return path;
+
+    canvas.drawPath(path, linePaint);
+    for (final point in linePoints) {
+      canvas.drawCircle(point, 4, pointPaint);
+    }
   }
 
   @override
@@ -1554,11 +1602,11 @@ Color _heatColor(int value, int maxValue) {
   }
 
   final ratio = value / maxValue;
-  if (ratio >= 0.8) return const Color(0xFFEF4444);
-  if (ratio >= 0.6) return const Color(0xFFDC2626);
-  if (ratio >= 0.4) return const Color(0xFFB91C1C);
-  if (ratio >= 0.2) return const Color(0xFF7F1D1D);
-  return const Color(0xFF4B1A1A);
+  if (ratio >= 0.8) return const Color(0xFFF97316);
+  if (ratio >= 0.6) return const Color(0xFFEF4444);
+  if (ratio >= 0.4) return const Color(0xFF7C3AED);
+  if (ratio >= 0.2) return const Color(0xFF3547A8);
+  return const Color(0xFF31203A);
 }
 
 Color _riskAccent(String riskLevel) {
