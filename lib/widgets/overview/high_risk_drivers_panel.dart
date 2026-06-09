@@ -14,7 +14,7 @@ class HighRiskDriversPanel extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppTheme.slateGrey,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withOpacity(0.06)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -40,8 +40,10 @@ class HighRiskDriversPanel extends StatelessWidget {
           Expanded(
             child: ListView.separated(
               itemCount: drivers.length,
-              separatorBuilder: (_, __) =>
-                  Divider(color: Colors.white.withOpacity(0.06), height: 1),
+              separatorBuilder: (_, _) => Divider(
+                color: Colors.white.withValues(alpha: 0.06),
+                height: 1,
+              ),
               itemBuilder: (context, index) {
                 final driver = drivers[index];
                 final score = driver['riskScore'] as int? ?? 0;

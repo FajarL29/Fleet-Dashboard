@@ -313,16 +313,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
               prev.vehicles != curr.vehicles ||
               prev.selectedVehicle != curr.selectedVehicle;
           if (shouldRebuild) {
-            // ignore: avoid_print
-            print(
+            debugPrint(
               '🔄 BlocBuilder rebuild triggered: vehicles=${prev.vehicles.length != curr.vehicles.length}, selectedVehicle=${prev.selectedVehicle?.id} -> ${curr.selectedVehicle?.id}',
             );
           }
           return shouldRebuild;
         },
         builder: (context, state) {
-          // ignore: avoid_print
-          print(
+          debugPrint(
             '🏗️ Building MapSection with selectedVehicleId: ${state.selectedVehicle?.id}',
           );
           return MapSection(
@@ -334,7 +332,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             isFullScreen: _isMapFullScreen,
             selectedVehicleId: state.selectedVehicle?.id,
             onClearSelection: () {
-              print('📤 Sending SelectionCleared event');
+              debugPrint('📤 Sending SelectionCleared event');
               context.read<DashboardBloc>().add(const SelectionCleared());
             },
             onFollowModeChanged: _handleFollowModeChanged,

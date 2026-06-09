@@ -17,7 +17,7 @@ class LatestSafetyAlertsPanel extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppTheme.slateGrey,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withOpacity(0.06)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -53,8 +53,8 @@ class LatestSafetyAlertsPanel extends StatelessWidget {
                   )
                 : ListView.separated(
                     itemCount: visibleAlerts.length,
-                    separatorBuilder: (_, __) => Divider(
-                      color: Colors.white.withOpacity(0.06),
+                    separatorBuilder: (_, _) => Divider(
+                      color: Colors.white.withValues(alpha: 0.06),
                       height: 1,
                     ),
                     itemBuilder: (context, index) {
@@ -72,7 +72,7 @@ class LatestSafetyAlertsPanel extends StatelessWidget {
                               width: 36,
                               height: 36,
                               decoration: BoxDecoration(
-                                color: severityColor.withOpacity(0.2),
+                                color: severityColor.withValues(alpha: 0.2),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Icon(

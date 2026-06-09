@@ -17,7 +17,7 @@ class RecentEventsPreviewPanel extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppTheme.slateGrey,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withOpacity(0.06)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -64,8 +64,8 @@ class RecentEventsPreviewPanel extends StatelessWidget {
                     padding: EdgeInsets.zero,
                     physics: const NeverScrollableScrollPhysics(),
                     itemCount: visibleEvents.length,
-                    separatorBuilder: (_, __) => Divider(
-                      color: Colors.white.withOpacity(0.06),
+                    separatorBuilder: (_, _) => Divider(
+                      color: Colors.white.withValues(alpha: 0.06),
                       height: 8,
                     ),
                     itemBuilder: (context, index) =>

@@ -18,7 +18,7 @@ class SafetyEmptyState extends StatelessWidget {
       decoration: BoxDecoration(
         color: ReportStyles.cardBackground,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: ReportStyles.border.withOpacity(0.65)),
+        border: Border.all(color: ReportStyles.border.withValues(alpha: 0.65)),
       ),
       child: Center(
         child: Padding(

@@ -84,7 +84,7 @@ class SafetyEventDetailPanel extends StatelessWidget {
       decoration: BoxDecoration(
         color: ReportStyles.cardBackground,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: ReportStyles.border.withOpacity(0.65)),
+        border: Border.all(color: ReportStyles.border.withValues(alpha: 0.65)),
       ),
       child: event == null
           ? const _EmptyDetail()
@@ -340,7 +340,7 @@ class _ReviewActionsCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF12264A),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: ReportStyles.blue.withOpacity(0.5)),
+        border: Border.all(color: ReportStyles.blue.withValues(alpha: 0.5)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -618,9 +618,9 @@ class _ReviewStatusBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
+        color: color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withOpacity(0.4)),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
       ),
       child: Text(
         _readableLabel(status),
@@ -683,7 +683,7 @@ class _EvidenceCard extends StatelessWidget {
                           vertical: 6,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.45),
+                          color: Colors.black.withValues(alpha: 0.45),
                           borderRadius: BorderRadius.circular(999),
                           border: Border.all(color: Colors.white24),
                         ),
@@ -722,7 +722,7 @@ class _EvidenceCard extends StatelessWidget {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: ReportStyles.red.withOpacity(0.92),
+                    color: ReportStyles.red.withValues(alpha: 0.92),
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
@@ -946,7 +946,7 @@ class _NetworkFallbackImageState extends State<_NetworkFallbackImage> {
         height: widget.height,
         width: double.infinity,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) {
+        errorBuilder: (_, _, _) {
           if (!_networkFailed) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (mounted) {
@@ -1001,7 +1001,7 @@ class _NetworkFallbackImageState extends State<_NetworkFallbackImage> {
         height: widget.height,
         width: double.infinity,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => widget.placeholderBuilder(),
+        errorBuilder: (_, _, _) => widget.placeholderBuilder(),
       );
     }
 
@@ -1146,7 +1146,7 @@ class _SeverityPill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.16),
+        color: color.withValues(alpha: 0.16),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(

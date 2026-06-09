@@ -24,7 +24,7 @@ class SafetyEventsTable extends StatelessWidget {
       decoration: BoxDecoration(
         color: ReportStyles.cardBackground,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: ReportStyles.border.withOpacity(0.65)),
+        border: Border.all(color: ReportStyles.border.withValues(alpha: 0.65)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -138,10 +138,6 @@ class SafetyEventsTable extends StatelessWidget {
                             child: Center(
                               child: OutlinedButton(
                                 onPressed: () => onEventSelected(event),
-                                child: const Icon(
-                                  Icons.visibility_outlined,
-                                  size: 18,
-                                ),
                                 style: OutlinedButton.styleFrom(
                                   foregroundColor: ReportStyles.textPrimary,
                                   side: const BorderSide(
@@ -152,6 +148,10 @@ class SafetyEventsTable extends StatelessWidget {
                                     horizontal: 10,
                                     vertical: 8,
                                   ),
+                                ),
+                                child: const Icon(
+                                  Icons.visibility_outlined,
+                                  size: 18,
                                 ),
                               ),
                             ),
@@ -284,9 +284,9 @@ class _SeverityChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.16),
+          color: color.withValues(alpha: 0.16),
           borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: color.withOpacity(0.5)),
+          border: Border.all(color: color.withValues(alpha: 0.5)),
         ),
         child: Text(
           label,

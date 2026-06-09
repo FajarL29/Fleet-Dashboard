@@ -75,8 +75,8 @@ class DriverMonitoring extends StatelessWidget {
                                     vertical: 4,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: driver.getStatusColor().withOpacity(
-                                      0.2,
+                                    color: driver.getStatusColor().withValues(
+                                      alpha: 0.2,
                                     ),
                                     borderRadius: BorderRadius.circular(12),
                                   ),
@@ -317,7 +317,7 @@ class DriverMonitoring extends StatelessWidget {
                       vertical: 2,
                     ),
                     decoration: BoxDecoration(
-                      color: status.getStatusColor().withOpacity(0.8),
+                      color: status.getStatusColor().withValues(alpha: 0.8),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(

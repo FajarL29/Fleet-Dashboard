@@ -46,7 +46,7 @@ class SafetyWorkflowStepper extends StatelessWidget {
       decoration: BoxDecoration(
         color: ReportStyles.cardBackground,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: ReportStyles.border.withOpacity(0.65)),
+        border: Border.all(color: ReportStyles.border.withValues(alpha: 0.65)),
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -115,8 +115,8 @@ class _WorkflowStepTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: step.isActive
-              ? step.color.withOpacity(0.8)
-              : ReportStyles.border.withOpacity(0.7),
+              ? step.color.withValues(alpha: 0.8)
+              : ReportStyles.border.withValues(alpha: 0.7),
         ),
       ),
       child: Row(
@@ -125,7 +125,7 @@ class _WorkflowStepTile extends StatelessWidget {
             width: 38,
             height: 38,
             decoration: BoxDecoration(
-              color: step.color.withOpacity(0.18),
+              color: step.color.withValues(alpha: 0.18),
               shape: BoxShape.circle,
             ),
             child: Icon(step.icon, color: step.color, size: 20),

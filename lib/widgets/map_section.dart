@@ -417,7 +417,7 @@ class _MapSectionState extends State<MapSection> with TickerProviderStateMixin {
 }
 
 class LatLngTween extends Tween<LatLng> {
-  LatLngTween({LatLng? begin, LatLng? end}) : super(begin: begin, end: end);
+  LatLngTween({super.begin, super.end});
 
   @override
   LatLng lerp(double t) {
