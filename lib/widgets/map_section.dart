@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:intl/intl.dart';
 
 import '../models/vehicle.dart';
 import '../theme/app_theme.dart';
@@ -259,12 +260,10 @@ class _MapSectionState extends State<MapSection> with TickerProviderStateMixin {
     return Container(
       width: 220,
       decoration: BoxDecoration(
-        color: AppTheme.darkNavy.withOpacity(0.7),
+        color: AppTheme.darkNavy.withValues(alpha: 0.7),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: Colors.white10),
-        boxShadow: const [
-          BoxShadow(color: Colors.black38, blurRadius: 10),
-        ],
+        boxShadow: const [BoxShadow(color: Colors.black38, blurRadius: 10)],
       ),
       child: Column(
         children: [
@@ -314,17 +313,17 @@ class _MapSectionState extends State<MapSection> with TickerProviderStateMixin {
       dense: true,
       onTap: () => _handleVehicleTap(vehicle),
       selected: isSelected,
-      selectedTileColor: Colors.white.withOpacity(0.5),
+      selectedTileColor: Colors.white.withValues(alpha: 0.5),
       leading: CircleAvatar(
         radius: 4,
         backgroundColor: vehicle.getStatusColor(),
       ),
       title: Text(
-        vehicle.id,
+        vehicle.plateNumber,
         style: const TextStyle(color: Colors.white, fontSize: 13),
       ),
       subtitle: Text(
-        vehicle.plateNumber,
+        vehicle.driverName,
         style: const TextStyle(color: Colors.white54, fontSize: 11),
       ),
       trailing: isSelected
@@ -340,10 +339,8 @@ class _MapSectionState extends State<MapSection> with TickerProviderStateMixin {
       decoration: BoxDecoration(
         color: AppTheme.darkNavy,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.3)),
-        boxShadow: const [
-          BoxShadow(color: Colors.black45, blurRadius: 10),
-        ],
+        border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+        boxShadow: const [BoxShadow(color: Colors.black45, blurRadius: 10)],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -353,7 +350,7 @@ class _MapSectionState extends State<MapSection> with TickerProviderStateMixin {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                vehicle.id,
+                vehicle.plateNumber,
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
@@ -369,12 +366,30 @@ class _MapSectionState extends State<MapSection> with TickerProviderStateMixin {
             ],
           ),
           const Divider(color: Colors.white10),
+          _infoRow('Driver', vehicle.driverName),
           _infoRow('Plate', vehicle.plateNumber),
+          _infoRow('Status', vehicle.statusLabel),
           _infoRow('Speed', '${vehicle.speed.toStringAsFixed(1)} km/h'),
-          _infoRow('Status', vehicle.status.name.toUpperCase()),
+          _infoRow('Last Seen', _lastSeenLabel(vehicle)),
+          if (vehicle.statusReason != null && vehicle.statusReason!.isNotEmpty)
+            _infoRow('Issue', vehicle.statusReason!),
         ],
       ),
     );
+  }
+
+  String _lastSeenLabel(Vehicle vehicle) {
+    if (vehicle.lastSeenMinutes != null) {
+      return '${vehicle.lastSeenMinutes} min ago';
+    }
+
+    if (vehicle.lastTelemetryTime != null) {
+      return DateFormat(
+        'MMM d, HH:mm',
+      ).format(vehicle.lastTelemetryTime!.toLocal());
+    }
+
+    return 'Unavailable';
   }
 
   Widget _infoRow(String label, String value) {
@@ -472,20 +487,26 @@ class _SmoothVehicleMarkerLayerState extends State<SmoothVehicleMarkerLayer>
   final Map<String, _MarkerAnimationData> _markerData = {};
 
   @override
+  void initState() {
+    super.initState();
+    _syncMarkerData(widget.vehicles);
+  }
+
+  @override
   void didUpdateWidget(SmoothVehicleMarkerLayer oldWidget) {
     super.didUpdateWidget(oldWidget);
+    _syncMarkerData(widget.vehicles);
+  }
 
-    final newIds = widget.vehicles.map((vehicle) => vehicle.id).toSet();
+  void _syncMarkerData(List<Vehicle> vehicles) {
+    final newIds = vehicles.map((vehicle) => vehicle.id).toSet();
 
-    _markerData.keys
-        .where((id) => !newIds.contains(id))
-        .toList()
-        .forEach((id) {
+    _markerData.keys.where((id) => !newIds.contains(id)).toList().forEach((id) {
       _markerData[id]?.dispose();
       _markerData.remove(id);
     });
 
-    for (final vehicle in widget.vehicles) {
+    for (final vehicle in vehicles) {
       final current = _markerData[vehicle.id];
       if (current == null) {
         final data = _MarkerAnimationData(
@@ -532,8 +553,9 @@ class _SmoothVehicleMarkerLayerState extends State<SmoothVehicleMarkerLayer>
             final currentPosition = data.animation.value;
             final pxPoint = map.projectAtZoom(currentPosition);
             final marker = _buildMarkerWidget(data.vehicle);
-            final markerSize =
-                widget.selectedVehicleId == data.vehicle.id ? 80.0 : 40.0;
+            final markerSize = widget.selectedVehicleId == data.vehicle.id
+                ? 80.0
+                : 40.0;
 
             final positions = <Widget>[];
 
@@ -553,14 +575,18 @@ class _SmoothVehicleMarkerLayerState extends State<SmoothVehicleMarkerLayer>
             positions.add(buildPositioned(0));
 
             if (worldWidth != 0) {
-              for (double shift = -worldWidth;
-                  shift.abs() <= worldWidth;
-                  shift -= worldWidth) {
+              for (
+                double shift = -worldWidth;
+                shift.abs() <= worldWidth;
+                shift -= worldWidth
+              ) {
                 positions.add(buildPositioned(shift));
               }
-              for (double shift = worldWidth;
-                  shift.abs() <= worldWidth;
-                  shift += worldWidth) {
+              for (
+                double shift = worldWidth;
+                shift.abs() <= worldWidth;
+                shift += worldWidth
+              ) {
                 positions.add(buildPositioned(shift));
               }
             }
@@ -606,7 +632,7 @@ class _VehicleMarkerWidget extends StatelessWidget {
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
         decoration: BoxDecoration(
-          color: color.withOpacity(0.9),
+          color: color.withValues(alpha: 0.9),
           shape: BoxShape.circle,
           border: Border.all(
             color: isSelected ? Colors.yellow : Colors.white,
@@ -615,14 +641,12 @@ class _VehicleMarkerWidget extends StatelessWidget {
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: Colors.yellow.withOpacity(0.5),
+                    color: Colors.yellow.withValues(alpha: 0.5),
                     blurRadius: 15,
                     spreadRadius: 2,
                   ),
                 ]
-              : const [
-                  BoxShadow(color: Colors.black26, blurRadius: 4),
-                ],
+              : const [BoxShadow(color: Colors.black26, blurRadius: 4)],
         ),
         child: const Icon(Icons.navigation, color: Colors.white, size: 18),
       ),

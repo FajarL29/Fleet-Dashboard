@@ -2,11 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import '../theme/app_theme.dart';
 
-enum VehicleStatus {
-  active,
-  warning,
-  error,
-}
+enum VehicleStatus { active, warning, inactive, alert }
 
 class Vehicle {
   final String id;
@@ -20,7 +16,10 @@ class Vehicle {
   final VehicleStatus status;
   double heading;
   final double speed; // Tambahkan atribut speed
-
+  final String? displayStatus;
+  final String? statusReason;
+  final DateTime? lastTelemetryTime;
+  final int? lastSeenMinutes;
 
   Vehicle({
     required this.id,
@@ -33,18 +32,55 @@ class Vehicle {
     required this.status,
     this.heading = 0.0,
     this.speed = 0.0, // Inisialisasi speed
+    this.displayStatus,
+    this.statusReason,
+    this.lastTelemetryTime,
+    this.lastSeenMinutes,
   });
 
   // Helper method to get status color
   Color getStatusColor() {
+    final normalizedDisplayStatus = displayStatus?.trim().toLowerCase();
+
+    switch (normalizedDisplayStatus) {
+      case 'alert':
+        return AppTheme.error;
+      case 'warning':
+        return AppTheme.warning;
+      case 'moving':
+        return AppTheme.success;
+      case 'idle':
+        return AppTheme.accentBlue;
+      case 'online':
+        return AppTheme.success;
+      case 'offline':
+        return const Color.fromARGB(255, 90, 95, 106);
+    }
+
     switch (status) {
       case VehicleStatus.active:
         return AppTheme.success;
       case VehicleStatus.warning:
         return AppTheme.warning;
-      case VehicleStatus.error:
+      case VehicleStatus.inactive:
+        return const Color.fromARGB(255, 65, 58, 58);
+      case VehicleStatus.alert:
         return AppTheme.error;
     }
+  }
+
+  String get statusLabel {
+    final normalizedDisplayStatus = displayStatus?.trim();
+    if (normalizedDisplayStatus != null && normalizedDisplayStatus.isNotEmpty) {
+      return normalizedDisplayStatus
+          .replaceAll('_', ' ')
+          .split(' ')
+          .where((part) => part.isNotEmpty)
+          .map((part) => '${part[0].toUpperCase()}${part.substring(1)}')
+          .join(' ');
+    }
+
+    return status.name.toUpperCase();
   }
 
   // CopyWith method for immutable updates
@@ -59,6 +95,10 @@ class Vehicle {
     VehicleStatus? status,
     double? heading,
     double? speed,
+    String? displayStatus,
+    String? statusReason,
+    DateTime? lastTelemetryTime,
+    int? lastSeenMinutes,
   }) {
     return Vehicle(
       id: id ?? this.id,
@@ -71,6 +111,10 @@ class Vehicle {
       status: status ?? this.status,
       heading: heading ?? this.heading,
       speed: speed ?? this.speed,
+      displayStatus: displayStatus ?? this.displayStatus,
+      statusReason: statusReason ?? this.statusReason,
+      lastTelemetryTime: lastTelemetryTime ?? this.lastTelemetryTime,
+      lastSeenMinutes: lastSeenMinutes ?? this.lastSeenMinutes,
     );
   }
 }

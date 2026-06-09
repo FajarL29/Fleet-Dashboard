@@ -7,8 +7,10 @@ import 'package:http/http.dart' as http; // Tambahkan http
 import '../../models/driver_behavior_summary.dart';
 import '../../models/drowsiness_report.dart';
 import '../../models/vehicle.dart';
+import '../../models/vehicle_status.dart';
 import '../../services/drowsiness_report_service.dart';
 import '../../services/gps_socket_service.dart';
+import '../../services/vehicle_status_service.dart';
 import 'dashboard_event.dart';
 import 'dashboard_state.dart';
 
@@ -16,6 +18,8 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
   final GpsSocketService _gpsSocketService = GpsSocketService();
   final DrowsinessReportService _drowsinessReportService =
       const DrowsinessReportService();
+  final VehicleStatusService _vehicleStatusService =
+      const VehicleStatusService();
   StreamSubscription? _gpsSubscription;
 
   // Tambahan untuk Drowsiness Polling
@@ -53,7 +57,7 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     );
     // _startDrowsinessPolling(userId: event.userID, token: event.token);
 
-    await _loadRecentDrowsinessEvents(emit);
+    await _loadOverviewData(emit);
   }
 
   /// --- LOGIKA DROWSINESS POLLING (HTTP) ---
@@ -68,7 +72,7 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
       try {
         final response = await http.get(
           Uri.parse(
-            'http://203.100.57.59:3000/api/v1/drowsiness/latest/$Vehicle(id: id, plateNumber: plateNumber, type: type, driverName: driverName, activityTime: activityTime, position: position, status: status)',
+            'http://localhost:3000/api/v1/drowsiness/latest/$Vehicle(id: id, plateNumber: plateNumber, type: type, driverName: driverName, activityTime: activityTime, position: position, status: status)',
           ),
           headers: {
             'Authorization': 'Bearer $token',
@@ -327,8 +331,14 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
         ? null
         : state.vehicles.first;
     final targetVehicle = vehicle ?? state.selectedVehicle ?? fallbackVehicle;
+    final targetVehicleIds = _eventVehicleIds(
+      vehicle: targetVehicle,
+      statusItem: state.vehicleStatusData?.vehicles.isEmpty == false
+          ? state.vehicleStatusData!.vehicles.first
+          : null,
+    );
 
-    if (targetVehicle == null) {
+    if (targetVehicle == null && targetVehicleIds.isEmpty) {
       emit(
         state.copyWith(
           recentDrowsinessEvents: const [],
@@ -349,26 +359,26 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
       List<DriverBehaviorSummary> driverBehaviorSummaries =
           state.driverBehaviorSummaries;
       try {
-        report = await _fetchDrowsinessReport(targetVehicle);
+        report = await _fetchDrowsinessReport(targetVehicleIds);
       } catch (e) {
         debugPrint('Failed to load drowsiness report: $e');
         report = state.currentDrowsinessReport;
       }
       try {
-        driverBehaviorSummaries = await _fetchDriverBehavior(targetVehicle);
+        driverBehaviorSummaries = await _fetchDriverBehavior(targetVehicleIds);
       } catch (e) {
         debugPrint('Failed to load driver behavior: $e');
       }
 
       var events = await _fetchEventsForDateRange(
-        targetVehicle: targetVehicle,
+        vehicleIds: targetVehicleIds,
         startDate: todayStart,
         endDate: now,
       );
 
       if (events.isEmpty) {
         events = await _fetchEventsForDateRange(
-          targetVehicle: targetVehicle,
+          vehicleIds: targetVehicleIds,
           startDate: now.subtract(const Duration(days: 30)),
           endDate: now,
         );
@@ -376,6 +386,11 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
 
       final sortedEvents = List<DrowsinessEvent>.from(events)
         ..sort((a, b) => b.time.compareTo(a.time));
+
+      final todayCounts = _buildTodayEventCounts(sortedEvents, now);
+      debugPrint(
+        '[Overview] todayEvents drowsy=${todayCounts.drowsy} distraction=${todayCounts.distraction} date=${todayStart.toIso8601String()}',
+      );
 
       emit(
         state.copyWith(
@@ -398,10 +413,108 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     }
   }
 
+  Future<void> _loadOverviewData(Emitter<DashboardState> emit) async {
+    emit(
+      state.copyWith(isOverviewLoading: true, clearVehicleStatusError: true),
+    );
+
+    VehicleStatusData? vehicleStatusData;
+    List<Vehicle> vehicles = const [];
+    Vehicle? selectedVehicle;
+    String? vehicleStatusError;
+
+    try {
+      vehicleStatusData = await _vehicleStatusService.getVehicleStatus();
+      vehicles = _mapVehiclesWithCoordinates(vehicleStatusData.vehicles);
+      selectedVehicle = _resolveSelectedVehicle(
+        vehicles: vehicles,
+        selectedVehicleId: state.selectedVehicle?.id,
+      );
+      debugPrint(
+        '[Overview] vehicleStatus total=${vehicleStatusData.summary.totalVehicles} online=${vehicleStatusData.summary.onlineVehicles} offline=${vehicleStatusData.summary.offline} vehicles=${vehicleStatusData.vehicles.length} markers=${vehicles.length}',
+      );
+    } catch (e) {
+      debugPrint('Failed to load vehicle status data: $e');
+      vehicleStatusError = 'Vehicle status unavailable';
+      selectedVehicle = null;
+    }
+
+    final targetVehicleIds = _eventVehicleIds(
+      vehicle: selectedVehicle ?? (vehicles.isEmpty ? null : vehicles.first),
+      statusItem: vehicleStatusData?.vehicles.isEmpty == false
+          ? vehicleStatusData!.vehicles.first
+          : null,
+    );
+
+    DrowsinessReport? report = state.currentDrowsinessReport;
+    List<DriverBehaviorSummary> driverBehaviorSummaries =
+        state.driverBehaviorSummaries;
+    List<DrowsinessEvent> sortedEvents = state.recentDrowsinessEvents;
+
+    if (targetVehicleIds.isNotEmpty) {
+      final now = DateTime.now();
+      final todayStart = DateTime(now.year, now.month, now.day);
+
+      try {
+        report = await _fetchDrowsinessReport(targetVehicleIds);
+      } catch (e) {
+        debugPrint('Failed to load drowsiness report: $e');
+      }
+
+      try {
+        driverBehaviorSummaries = await _fetchDriverBehavior(targetVehicleIds);
+      } catch (e) {
+        debugPrint('Failed to load driver behavior: $e');
+      }
+
+      try {
+        var events = await _fetchEventsForDateRange(
+          vehicleIds: targetVehicleIds,
+          startDate: todayStart,
+          endDate: now,
+        );
+
+        if (events.isEmpty) {
+          events = await _fetchEventsForDateRange(
+            vehicleIds: targetVehicleIds,
+            startDate: now.subtract(const Duration(days: 30)),
+            endDate: now,
+          );
+        }
+
+        sortedEvents = List<DrowsinessEvent>.from(events)
+          ..sort((a, b) => b.time.compareTo(a.time));
+        final todayCounts = _buildTodayEventCounts(sortedEvents, now);
+        debugPrint(
+          '[Overview] todayEvents drowsy=${todayCounts.drowsy} distraction=${todayCounts.distraction} date=${todayStart.toIso8601String()}',
+        );
+      } catch (e) {
+        debugPrint('Failed to load overview drowsiness data: $e');
+      }
+    } else {
+      report = null;
+      driverBehaviorSummaries = const [];
+      sortedEvents = const [];
+    }
+
+    emit(
+      state.copyWith(
+        vehicles: vehicles,
+        selectedVehicle: selectedVehicle,
+        vehicleStatusData: vehicleStatusData,
+        vehicleStatusError: vehicleStatusError,
+        recentDrowsinessEvents: sortedEvents,
+        currentDrowsinessReport: report,
+        driverBehaviorSummaries: driverBehaviorSummaries,
+        isOverviewLoading: false,
+      ),
+    );
+  }
+
   Future<DrowsinessReport?> _fetchDrowsinessReport(
-    Vehicle targetVehicle,
+    List<String> vehicleIds,
   ) async {
-    for (final vehicleId in _eventVehicleIds(targetVehicle)) {
+    for (final vehicleId in vehicleIds) {
       final report = await _drowsinessReportService.getReport(
         vehicleId: vehicleId,
       );
@@ -417,11 +530,11 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
   }
 
   Future<List<DrowsinessEvent>> _fetchEventsForDateRange({
-    required Vehicle targetVehicle,
+    required List<String> vehicleIds,
     required DateTime startDate,
     required DateTime endDate,
   }) async {
-    for (final vehicleId in _eventVehicleIds(targetVehicle)) {
+    for (final vehicleId in vehicleIds) {
       final events = await _drowsinessReportService.getEventsByVehicle(
         vehicleId: vehicleId,
         startDate: startDate,
@@ -438,9 +551,9 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
   }
 
   Future<List<DriverBehaviorSummary>> _fetchDriverBehavior(
-    Vehicle targetVehicle,
+    List<String> vehicleIds,
   ) async {
-    for (final vehicleId in _eventVehicleIds(targetVehicle)) {
+    for (final vehicleId in vehicleIds) {
       final behaviorSummaries = await _drowsinessReportService
           .getDriverBehavior(vehicleId: vehicleId, limit: 100);
 
@@ -452,21 +565,155 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     return <DriverBehaviorSummary>[];
   }
 
-  List<String> _eventVehicleIds(Vehicle vehicle) {
-    final identifiers = <String>[];
-    final apiVehicleId = vehicle.apiVehicleId?.trim();
+  _TodayEventCounts _buildTodayEventCounts(
+    List<DrowsinessEvent> events,
+    DateTime date,
+  ) {
+    var drowsy = 0;
+    var distraction = 0;
 
-    if (apiVehicleId != null && apiVehicleId.isNotEmpty) {
-      identifiers.add(apiVehicleId);
+    for (final event in events) {
+      if (!_isSameDay(event.time, date)) {
+        continue;
+      }
+
+      final normalized = _normalizeBehavior(event);
+      if (normalized == 'drowsy') {
+        drowsy += 1;
+      } else if (normalized == 'distraction') {
+        distraction += 1;
+      }
     }
 
-    if (identifiers.isEmpty) {
-      // TODO: Remove this local-development fallback after all vehicles carry API IDs.
-      identifiers.add('VIN-0001');
-    }
-
-    return identifiers;
+    return _TodayEventCounts(drowsy: drowsy, distraction: distraction);
   }
+
+  List<String> _eventVehicleIds({
+    Vehicle? vehicle,
+    VehicleStatusItem? statusItem,
+  }) {
+    final identifiers = <String>{};
+
+    void addIdentifier(String? value) {
+      final trimmed = value?.trim();
+      if (trimmed != null && trimmed.isNotEmpty) {
+        identifiers.add(trimmed);
+      }
+    }
+
+    addIdentifier(vehicle?.apiVehicleId);
+    addIdentifier(vehicle?.id);
+    addIdentifier(vehicle?.plateNumber);
+    addIdentifier(statusItem?.vehicleIdentificationNumber);
+    addIdentifier(statusItem?.vehicleId);
+    addIdentifier(statusItem?.plateNumber);
+
+    return identifiers.toList();
+  }
+
+  List<Vehicle> _mapVehiclesWithCoordinates(List<VehicleStatusItem> items) {
+    return items.where((item) => item.hasCoordinates).map((item) {
+      final latitude = item.latitude!;
+      final longitude = item.longitude!;
+
+      return Vehicle(
+        id: item.vehicleId.isNotEmpty
+            ? item.vehicleId
+            : item.vehicleIdentificationNumber,
+        apiVehicleId: item.vehicleIdentificationNumber.isNotEmpty
+            ? item.vehicleIdentificationNumber
+            : null,
+        plateNumber: item.plateNumber.isNotEmpty
+            ? item.plateNumber
+            : item.vehicleIdentificationNumber,
+        type: item.movementStatus.isNotEmpty ? item.movementStatus : 'Unknown',
+        driverName: item.driverName.isNotEmpty
+            ? item.driverName
+            : 'Unknown Driver',
+        activityTime: _activityLabel(item),
+        position: LatLng(latitude, longitude),
+        status: _vehicleStatusFromDisplayStatus(item.displayStatus),
+        speed: item.speed ?? 0,
+        displayStatus: item.displayStatus,
+        statusReason: item.statusReason,
+        lastTelemetryTime: item.lastTelemetryTime,
+        lastSeenMinutes: item.lastSeenMinutes,
+      );
+    }).toList();
+  }
+
+  Vehicle? _resolveSelectedVehicle({
+    required List<Vehicle> vehicles,
+    String? selectedVehicleId,
+  }) {
+    if (vehicles.isEmpty) {
+      return null;
+    }
+
+    if (selectedVehicleId == null || selectedVehicleId.isEmpty) {
+      return null;
+    }
+
+    for (final vehicle in vehicles) {
+      if (vehicle.id == selectedVehicleId) {
+        return vehicle;
+      }
+    }
+
+    return vehicles.first;
+  }
+
+  String _activityLabel(VehicleStatusItem item) {
+    if (item.lastSeenMinutes != null) {
+      return 'Last seen ${item.lastSeenMinutes} min ago';
+    }
+
+    if (item.lastTelemetryTime != null) {
+      return item.lastTelemetryTime!.toIso8601String();
+    }
+
+    return 'Telemetry unavailable';
+  }
+
+  VehicleStatus _vehicleStatusFromDisplayStatus(String rawStatus) {
+    switch (rawStatus.trim().toLowerCase()) {
+      case 'alert':
+        return VehicleStatus.alert;
+      case 'warning':
+        return VehicleStatus.warning;
+      case 'offline':
+        return VehicleStatus.inactive;
+      default:
+        return VehicleStatus.active;
+    }
+  }
+
+  String? _normalizeBehavior(DrowsinessEvent event) {
+    final raw = '${event.behaviorType ?? ''} ${event.status}'.toLowerCase();
+    if (raw.contains('drows')) return 'drowsy';
+    if (raw.contains('yawn')) return 'yawn';
+    if (raw.contains('distraction')) return 'distraction';
+    if (raw.contains('one_hand_off_wheel') ||
+        raw.contains('one hand off wheel') ||
+        raw.contains('hands_off') ||
+        raw.contains('hand off wheel')) {
+      return 'one_hand_off_wheel';
+    }
+    return null;
+  }
+
+  bool _isSameDay(DateTime left, DateTime right) {
+    return left.year == right.year &&
+        left.month == right.month &&
+        left.day == right.day;
+  }
+}
+
+class _TodayEventCounts {
+  const _TodayEventCounts({required this.drowsy, required this.distraction});
+
+  final int drowsy;
+  final int distraction;
 }
 
 // Tambahkan class event ini di file dashboard_event.dart Anda

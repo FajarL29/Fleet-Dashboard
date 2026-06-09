@@ -1,10 +1,10 @@
 import 'package:equatable/equatable.dart';
-import 'package:latlong2/latlong.dart';
 import '../../models/driver_behavior_summary.dart';
 import '../../models/drowsiness_report.dart';
 import '../../models/vehicle.dart';
 import '../../models/driver_health.dart';
 import '../../models/aqi_data.dart';
+import '../../models/vehicle_status.dart';
 
 /// Represents the status of the dashboard
 enum DashboardStatus { initial, loading, connected, disconnected, error }
@@ -52,6 +52,8 @@ class DashboardState extends Equatable {
   /// Aggregate driver behavior summaries from the API
   final List<DriverBehaviorSummary> driverBehaviorSummaries;
   final bool isOverviewLoading;
+  final VehicleStatusData? vehicleStatusData;
+  final String? vehicleStatusError;
 
   /// Error message (if any)
   final String? errorMessage;
@@ -71,6 +73,8 @@ class DashboardState extends Equatable {
     this.currentDrowsinessReport,
     this.driverBehaviorSummaries = const [],
     this.isOverviewLoading = false,
+    this.vehicleStatusData,
+    this.vehicleStatusError,
     this.errorMessage,
     this.driverAlerts = const {},
   });
@@ -79,42 +83,7 @@ class DashboardState extends Equatable {
   factory DashboardState.initial() {
     return DashboardState(
       status: DashboardStatus.initial,
-      vehicles: [
-        Vehicle(
-          id: '1210',
-          apiVehicleId: 'VIN-0001',
-          plateNumber: 'B 7041 UDB',
-          type: 'HIACE Commuter',
-          driverName: 'Budi',
-          activityTime: '10.30 a.m. - 13.00 p.m.',
-          position: LatLng(-6.140869, 106.889175),
-          status: VehicleStatus.active,
-        ),
-
-        Vehicle(
-          id: '999',
-          // TODO: Replace with the real API vehicle identifier when available.
-          plateNumber: 'B 9999 XYZ',
-          type: 'HIACE Luxury',
-          driverName: 'Bahrudin',
-          position: LatLng(-6.35, 107.29), // Posisi awal bebas
-          status: VehicleStatus.active,
-          activityTime: '11.00 ',
-        ),
-        Vehicle(
-          id: '1234',
-          // TODO: Replace with the real API vehicle identifier when available.
-          plateNumber: 'B 1111 UOB',
-          type: 'Innova Ribon',
-          driverName: 'Gito',
-          position: LatLng(
-            -6.265246,
-            106.883481,
-          ), // Posisi awal bebas -6.265246, 106.883481
-          status: VehicleStatus.active,
-          activityTime: '11.00 ',
-        ),
-      ],
+      vehicles: const [],
       driversHealth: [
         DriverHealth(
           driverId: '3034',
@@ -124,7 +93,7 @@ class DashboardState extends Equatable {
           heartRate: 75,
           temperature: 36.5,
           status: HealthStatus.normal,
-          activity: 'Active',
+          activity: 'inactive',
         ),
         DriverHealth(
           driverId: '999',
@@ -134,7 +103,7 @@ class DashboardState extends Equatable {
           heartRate: 75,
           temperature: 36.5,
           status: HealthStatus.normal,
-          activity: 'Active',
+          activity: 'inactive',
         ),
         DriverHealth(
           driverId: '1234',
@@ -144,7 +113,7 @@ class DashboardState extends Equatable {
           heartRate: 75,
           temperature: 36.5,
           status: HealthStatus.normal,
-          activity: 'Active',
+          activity: 'inactive',
         ),
       ],
       aqiData: const AQIData(index: 42, pm25: 72, co2: 22, no2: 15),
@@ -182,6 +151,10 @@ class DashboardState extends Equatable {
     bool clearCurrentDrowsinessReport = false,
     List<DriverBehaviorSummary>? driverBehaviorSummaries,
     bool? isOverviewLoading,
+    VehicleStatusData? vehicleStatusData,
+    bool clearVehicleStatusData = false,
+    String? vehicleStatusError,
+    bool clearVehicleStatusError = false,
     String? errorMessage,
     bool clearErrorMessage = false,
     Map<int, Map<String, dynamic>>?
@@ -210,6 +183,12 @@ class DashboardState extends Equatable {
       driverBehaviorSummaries:
           driverBehaviorSummaries ?? this.driverBehaviorSummaries,
       isOverviewLoading: isOverviewLoading ?? this.isOverviewLoading,
+      vehicleStatusData: clearVehicleStatusData
+          ? null
+          : (vehicleStatusData ?? this.vehicleStatusData),
+      vehicleStatusError: clearVehicleStatusError
+          ? null
+          : (vehicleStatusError ?? this.vehicleStatusError),
       errorMessage: clearErrorMessage
           ? null
           : (errorMessage ?? this.errorMessage),
@@ -234,6 +213,8 @@ class DashboardState extends Equatable {
     currentDrowsinessReport,
     driverBehaviorSummaries,
     isOverviewLoading,
+    vehicleStatusData,
+    vehicleStatusError,
     errorMessage,
     driverAlerts, // Perbaikan: Masukkan ke props agar UI sinkron
   ];

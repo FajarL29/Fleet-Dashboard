@@ -1,5 +1,6 @@
 import 'package:fleet_dashboard/screens/report_screen.dart';
 import 'package:fleet_dashboard/screens/safety_screen.dart';
+import 'package:fleet_dashboard/screens/vehicles_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -106,8 +107,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     );
                   case '/vehicles':
                     return MaterialPageRoute(
-                      builder: (context) =>
-                          _buildPlaceholderContent('Vehicles'),
+                      builder: (context) => const VehiclesScreen(),
                       settings: settings,
                     );
                   case '/drivers':
@@ -151,7 +151,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           prev.recentDrowsinessEvents != curr.recentDrowsinessEvents ||
           prev.currentDrowsinessReport != curr.currentDrowsinessReport ||
           prev.driverBehaviorSummaries != curr.driverBehaviorSummaries ||
-          prev.isOverviewLoading != curr.isOverviewLoading,
+          prev.isOverviewLoading != curr.isOverviewLoading ||
+          prev.vehicleStatusData != curr.vehicleStatusData ||
+          prev.vehicleStatusError != curr.vehicleStatusError,
       builder: (context, state) {
         return OverviewDashboard(
           mapController: _mapController,
@@ -163,6 +165,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           recentDrowsinessEvents: state.recentDrowsinessEvents,
           currentDrowsinessReport: state.currentDrowsinessReport,
           driverBehaviorSummaries: state.driverBehaviorSummaries,
+          vehicleStatusData: state.vehicleStatusData,
+          vehicleStatusError: state.vehicleStatusError,
           onVehicleSelected: (vehicle) =>
               context.read<DashboardBloc>().add(VehicleSelected(vehicle)),
           onClearSelection: () {

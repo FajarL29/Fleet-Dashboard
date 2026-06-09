@@ -10,13 +10,18 @@ class SafetyFilterBar extends StatelessWidget {
     required this.eventTypeFilter,
     required this.searchQuery,
     required this.eventCount,
+    required this.vehicleOptions,
+    required this.selectedVehicleVin,
     required this.selectedVehicleLabel,
     required this.onDateRangeTap,
     required this.onRefresh,
+    required this.onVehicleChanged,
     required this.onSeverityChanged,
     required this.onEventTypeChanged,
     required this.onSearchChanged,
     this.isLoading = false,
+    this.isVehicleLoading = false,
+    this.emptyVehicleLabel = 'No registered vehicles available.',
   });
 
   final String dateRangeLabel;
@@ -24,13 +29,18 @@ class SafetyFilterBar extends StatelessWidget {
   final String eventTypeFilter;
   final String searchQuery;
   final int eventCount;
+  final List<SafetyVehicleOption> vehicleOptions;
+  final String? selectedVehicleVin;
   final String selectedVehicleLabel;
   final VoidCallback onDateRangeTap;
   final VoidCallback onRefresh;
+  final ValueChanged<String?> onVehicleChanged;
   final ValueChanged<String> onSeverityChanged;
   final ValueChanged<String> onEventTypeChanged;
   final ValueChanged<String> onSearchChanged;
   final bool isLoading;
+  final bool isVehicleLoading;
+  final String emptyVehicleLabel;
 
   static const List<String> severityOptions = ['All', 'High', 'Medium', 'Low'];
 
@@ -77,7 +87,14 @@ class SafetyFilterBar extends StatelessWidget {
             width: 280,
             child: _SearchField(value: searchQuery, onChanged: onSearchChanged),
           ),
-          _VehicleBadge(label: selectedVehicleLabel),
+          _VehicleDropdown(
+            options: vehicleOptions,
+            value: selectedVehicleVin,
+            selectedLabel: selectedVehicleLabel,
+            emptyLabel: emptyVehicleLabel,
+            isLoading: isVehicleLoading,
+            onChanged: onVehicleChanged,
+          ),
           _CountBadge(label: isLoading ? 'Loading...' : '$eventCount events'),
           _IconActionButton(
             icon: Icons.refresh_rounded,
@@ -88,6 +105,13 @@ class SafetyFilterBar extends StatelessWidget {
       ),
     );
   }
+}
+
+class SafetyVehicleOption {
+  const SafetyVehicleOption({required this.vin, required this.label});
+
+  final String vin;
+  final String label;
 }
 
 class _ActionChip extends StatelessWidget {
@@ -234,33 +258,99 @@ class _SearchField extends StatelessWidget {
   }
 }
 
-class _VehicleBadge extends StatelessWidget {
-  const _VehicleBadge({required this.label});
+class _VehicleDropdown extends StatelessWidget {
+  const _VehicleDropdown({
+    required this.options,
+    required this.value,
+    required this.selectedLabel,
+    required this.emptyLabel,
+    required this.isLoading,
+    required this.onChanged,
+  });
 
-  final String label;
+  final List<SafetyVehicleOption> options;
+  final String? value;
+  final String selectedLabel;
+  final String emptyLabel;
+  final bool isLoading;
+  final ValueChanged<String?> onChanged;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+      width: 240,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
         color: const Color(0xFF162033),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: ReportStyles.border),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.local_shipping_outlined, size: 18),
-          const SizedBox(width: 8),
-          Text(
-            label,
-            style: const TextStyle(
-              color: ReportStyles.textPrimary,
-              fontWeight: FontWeight.w700,
-            ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: options.any((option) => option.vin == value) ? value : null,
+          isExpanded: true,
+          hint: Row(
+            children: [
+              const Icon(Icons.local_shipping_outlined, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  isLoading ? 'Loading vehicles...' : emptyLabel,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: ReportStyles.textPrimary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
+          dropdownColor: ReportStyles.surfaceBackground,
+          borderRadius: BorderRadius.circular(12),
+          iconEnabledColor: ReportStyles.textSecondary,
+          style: const TextStyle(
+            color: ReportStyles.textPrimary,
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+          ),
+          selectedItemBuilder: (context) {
+            return options.map((option) {
+              return Align(
+                alignment: Alignment.centerLeft,
+                child: Row(
+                  children: [
+                    const Icon(Icons.local_shipping_outlined, size: 18),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        selectedLabel,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: ReportStyles.textPrimary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }).toList();
+          },
+          items: options.map((option) {
+            return DropdownMenuItem<String>(
+              value: option.vin,
+              child: Text(
+                option.label,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: ReportStyles.textPrimary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            );
+          }).toList(),
+          onChanged: isLoading || options.isEmpty ? null : onChanged,
+        ),
       ),
     );
   }

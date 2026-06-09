@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 
 import '../../models/drowsiness_report.dart';
 import '../../models/vehicle.dart';
 import '../../services/drowsiness_report_service.dart';
+import '../../services/vehicle_management_service.dart';
 import '../report/report_styles.dart';
 import 'safety_skeleton_loading.dart';
 import 'safety_empty_state.dart';
@@ -13,14 +15,9 @@ import 'safety_filter_bar.dart';
 import 'safety_workflow_stepper.dart';
 
 class SafetyContent extends StatefulWidget {
-  const SafetyContent({
-    super.key,
-    required this.selectedVehicle,
-    required this.vehicles,
-  });
+  const SafetyContent({super.key, this.initialSelectedVehicle});
 
-  final Vehicle? selectedVehicle;
-  final List<Vehicle> vehicles;
+  final Vehicle? initialSelectedVehicle;
 
   @override
   State<SafetyContent> createState() => _SafetyContentState();
@@ -28,51 +25,148 @@ class SafetyContent extends StatefulWidget {
 
 class _SafetyContentState extends State<SafetyContent> {
   final DrowsinessReportService _service = const DrowsinessReportService();
+  final VehicleManagementService _vehicleService =
+      const VehicleManagementService();
 
   late DateTime _endDate;
   late DateTime _startDate;
-  String? _activeVehicleApiId;
+  List<SafetyVehicleOption> _vehicleOptions = const [];
+  String? _activeVehicleVin;
   int? _selectedEventId;
   String _severityFilter = 'All';
   String _eventTypeFilter = 'All';
   String _searchQuery = '';
   List<DrowsinessEvent> _events = const [];
-  bool _isLoading = true;
+  bool _isVehicleLoading = true;
+  bool _isEventsLoading = false;
   bool _isReviewUpdating = false;
   String? _errorMessage;
+  String? _vehicleErrorMessage;
 
   @override
   void initState() {
     super.initState();
     _endDate = DateTime.now();
     _startDate = _endDate.subtract(const Duration(days: 30));
-    _activeVehicleApiId = _resolveVehicleApiId();
-    _loadEvents();
+    _loadVehicles();
   }
 
   @override
   void didUpdateWidget(covariant SafetyContent oldWidget) {
     super.didUpdateWidget(oldWidget);
-    final nextVehicleApiId = _resolveVehicleApiId();
-    if (nextVehicleApiId != _activeVehicleApiId) {
+    final previousVin = _preferredVehicleVin(oldWidget.initialSelectedVehicle);
+    final nextVin = _preferredVehicleVin(widget.initialSelectedVehicle);
+    if (nextVin != previousVin && nextVin != null) {
+      final nextOption = _vehicleOptions.where(
+        (option) => option.vin == nextVin,
+      );
+      if (nextOption.isNotEmpty && nextVin != _activeVehicleVin) {
+        _handleVehicleChanged(nextVin);
+      }
+    }
+  }
+
+  Future<void> _loadVehicles({bool reloadEventsAfterLoad = true}) async {
+    setState(() {
+      _isVehicleLoading = true;
+      _vehicleErrorMessage = null;
+    });
+
+    try {
+      final registryData = await _vehicleService.getVehicles(
+        status: 'active',
+        limit: 100,
+      );
+      final options = registryData.vehicles
+          .where(
+            (vehicle) => vehicle.vehicleIdentificationNumber.trim().isNotEmpty,
+          )
+          .map(
+            (vehicle) => SafetyVehicleOption(
+              vin: vehicle.vehicleIdentificationNumber.trim(),
+              label: _vehicleLabel(
+                vin: vehicle.vehicleIdentificationNumber,
+                plateNumber: vehicle.plateNumber,
+              ),
+            ),
+          )
+          .toList();
+
+      if (kDebugMode) {
+        debugPrint(
+          '[Safety] Loaded vehicles: count=${options.length}, vins=${options.map((option) => option.vin).join(', ')}',
+        );
+      }
+
+      if (!mounted) {
+        return;
+      }
+
+      final nextSelectedVin = _resolveSelectedVehicleVin(options);
+      final shouldReloadEvents =
+          reloadEventsAfterLoad && nextSelectedVin != null;
+
       setState(() {
-        _activeVehicleApiId = nextVehicleApiId;
-        _selectedEventId = null;
+        _vehicleOptions = options;
+        _activeVehicleVin = nextSelectedVin;
+        _selectedEventId = shouldReloadEvents ? null : _selectedEventId;
+        _isVehicleLoading = false;
+        _vehicleErrorMessage = null;
       });
-      _loadEvents();
+
+      if (options.isEmpty) {
+        setState(() {
+          _events = const [];
+          _errorMessage = null;
+          _isEventsLoading = false;
+        });
+        return;
+      }
+
+      if (shouldReloadEvents) {
+        if (kDebugMode) {
+          debugPrint('[Safety] Selected vehicle=$nextSelectedVin');
+        }
+        await _loadEvents();
+      }
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _vehicleOptions = const [];
+        _activeVehicleVin = null;
+        _events = const [];
+        _isVehicleLoading = false;
+        _isEventsLoading = false;
+        _vehicleErrorMessage = error.toString();
+      });
     }
   }
 
   Future<void> _loadEvents() async {
+    final vehicleVin = _activeVehicleVin;
+    if (vehicleVin == null || vehicleVin.isEmpty) {
+      setState(() {
+        _events = const [];
+        _errorMessage = null;
+        _isEventsLoading = false;
+      });
+      return;
+    }
+
     setState(() {
-      _isLoading = true;
+      _isEventsLoading = true;
       _errorMessage = null;
     });
 
-    final vehicleId = _activeVehicleApiId ?? 'VIN-0001';
     try {
+      if (kDebugMode) {
+        debugPrint('[Safety] Fetch events for vehicle=$vehicleVin');
+      }
       final events = await _service.getEventsByVehicle(
-        vehicleId: vehicleId,
+        vehicleId: vehicleVin,
         startDate: _startDate,
         endDate: _endDate,
         limit: 100,
@@ -86,7 +180,7 @@ class _SafetyContentState extends State<SafetyContent> {
 
       setState(() {
         _events = events;
-        _isLoading = false;
+        _isEventsLoading = false;
       });
     } catch (error) {
       if (!mounted) {
@@ -94,30 +188,14 @@ class _SafetyContentState extends State<SafetyContent> {
       }
 
       setState(() {
-        _isLoading = false;
+        _isEventsLoading = false;
         _errorMessage = error.toString();
       });
     }
   }
 
-  String _resolveVehicleApiId() {
-    final selectedApiId = widget.selectedVehicle?.apiVehicleId?.trim();
-    if (selectedApiId != null && selectedApiId.isNotEmpty) {
-      return selectedApiId;
-    }
-
-    for (final vehicle in widget.vehicles) {
-      final apiVehicleId = vehicle.apiVehicleId?.trim();
-      if (apiVehicleId != null && apiVehicleId.isNotEmpty) {
-        return apiVehicleId;
-      }
-    }
-
-    return 'VIN-0001';
-  }
-
   void _refresh() {
-    _loadEvents();
+    _loadVehicles(reloadEventsAfterLoad: true);
   }
 
   Future<void> _pickDateRange() async {
@@ -192,7 +270,11 @@ class _SafetyContentState extends State<SafetyContent> {
   Widget build(BuildContext context) {
     final filteredEvents = _applyFilters(_events);
     final selectedEvent = _resolveSelectedEvent(filteredEvents);
-    final showInitialSkeleton = _isLoading && _events.isEmpty;
+    final showInitialSkeleton =
+        (_isVehicleLoading || _isEventsLoading) &&
+        _vehicleOptions.isEmpty &&
+        _events.isEmpty &&
+        _vehicleErrorMessage == null;
 
     if (showInitialSkeleton) {
       return const SafetyContentSkeleton();
@@ -221,12 +303,12 @@ class _SafetyContentState extends State<SafetyContent> {
           eventTypeFilter: _eventTypeFilter,
           searchQuery: _searchQuery,
           eventCount: filteredEvents.length,
-          selectedVehicleLabel:
-              widget.selectedVehicle?.apiVehicleId?.trim().isNotEmpty == true
-              ? widget.selectedVehicle!.apiVehicleId!
-              : _activeVehicleApiId ?? 'VIN-0001',
+          vehicleOptions: _vehicleOptions,
+          selectedVehicleVin: _activeVehicleVin,
+          selectedVehicleLabel: _selectedVehicleLabel,
           onDateRangeTap: _pickDateRange,
           onRefresh: _refresh,
+          onVehicleChanged: _handleVehicleChanged,
           onSeverityChanged: (value) {
             setState(() {
               _severityFilter = value;
@@ -242,7 +324,8 @@ class _SafetyContentState extends State<SafetyContent> {
               _searchQuery = value;
             });
           },
-          isLoading: _isLoading,
+          isLoading: _isVehicleLoading || _isEventsLoading,
+          isVehicleLoading: _isVehicleLoading,
         ),
         const SizedBox(height: 16),
         const SafetyWorkflowStepper(),
@@ -250,6 +333,21 @@ class _SafetyContentState extends State<SafetyContent> {
         Expanded(
           child: Builder(
             builder: (context) {
+              if (_vehicleErrorMessage != null) {
+                return _SafetyErrorState(
+                  message: _vehicleErrorMessage!,
+                  onRetry: _refresh,
+                );
+              }
+
+              if (_vehicleOptions.isEmpty) {
+                return const SafetyEmptyState(
+                  title: 'No registered vehicles available.',
+                  subtitle:
+                      'Add or activate a vehicle to review safety events.',
+                );
+              }
+
               if (_errorMessage != null) {
                 return _SafetyErrorState(
                   message: _errorMessage!,
@@ -263,7 +361,7 @@ class _SafetyContentState extends State<SafetyContent> {
                       ? 'No safety events found'
                       : 'No events match the current filters',
                   subtitle: _events.isEmpty
-                      ? 'Try a different vehicle or date range.'
+                      ? 'Try a different date range or keep this vehicle selected while events are still empty.'
                       : 'Adjust severity, event type, or search terms.',
                 );
               }
@@ -324,7 +422,7 @@ class _SafetyContentState extends State<SafetyContent> {
                           ],
                         );
 
-                  if (!_isLoading) {
+                  if (!_isEventsLoading) {
                     return body;
                   }
 
@@ -355,6 +453,23 @@ class _SafetyContentState extends State<SafetyContent> {
     );
 
     return content;
+  }
+
+  Future<void> _handleVehicleChanged(String? vin) async {
+    if (vin == null || vin == _activeVehicleVin) {
+      return;
+    }
+
+    if (kDebugMode) {
+      debugPrint('[Safety] Selected vehicle=$vin');
+    }
+
+    setState(() {
+      _activeVehicleVin = vin;
+      _selectedEventId = null;
+    });
+
+    await _loadEvents();
   }
 
   Future<void> _handleReviewAction(SafetyReviewActionRequest request) async {
@@ -423,6 +538,64 @@ class _SafetyContentState extends State<SafetyContent> {
     }
 
     return events.isEmpty ? null : events.first;
+  }
+
+  String? _resolveSelectedVehicleVin(List<SafetyVehicleOption> options) {
+    if (options.isEmpty) {
+      return null;
+    }
+
+    if (_activeVehicleVin != null &&
+        options.any((option) => option.vin == _activeVehicleVin)) {
+      return _activeVehicleVin;
+    }
+
+    final preferredVin = _preferredVehicleVin(widget.initialSelectedVehicle);
+    if (preferredVin != null &&
+        options.any((option) => option.vin == preferredVin)) {
+      return preferredVin;
+    }
+
+    if (options.any((option) => option.vin == 'VIN-0001')) {
+      return 'VIN-0001';
+    }
+
+    return options.first.vin;
+  }
+
+  String? _preferredVehicleVin(Vehicle? vehicle) {
+    final apiVehicleId = vehicle?.apiVehicleId?.trim();
+    if (apiVehicleId != null && apiVehicleId.isNotEmpty) {
+      return apiVehicleId;
+    }
+
+    final vehicleId = vehicle?.id;
+    if (vehicleId != null &&
+        vehicleId.trim().isNotEmpty &&
+        vehicleId.startsWith('VIN-')) {
+      return vehicleId.trim();
+    }
+
+    return null;
+  }
+
+  String _vehicleLabel({required String vin, required String plateNumber}) {
+    final trimmedVin = vin.trim();
+    final trimmedPlate = plateNumber.trim();
+    if (trimmedPlate.isEmpty) {
+      return trimmedVin;
+    }
+    return '$trimmedPlate · $trimmedVin';
+  }
+
+  String get _selectedVehicleLabel {
+    final selectedOption = _vehicleOptions.where(
+      (option) => option.vin == _activeVehicleVin,
+    );
+    if (selectedOption.isNotEmpty) {
+      return selectedOption.first.label;
+    }
+    return _activeVehicleVin ?? 'No registered vehicles available.';
   }
 
   String _normalizedEventType(String value) {

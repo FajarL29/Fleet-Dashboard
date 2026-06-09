@@ -7,6 +7,7 @@ import '../../models/driver_behavior_summary.dart';
 import '../../models/driver_health.dart';
 import '../../models/drowsiness_report.dart';
 import '../../models/vehicle.dart';
+import '../../models/vehicle_status.dart';
 import 'overview_skeleton_loading.dart';
 import '../map_section.dart';
 import '../report/report_styles.dart';
@@ -23,6 +24,8 @@ class OverviewDashboard extends StatelessWidget {
     required this.recentDrowsinessEvents,
     required this.currentDrowsinessReport,
     required this.driverBehaviorSummaries,
+    required this.vehicleStatusData,
+    required this.vehicleStatusError,
     required this.onVehicleSelected,
     required this.onClearSelection,
     required this.onFollowModeChanged,
@@ -39,6 +42,8 @@ class OverviewDashboard extends StatelessWidget {
   final List<DrowsinessEvent> recentDrowsinessEvents;
   final DrowsinessReport? currentDrowsinessReport;
   final List<DriverBehaviorSummary> driverBehaviorSummaries;
+  final VehicleStatusData? vehicleStatusData;
+  final String? vehicleStatusError;
   final ValueChanged<Vehicle> onVehicleSelected;
   final VoidCallback onClearSelection;
   final ValueChanged<bool> onFollowModeChanged;
@@ -48,6 +53,7 @@ class OverviewDashboard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasOverviewData =
+        vehicleStatusData != null ||
         currentDrowsinessReport != null ||
         recentDrowsinessEvents.isNotEmpty ||
         driverBehaviorSummaries.isNotEmpty;
@@ -84,10 +90,9 @@ class OverviewDashboard extends StatelessWidget {
               children: [
                 _OverviewHeader(
                   lastUpdatedLabel: overviewData.lastUpdatedLabel,
-                  isFleetHealthy:
-                      overviewData.highRiskDrivers.isEmpty &&
-                      overviewData.drowsyCount == 0 &&
-                      overviewData.distractionCount == 0,
+                  healthLabel: overviewData.fleetHealthLabel,
+                  healthColor: overviewData.fleetHealthColor,
+                  healthIcon: overviewData.fleetHealthIcon,
                   useWideLayout: useWideHeader,
                 ),
                 const SizedBox(height: 16),
@@ -107,6 +112,7 @@ class OverviewDashboard extends StatelessWidget {
                             child: _LiveMapCard(
                               map: _buildMapContent(),
                               hasVehicleData: vehicles.isNotEmpty,
+                              mapStateMessage: overviewData.mapStateMessage,
                               onViewFullMap: onOpenMapFullscreen,
                             ),
                           ),
@@ -142,6 +148,7 @@ class OverviewDashboard extends StatelessWidget {
                       _LiveMapCard(
                         map: _buildMapContent(),
                         hasVehicleData: vehicles.isNotEmpty,
+                        mapStateMessage: overviewData.mapStateMessage,
                         onViewFullMap: onOpenMapFullscreen,
                       ),
                       const SizedBox(height: 16),
@@ -210,12 +217,16 @@ class OverviewDashboard extends StatelessWidget {
     return [
       _CompactKpiCard(
         title: 'Online Vehicles',
-        value: '${data.onlineVehicles} / $totalVehicles',
-        subtitle: totalVehicles == 0 ? 'No vehicles available' : 'All active',
+        value: data.hasVehicleStatus
+            ? '${data.onlineVehicles} / $totalVehicles'
+            : 'Unavailable',
+        subtitle: data.hasVehicleStatus
+            ? (totalVehicles == 0 ? 'No vehicles available' : 'Live status')
+            : (data.vehicleStatusMessage ?? 'Vehicle status unavailable'),
         icon: Icons.local_shipping_rounded,
         accentColor: ReportStyles.green,
         trailing: _RingPercent(
-          percent: onlinePercent,
+          percent: data.hasVehicleStatus ? onlinePercent : 0,
           color: ReportStyles.green,
         ),
       ),
@@ -247,7 +258,9 @@ class OverviewDashboard extends StatelessWidget {
       ),
       _CompactKpiCard(
         title: 'High-Risk Drivers',
-        value: '${data.highRiskDrivers.length}',
+        value: data.hasVehicleStatus
+            ? '${data.highRiskDriverCount}'
+            : 'Unavailable',
         subtitle: data.highRiskSubtitle,
         icon: Icons.person_rounded,
         accentColor: ReportStyles.purple,
@@ -262,31 +275,67 @@ class OverviewDashboard extends StatelessWidget {
 
   _OverviewData _buildOverviewData() {
     final now = DateTime.now();
+    final vehicleItems =
+        vehicleStatusData?.vehicles ?? const <VehicleStatusItem>[];
+    final summary = vehicleStatusData?.summary;
     final todayEvents =
         recentDrowsinessEvents
             .where((event) => _isSameDay(event.time, now))
             .toList()
           ..sort((a, b) => b.time.compareTo(a.time));
 
-    final onlineVehicles = vehicles
-        .where((vehicle) => vehicle.status == VehicleStatus.active)
-        .length;
-
     final behaviorByName = _buildBehaviorCountMap(todayEvents);
     final highRiskDrivers = _buildHighRiskDrivers();
     final recentLog = todayEvents.take(5).map(_mapRecentLog).toList();
+    final totalVehicles = summary?.totalVehicles ?? vehicleItems.length;
+    final onlineVehicles = summary?.onlineVehicles ?? 0;
+    final highRiskDriverCount =
+        summary?.alert ??
+        vehicleItems
+            .where((item) => item.safetyStatus.trim().toLowerCase() == 'alert')
+            .length;
+    final warningCount =
+        summary?.warning ??
+        vehicleItems
+            .where(
+              (item) => item.displayStatus.trim().toLowerCase() == 'warning',
+            )
+            .length;
     final snapshotMax = [
       behaviorByName['drowsy'] ?? 0,
       behaviorByName['yawn'] ?? 0,
       behaviorByName['distraction'] ?? 0,
       behaviorByName['one_hand_off_wheel'] ?? 0,
     ].fold<int>(0, math.max);
-    final healthyFallback = highRiskDrivers.isEmpty
-        ? 'No high-risk drivers'
-        : highRiskDrivers.first['driver'] as String;
+    final hasVehicleStatus = vehicleStatusData != null;
+    final highRiskSubtitle = !hasVehicleStatus
+        ? (vehicleStatusError ?? 'Awaiting vehicle status')
+        : highRiskDriverCount == 0
+        ? 'No high-risk drivers today'
+        : '$highRiskDriverCount vehicle${highRiskDriverCount == 1 ? '' : 's'} need attention';
+    final mapStateMessage = vehicleStatusError != null && !hasVehicleStatus
+        ? vehicleStatusError!
+        : vehicleItems.isEmpty
+        ? 'Vehicle status data unavailable'
+        : vehicles.isEmpty
+        ? 'No vehicle coordinates available'
+        : null;
+    final fleetHealthLabel = highRiskDriverCount > 0
+        ? 'ATTENTION REQUIRED'
+        : warningCount > 0
+        ? 'WARNING - CHECK DEVICE STATUS'
+        : 'GREEN - FLEET HEALTHY';
+    final fleetHealthColor = highRiskDriverCount > 0
+        ? ReportStyles.red
+        : warningCount > 0
+        ? ReportStyles.yellow
+        : ReportStyles.green;
+    final fleetHealthIcon = highRiskDriverCount > 0 || warningCount > 0
+        ? Icons.warning_rounded
+        : Icons.check_rounded;
 
     return _OverviewData(
-      totalVehicles: vehicles.length,
+      totalVehicles: totalVehicles,
       onlineVehicles: onlineVehicles,
       drowsyCount: behaviorByName['drowsy'] ?? 0,
       distractionCount: behaviorByName['distraction'] ?? 0,
@@ -325,11 +374,16 @@ class OverviewDashboard extends StatelessWidget {
           ),
         ),
       ],
+      hasVehicleStatus: hasVehicleStatus,
+      vehicleStatusMessage: vehicleStatusError,
+      highRiskDriverCount: highRiskDriverCount,
       highRiskDrivers: highRiskDrivers,
-      highRiskSubtitle: highRiskDrivers.isEmpty
-          ? 'No high-risk drivers'
-          : healthyFallback,
+      highRiskSubtitle: highRiskSubtitle,
       recentLog: recentLog,
+      mapStateMessage: mapStateMessage,
+      fleetHealthLabel: fleetHealthLabel,
+      fleetHealthColor: fleetHealthColor,
+      fleetHealthIcon: fleetHealthIcon,
       lastUpdatedLabel: '${_twoDigits(now.hour)}:${_twoDigits(now.minute)} WIB',
     );
   }
@@ -391,62 +445,55 @@ class OverviewDashboard extends StatelessWidget {
   }
 
   List<Map<String, String>> _buildHighRiskDrivers() {
-    final ranked =
-        driverBehaviorSummaries
-            .where(
-              (summary) => summary.userId != null || summary.totalEvents > 0,
-            )
-            .toList()
-          ..sort((a, b) {
-            final riskCompare = _riskWeight(
-              b.riskLevel,
-            ).compareTo(_riskWeight(a.riskLevel));
-            if (riskCompare != 0) return riskCompare;
-            return b.priorityScore.compareTo(a.priorityScore);
-          });
-
-    if (ranked.isNotEmpty) {
-      return ranked.take(5).map((summary) {
-        final driver = _driverForBehavior(summary);
-        final vehicle = _vehicleForBehavior(summary);
-        return {
-          'driver': driver?.name ?? summary.driverLabel,
-          'vehicle': vehicle?.plateNumber ?? summary.vehicleId ?? '-',
-          'risk': summary.riskLevel,
-          'issue': summary.totalEvents == 0
-              ? 'No issues detected'
-              : '${summary.dominantBehavior} - ${summary.totalEvents} events',
-          'initials': _initials(driver?.name ?? summary.driverLabel),
-        };
-      }).toList();
+    final items = vehicleStatusData?.vehicles ?? const <VehicleStatusItem>[];
+    if (items.isEmpty) {
+      return const [];
     }
 
-    final fallback =
-        driversHealth.map((driver) {
-          final vehicle = vehicles.cast<Vehicle?>().firstWhere(
-            (item) =>
-                item?.driverName.toLowerCase() == driver.name.toLowerCase(),
-            orElse: () => null,
-          );
-          final risk = switch (driver.status) {
-            HealthStatus.alert => 'High',
-            HealthStatus.warning => 'Medium',
-            HealthStatus.normal => 'Low',
-          };
-          return {
-            'driver': driver.name,
-            'vehicle': vehicle?.plateNumber ?? '-',
-            'risk': risk,
-            'issue': driver.status == HealthStatus.normal
-                ? 'No issues detected'
-                : driver.getStatusText(),
-            'initials': _initials(driver.name),
-          };
-        }).toList()..sort(
-          (a, b) => _riskWeight(b['risk']!).compareTo(_riskWeight(a['risk']!)),
-        );
+    final ranked = List<VehicleStatusItem>.from(items)
+      ..sort((a, b) {
+        final alertCompare = _isAlertVehicle(b).compareTo(_isAlertVehicle(a));
+        if (alertCompare != 0) {
+          return alertCompare;
+        }
 
-    return fallback.take(5).toList();
+        final statusCompare = _vehicleStatusPriority(
+          b.displayStatus,
+        ).compareTo(_vehicleStatusPriority(a.displayStatus));
+        if (statusCompare != 0) {
+          return statusCompare;
+        }
+
+        final seenCompare = (a.lastSeenMinutes ?? 1 << 30).compareTo(
+          b.lastSeenMinutes ?? 1 << 30,
+        );
+        if (seenCompare != 0) {
+          return seenCompare;
+        }
+
+        return a.driverName.compareTo(b.driverName);
+      });
+
+    return ranked.take(5).map((item) {
+      final driverName = item.driverName.isNotEmpty
+          ? item.driverName
+          : 'Unknown Driver';
+      final vehicleLabel = item.plateNumber.isNotEmpty
+          ? item.plateNumber
+          : (item.vehicleIdentificationNumber.isNotEmpty
+                ? item.vehicleIdentificationNumber
+                : item.vehicleId);
+
+      return {
+        'driver': driverName,
+        'vehicle': vehicleLabel.isNotEmpty ? vehicleLabel : '-',
+        'risk': _vehicleRiskLabel(item),
+        'issue': item.statusReason.isNotEmpty
+            ? item.statusReason
+            : 'No issues detected',
+        'initials': _initials(driverName),
+      };
+    }).toList();
   }
 
   Map<String, String> _mapRecentLog(DrowsinessEvent event) {
@@ -470,36 +517,6 @@ class OverviewDashboard extends StatelessWidget {
     return null;
   }
 
-  DriverHealth? _driverForBehavior(DriverBehaviorSummary summary) {
-    final userId = summary.userId;
-    if (userId == null) {
-      return null;
-    }
-
-    for (final driver in driversHealth) {
-      if (driver.driverId == userId.toString()) {
-        return driver;
-      }
-    }
-    return null;
-  }
-
-  Vehicle? _vehicleForBehavior(DriverBehaviorSummary summary) {
-    final vehicleId = summary.vehicleId?.trim();
-    if (vehicleId == null || vehicleId.isEmpty) {
-      return null;
-    }
-
-    for (final vehicle in vehicles) {
-      if (vehicle.id == vehicleId ||
-          vehicle.plateNumber == vehicleId ||
-          vehicle.apiVehicleId == vehicleId) {
-        return vehicle;
-      }
-    }
-    return null;
-  }
-
   Vehicle? _vehicleForEvent(DrowsinessEvent event) {
     for (final vehicle in vehicles) {
       if (vehicle.id == event.vehicleId ||
@@ -515,17 +532,6 @@ class OverviewDashboard extends StatelessWidget {
     return left.year == right.year &&
         left.month == right.month &&
         left.day == right.day;
-  }
-
-  int _riskWeight(String risk) {
-    switch (risk.toLowerCase()) {
-      case 'high':
-        return 3;
-      case 'medium':
-        return 2;
-      default:
-        return 1;
-    }
   }
 
   String _severityLabel(String risk) {
@@ -567,6 +573,42 @@ class OverviewDashboard extends StatelessWidget {
 
   String _twoDigits(int value) => value.toString().padLeft(2, '0');
 
+  int _isAlertVehicle(VehicleStatusItem item) {
+    return item.safetyStatus.trim().toLowerCase() == 'alert' ? 1 : 0;
+  }
+
+  int _vehicleStatusPriority(String status) {
+    switch (status.trim().toLowerCase()) {
+      case 'alert':
+        return 5;
+      case 'warning':
+        return 4;
+      case 'moving':
+      case 'idle':
+      case 'online':
+        return 3;
+      case 'offline':
+        return 1;
+      default:
+        return 2;
+    }
+  }
+
+  String _vehicleRiskLabel(VehicleStatusItem item) {
+    final safetyStatus = item.safetyStatus.trim().toLowerCase();
+    final displayStatus = item.displayStatus.trim().toLowerCase();
+
+    if (safetyStatus == 'alert' || displayStatus == 'alert') {
+      return 'High';
+    }
+
+    if (displayStatus == 'warning') {
+      return 'Medium';
+    }
+
+    return 'Low';
+  }
+
   double _snapshotProgress(int count, int maxCount) {
     if (count <= 0 || maxCount <= 0) {
       return 0;
@@ -578,26 +620,26 @@ class OverviewDashboard extends StatelessWidget {
 class _OverviewHeader extends StatelessWidget {
   const _OverviewHeader({
     required this.lastUpdatedLabel,
-    required this.isFleetHealthy,
+    required this.healthLabel,
+    required this.healthColor,
+    required this.healthIcon,
     required this.useWideLayout,
   });
 
   final String lastUpdatedLabel;
-  final bool isFleetHealthy;
+  final String healthLabel;
+  final Color healthColor;
+  final IconData healthIcon;
   final bool useWideLayout;
 
   @override
   Widget build(BuildContext context) {
-    final statusColor = isFleetHealthy
-        ? ReportStyles.green
-        : ReportStyles.orange;
-
     final statusCard = Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: statusColor.withValues(alpha: 0.1),
+        color: healthColor.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: statusColor.withValues(alpha: 0.45)),
+        border: Border.all(color: healthColor.withValues(alpha: 0.45)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -607,19 +649,15 @@ class _OverviewHeader extends StatelessWidget {
             height: 30,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(color: statusColor),
+              border: Border.all(color: healthColor),
             ),
-            child: Icon(
-              isFleetHealthy ? Icons.check_rounded : Icons.warning_rounded,
-              color: statusColor,
-              size: 18,
-            ),
+            child: Icon(healthIcon, color: healthColor, size: 18),
           ),
           const SizedBox(width: 10),
           Text(
-            isFleetHealthy ? 'GREEN - FLEET HEALTHY' : 'ATTENTION REQUIRED',
+            healthLabel,
             style: TextStyle(
-              color: statusColor,
+              color: healthColor,
               fontSize: 13,
               fontWeight: FontWeight.w700,
             ),
@@ -833,11 +871,13 @@ class _LiveMapCard extends StatelessWidget {
   const _LiveMapCard({
     required this.map,
     required this.hasVehicleData,
+    required this.mapStateMessage,
     required this.onViewFullMap,
   });
 
   final Widget map;
   final bool hasVehicleData;
+  final String? mapStateMessage;
   final VoidCallback onViewFullMap;
 
   @override
@@ -908,16 +948,49 @@ class _LiveMapCard extends StatelessWidget {
                             label: 'Moving',
                           ),
                           SizedBox(height: 6),
+                          _LegendRow(color: ReportStyles.blue, label: 'Idle'),
+                          SizedBox(height: 6),
                           _LegendRow(
                             color: ReportStyles.yellow,
                             label: 'Warning',
                           ),
                           SizedBox(height: 6),
                           _LegendRow(color: ReportStyles.red, label: 'Alert'),
+                          SizedBox(height: 6),
+                          _LegendRow(
+                            color: ReportStyles.textMuted,
+                            label: 'Offline',
+                          ),
                         ],
                       ),
                     ),
                   ),
+                  if (mapStateMessage != null)
+                    Positioned(
+                      right: 14,
+                      bottom: 14,
+                      child: Container(
+                        constraints: const BoxConstraints(maxWidth: 220),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xCC0B1625),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.08),
+                          ),
+                        ),
+                        child: Text(
+                          mapStateMessage!,
+                          style: const TextStyle(
+                            color: ReportStyles.textSecondary,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -1630,9 +1703,16 @@ class _OverviewData {
     required this.drowsyCount,
     required this.distractionCount,
     required this.snapshotRows,
+    required this.hasVehicleStatus,
+    required this.vehicleStatusMessage,
+    required this.highRiskDriverCount,
     required this.highRiskDrivers,
     required this.highRiskSubtitle,
     required this.recentLog,
+    required this.mapStateMessage,
+    required this.fleetHealthLabel,
+    required this.fleetHealthColor,
+    required this.fleetHealthIcon,
     required this.lastUpdatedLabel,
   });
 
@@ -1641,8 +1721,15 @@ class _OverviewData {
   final int drowsyCount;
   final int distractionCount;
   final List<_SnapshotRowData> snapshotRows;
+  final bool hasVehicleStatus;
+  final String? vehicleStatusMessage;
+  final int highRiskDriverCount;
   final List<Map<String, String>> highRiskDrivers;
   final String highRiskSubtitle;
   final List<Map<String, String>> recentLog;
+  final String? mapStateMessage;
+  final String fleetHealthLabel;
+  final Color fleetHealthColor;
+  final IconData fleetHealthIcon;
   final String lastUpdatedLabel;
 }
