@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 
 import '../../models/drowsiness_driver_option.dart';
 import '../../models/drowsiness_report.dart';
+import 'report_map_card.dart';
 import 'report_skeleton_loading.dart';
 import 'report_styles.dart';
 
@@ -97,9 +98,9 @@ class ReportMockupDashboard extends StatelessWidget {
         const SizedBox(height: 12),
         _ResponsiveColumns(
           spacing: 12,
-          leftFlex: 45,
-          rightFlex: 55,
-          left: _TrendBehaviorCard(dataset: weeklyData),
+          leftFlex: 55,
+          rightFlex: 45,
+          left: ReportMapCard(events: events),
           right: _HourlyHeatmapCard(
             report: report,
             events: events,
@@ -605,68 +606,6 @@ class _DriverContributionCard extends StatelessWidget {
                       },
                     ).toList(),
                   ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TrendBehaviorCard extends StatelessWidget {
-  const _TrendBehaviorCard({required this.dataset});
-
-  final _WeeklyDataset dataset;
-
-  @override
-  Widget build(BuildContext context) {
-    return _ReportPanel(
-      height: 255,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Trend & Perilaku',
-            style: TextStyle(
-              color: ReportStyles.textPrimary,
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 10),
-          const Row(
-            children: [
-              _LegendBar(color: ReportStyles.blue, label: 'Total Events'),
-              SizedBox(width: 20),
-              _LegendLine(
-                color: Color(0xFF28E2C3),
-                label: '7-Day Moving Average',
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Expanded(
-            child: dataset.rows.isEmpty
-                ? const _CardEmptyState('No weekly trend data available')
-                : CustomPaint(
-                    painter: _TrendPainter(rows: dataset.rows),
-                    child: const SizedBox.expand(),
-                  ),
-          ),
-          const SizedBox(height: 10),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: dataset.rows
-                .map(
-                  (row) => Text(
-                    row.shortLabel,
-                    style: const TextStyle(
-                      color: ReportStyles.textMuted,
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                )
-                .toList(),
           ),
         ],
       ),

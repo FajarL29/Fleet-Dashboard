@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 
 import '../../models/drowsiness_driver_option.dart';
 import '../../models/drowsiness_report.dart';
+import 'report_map_card.dart';
 import 'report_styles.dart';
 
 class ReportExecutiveDashboard extends StatelessWidget {
@@ -99,9 +100,9 @@ class ReportExecutiveDashboard extends StatelessWidget {
         const SizedBox(height: 14),
         _ResponsiveColumns(
           spacing: 14,
-          leftFlex: 45,
-          rightFlex: 55,
-          left: _TrendBehaviorCard(dataset: weeklyData),
+          leftFlex: 55,
+          rightFlex: 45,
+          left: ReportMapCard(events: events),
           right: _HourlyHeatmapCard(
             report: report,
             events: events,
@@ -574,81 +575,6 @@ class _DriverContributionCard extends StatelessWidget {
                   ),
                 );
               }).toList(),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TrendBehaviorCard extends StatelessWidget {
-  const _TrendBehaviorCard({required this.dataset});
-
-  final _WeeklyDataset dataset;
-
-  @override
-  Widget build(BuildContext context) {
-    return ReportCard(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Trend & Perilaku',
-            style: TextStyle(
-              color: ReportStyles.textPrimary,
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 3),
-          const Text(
-            'Total event count by weekday with drowsiness emphasis.',
-            style: TextStyle(color: ReportStyles.textSecondary, fontSize: 11.5),
-          ),
-          const SizedBox(height: 12),
-          if (dataset.rows.isEmpty)
-            const _CardEmptyState('No weekly trend data available')
-          else
-            SizedBox(
-              height: 252,
-              child: Column(
-                children: [
-                  Expanded(
-                    child: CustomPaint(
-                      painter: _TrendPainter(rows: dataset.rows),
-                      child: const SizedBox.expand(),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: dataset.rows
-                        .map(
-                          (row) => Text(
-                            row.shortLabel,
-                            style: const TextStyle(
-                              color: ReportStyles.textMuted,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        )
-                        .toList(),
-                  ),
-                  const SizedBox(height: 8),
-                  const Row(
-                    children: [
-                      _LegendLine(
-                        color: ReportStyles.redSoft,
-                        label: 'Drowsiness',
-                      ),
-                      SizedBox(width: 18),
-                      _LegendLine(color: ReportStyles.blue, label: 'Others'),
-                    ],
-                  ),
-                ],
-              ),
             ),
         ],
       ),
