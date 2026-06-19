@@ -1,3 +1,4 @@
+import 'package:fleet_dashboard/screens/live_tracking_screen.dart';
 import 'package:fleet_dashboard/screens/report_screen.dart';
 import 'package:fleet_dashboard/screens/safety_screen.dart';
 import 'package:fleet_dashboard/screens/vehicles_screen.dart';
@@ -112,7 +113,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     );
                   case '/drivers':
                     return MaterialPageRoute(
-                      builder: (context) => _buildPlaceholderContent('Drivers'),
+                      builder: (context) => const LiveTrackingScreen(),
                       settings: settings,
                     );
                   case '/safety':
@@ -198,14 +199,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: MapSection(
             mapController: _mapController,
             vehicles: state.vehicles,
-            onVehicleSelected: (vehicle) =>
-                context.read<DashboardBloc>().add(VehicleSelected(vehicle)),
+            useLocalSelection: true,
             isFullScreen: true,
             showVehicleList: false,
             selectedVehicleId: state.selectedVehicle?.id,
-            onClearSelection: () {
-              context.read<DashboardBloc>().add(const SelectionCleared());
-            },
             onFollowModeChanged: _handleFollowModeChanged,
           ),
         ),

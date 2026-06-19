@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:latlong2/latlong.dart';
@@ -70,9 +71,23 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
       timer,
     ) async {
       try {
+        final vin = _resolveLatestDrowsinessVin();
+        if (vin == null) {
+          if (kDebugMode) {
+            debugPrint(
+              '[DrowsinessLatest] Skipped because vehicle VIN is empty',
+            );
+          }
+          return;
+        }
+
+        if (kDebugMode) {
+          debugPrint('[DrowsinessLatest] Fetch latest for vin=$vin');
+        }
+
         final response = await http.get(
           Uri.parse(
-            'http://localhost:3000/api/v1/drowsiness/latest/$Vehicle(id: id, plateNumber: plateNumber, type: type, driverName: driverName, activityTime: activityTime, position: position, status: status)',
+            'http://localhost:3000/api/v1/drowsiness/latest/${Uri.encodeComponent(vin)}',
           ),
           headers: {
             'Authorization': 'Bearer $token',
@@ -245,7 +260,7 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
       ),
     );
 
-    print("🚗 BLOC UPDATED: ID $vId | Speed: $speed");
+    debugPrint("🚗 BLOC UPDATED: ID $vId | Speed: $speed");
   }
 
   void _onStreamImageReceived(
@@ -295,7 +310,7 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     SelectionCleared event,
     Emitter<DashboardState> emit,
   ) {
-    print('🔄 SelectionCleared event received, clearing selectedVehicle');
+    debugPrint('🔄 SelectionCleared event received, clearing selectedVehicle');
     emit(state.copyWith(selectedVehicle: null));
   }
 
@@ -586,6 +601,22 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     }
 
     return _TodayEventCounts(drowsy: drowsy, distraction: distraction);
+  }
+
+  String? _resolveLatestDrowsinessVin() {
+    final candidates = <Vehicle?>[
+      state.selectedVehicle,
+      if (state.vehicles.isNotEmpty) state.vehicles.first,
+    ];
+
+    for (final vehicle in candidates) {
+      final vin = vehicle?.vin;
+      if (vin != null && vin.isNotEmpty) {
+        return vin;
+      }
+    }
+
+    return null;
   }
 
   List<String> _eventVehicleIds({

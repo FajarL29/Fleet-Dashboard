@@ -197,12 +197,11 @@ class OverviewDashboard extends StatelessWidget {
       child: MapSection(
         mapController: mapController,
         vehicles: vehicles,
-        onVehicleSelected: onVehicleSelected,
+        useLocalSelection: true,
         isFullScreen: false,
         onFullScreenToggle: onOpenMapFullscreen,
         showVehicleList: false,
         selectedVehicleId: selectedVehicle?.id,
-        onClearSelection: onClearSelection,
         onFollowModeChanged: onFollowModeChanged,
       ),
     );

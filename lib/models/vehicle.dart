@@ -38,6 +38,10 @@ class Vehicle {
     this.lastSeenMinutes,
   });
 
+  String get vin => (apiVehicleId ?? '').trim();
+
+  String get trackingId => vin.isNotEmpty ? vin : id.trim();
+
   // Helper method to get status color
   Color getStatusColor() {
     final normalizedDisplayStatus = displayStatus?.trim().toLowerCase();

@@ -8,26 +8,32 @@ import '../theme/app_theme.dart';
 
 class MapSection extends StatefulWidget {
   final List<Vehicle> vehicles;
-  final Function(Vehicle) onVehicleSelected;
+  final ValueChanged<Vehicle>? onVehicleSelected;
   final MapController mapController;
   final bool isFullScreen;
   final VoidCallback? onFullScreenToggle;
   final bool showVehicleList;
+  final bool showInfoWindow;
+  final bool showMarkerLabels;
   final String? selectedVehicleId;
   final VoidCallback? onClearSelection;
   final ValueChanged<bool>? onFollowModeChanged;
+  final bool useLocalSelection;
 
   const MapSection({
     super.key,
     required this.vehicles,
-    required this.onVehicleSelected,
+    this.onVehicleSelected,
     required this.mapController,
     this.isFullScreen = true,
     this.onFullScreenToggle,
     this.showVehicleList = true,
+    this.showInfoWindow = true,
+    this.showMarkerLabels = false,
     this.selectedVehicleId,
     this.onClearSelection,
     this.onFollowModeChanged,
+    this.useLocalSelection = false,
   });
 
   @override
@@ -42,6 +48,31 @@ class _MapSectionState extends State<MapSection> with TickerProviderStateMixin {
   bool _isFollowingMode = true;
   bool _didRunInitialMapRefresh = false;
   Offset? _panStartPosition;
+  String? _localSelectedVehicleId;
+
+  String? get _effectiveSelectedVehicleId => widget.useLocalSelection
+      ? _localSelectedVehicleId
+      : widget.selectedVehicleId;
+
+  Vehicle? _selectedVehicleData(String? selectedVehicleId) {
+    if (selectedVehicleId == null) {
+      return null;
+    }
+
+    for (final vehicle in widget.vehicles) {
+      if (vehicle.id == selectedVehicleId) {
+        return vehicle;
+      }
+    }
+
+    return null;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _localSelectedVehicleId = widget.selectedVehicleId;
+  }
 
   @override
   void didUpdateWidget(MapSection oldWidget) {
@@ -49,6 +80,18 @@ class _MapSectionState extends State<MapSection> with TickerProviderStateMixin {
 
     if (oldWidget.vehicles.length != widget.vehicles.length) {
       _fitAllVehicles();
+    }
+
+    if (widget.useLocalSelection) {
+      if (_localSelectedVehicleId != null &&
+          !widget.vehicles.any(
+            (vehicle) => vehicle.id == _localSelectedVehicleId,
+          )) {
+        setState(() {
+          _localSelectedVehicleId = null;
+        });
+      }
+      return;
     }
 
     if (oldWidget.selectedVehicleId != widget.selectedVehicleId &&
@@ -63,7 +106,7 @@ class _MapSectionState extends State<MapSection> with TickerProviderStateMixin {
       return;
     }
 
-    widget.onClearSelection?.call();
+    _clearSelection();
     _setFollowingMode(false);
 
     final points = widget.vehicles.map((vehicle) => vehicle.position).toList();
@@ -82,7 +125,13 @@ class _MapSectionState extends State<MapSection> with TickerProviderStateMixin {
 
   void _handleVehicleTap(Vehicle vehicle) {
     _setFollowingMode(true);
-    widget.onVehicleSelected(vehicle);
+    if (widget.useLocalSelection) {
+      setState(() {
+        _localSelectedVehicleId = vehicle.id;
+      });
+    } else {
+      widget.onVehicleSelected?.call(vehicle);
+    }
     widget.mapController.move(vehicle.position, 20);
   }
 
@@ -96,6 +145,19 @@ class _MapSectionState extends State<MapSection> with TickerProviderStateMixin {
 
   void _handleMapTap() {
     _setFollowingMode(false);
+    _clearSelection();
+  }
+
+  void _clearSelection() {
+    if (widget.useLocalSelection) {
+      if (_localSelectedVehicleId == null) {
+        return;
+      }
+      setState(() {
+        _localSelectedVehicleId = null;
+      });
+      return;
+    }
     widget.onClearSelection?.call();
   }
 
@@ -150,12 +212,8 @@ class _MapSectionState extends State<MapSection> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    final selectedVehicleData = widget.selectedVehicleId != null
-        ? widget.vehicles.firstWhere(
-            (vehicle) => vehicle.id == widget.selectedVehicleId,
-            orElse: () => widget.vehicles.first,
-          )
-        : null;
+    final selectedVehicleId = _effectiveSelectedVehicleId;
+    final selectedVehicleData = _selectedVehicleData(selectedVehicleId);
 
     return Stack(
       children: [
@@ -199,8 +257,9 @@ class _MapSectionState extends State<MapSection> with TickerProviderStateMixin {
                         ),
                         SmoothVehicleMarkerLayer(
                           vehicles: widget.vehicles,
-                          selectedVehicleId: widget.selectedVehicleId,
+                          selectedVehicleId: selectedVehicleId,
                           onVehicleTap: _handleVehicleTap,
+                          showLabels: widget.showMarkerLabels,
                         ),
                       ],
                     ),
@@ -217,11 +276,14 @@ class _MapSectionState extends State<MapSection> with TickerProviderStateMixin {
             bottom: 16,
             child: _buildVehicleSidebar(),
           ),
-        if (selectedVehicleData != null)
+        if (widget.showInfoWindow && selectedVehicleData != null)
           Positioned(
-            left: widget.showVehicleList ? 250 : 16,
             top: 16,
-            child: _buildInfoWindow(selectedVehicleData),
+            left: widget.showVehicleList ? 250 : 16,
+            child: SizedBox(
+              width: 260,
+              child: _buildInfoWindow(selectedVehicleData),
+            ),
           ),
         Positioned(
           right: 16,
@@ -276,7 +338,7 @@ class _MapSectionState extends State<MapSection> with TickerProviderStateMixin {
                 final vehicle = widget.vehicles[index];
                 return _buildVehicleTile(
                   vehicle,
-                  widget.selectedVehicleId == vehicle.id,
+                  _effectiveSelectedVehicleId == vehicle.id,
                 );
               },
             ),
@@ -333,54 +395,100 @@ class _MapSectionState extends State<MapSection> with TickerProviderStateMixin {
   }
 
   Widget _buildInfoWindow(Vehicle vehicle) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      width: 240,
-      decoration: BoxDecoration(
-        color: AppTheme.darkNavy,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
-        boxShadow: const [BoxShadow(color: Colors.black45, blurRadius: 10)],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 280, maxHeight: 220),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+        decoration: BoxDecoration(
+          color: AppTheme.darkNavy,
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black38,
+              blurRadius: 10,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                vehicle.plateNumber,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      vehicle.plateNumber.isNotEmpty
+                          ? vehicle.plateNumber
+                          : vehicle.apiVehicleId ?? vehicle.id,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: IconButton(
+                      constraints: const BoxConstraints.tightFor(
+                        width: 22,
+                        height: 22,
+                      ),
+                      padding: EdgeInsets.zero,
+                      splashRadius: 14,
+                      icon: const Icon(
+                        Icons.close_rounded,
+                        color: Colors.white54,
+                        size: 15,
+                      ),
+                      onPressed: _clearSelection,
+                    ),
+                  ),
+                ],
               ),
-              IconButton(
-                constraints: const BoxConstraints(),
-                padding: EdgeInsets.zero,
-                icon: const Icon(Icons.close, color: Colors.white54, size: 18),
-                onPressed: widget.onClearSelection,
+              const SizedBox(height: 6),
+              Container(height: 1, color: Colors.white10),
+              const SizedBox(height: 6),
+              _infoRow('Driver', vehicle.driverName),
+              _infoRow(
+                'Status',
+                vehicle.statusLabel,
+                valueWidget: _statusChip(vehicle),
               ),
+              _infoRow('Speed', _speedLabel(vehicle)),
+              _infoRow('Last seen', _lastSeenLabel(vehicle)),
+              if (_statusReasonLabel(vehicle).isNotEmpty)
+                _infoRow('Reason', _statusReasonLabel(vehicle), maxLines: 2),
             ],
           ),
-          const Divider(color: Colors.white10),
-          _infoRow('Driver', vehicle.driverName),
-          _infoRow('Plate', vehicle.plateNumber),
-          _infoRow('Status', vehicle.statusLabel),
-          _infoRow('Speed', '${vehicle.speed.toStringAsFixed(1)} km/h'),
-          _infoRow('Last Seen', _lastSeenLabel(vehicle)),
-          if (vehicle.statusReason != null && vehicle.statusReason!.isNotEmpty)
-            _infoRow('Issue', vehicle.statusReason!),
-        ],
+        ),
       ),
     );
   }
 
   String _lastSeenLabel(Vehicle vehicle) {
     if (vehicle.lastSeenMinutes != null) {
-      return '${vehicle.lastSeenMinutes} min ago';
+      final minutes = vehicle.lastSeenMinutes!;
+      if (minutes < 1) {
+        return 'Just now';
+      }
+      if (minutes < 60) {
+        return '$minutes min ago';
+      }
+      if (minutes < 1440) {
+        final hours = (minutes / 60).floor();
+        return '$hours hr ago';
+      }
+      final days = (minutes / 1440).floor();
+      return '$days day${days == 1 ? '' : 's'} ago';
     }
 
     if (vehicle.lastTelemetryTime != null) {
@@ -392,23 +500,93 @@ class _MapSectionState extends State<MapSection> with TickerProviderStateMixin {
     return 'Unavailable';
   }
 
-  Widget _infoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(color: Colors.white54, fontSize: 12),
+  String _statusReasonLabel(Vehicle vehicle) {
+    final reason = vehicle.statusReason?.trim();
+    if (reason == null || reason.isEmpty) {
+      return '';
+    }
+
+    final lower = reason.toLowerCase();
+    if (lower.contains('stale')) {
+      return 'Stale telemetry';
+    }
+    if (lower.contains('no telemetry')) {
+      return 'No telemetry received';
+    }
+
+    return reason;
+  }
+
+  String _speedLabel(Vehicle vehicle) {
+    final speed = vehicle.speed;
+    if (speed <= 0) {
+      return '0 km/h';
+    }
+    if (speed == speed.roundToDouble()) {
+      return '${speed.toInt()} km/h';
+    }
+    return '${speed.toStringAsFixed(1)} km/h';
+  }
+
+  Widget _statusChip(Vehicle vehicle) {
+    final color = vehicle.getStatusColor();
+    return Align(
+      alignment: Alignment.centerRight,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.16),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: color.withValues(alpha: 0.35)),
+        ),
+        child: Text(
+          vehicle.statusLabel,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: color,
+            fontWeight: FontWeight.w700,
+            fontSize: 11,
           ),
-          Text(
-            value,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w500,
-              fontSize: 12,
+        ),
+      ),
+    );
+  }
+
+  Widget _infoRow(
+    String label,
+    String value, {
+    int maxLines = 1,
+    Widget? valueWidget,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 5),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 64,
+            child: Text(
+              label,
+              style: const TextStyle(color: Colors.white54, fontSize: 11),
             ),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child:
+                valueWidget ??
+                Text(
+                  value,
+                  maxLines: maxLines,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.right,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w500,
+                    fontSize: 12,
+                    height: 1.2,
+                  ),
+                ),
           ),
         ],
       ),
@@ -434,12 +612,14 @@ class SmoothVehicleMarkerLayer extends StatefulWidget {
   final List<Vehicle> vehicles;
   final String? selectedVehicleId;
   final Function(Vehicle) onVehicleTap;
+  final bool showLabels;
 
   const SmoothVehicleMarkerLayer({
     super.key,
     required this.vehicles,
     required this.onVehicleTap,
     this.selectedVehicleId,
+    this.showLabels = false,
   });
 
   @override
@@ -553,9 +733,10 @@ class _SmoothVehicleMarkerLayerState extends State<SmoothVehicleMarkerLayer>
             final currentPosition = data.animation.value;
             final pxPoint = map.projectAtZoom(currentPosition);
             final marker = _buildMarkerWidget(data.vehicle);
-            final markerSize = widget.selectedVehicleId == data.vehicle.id
-                ? 80.0
-                : 40.0;
+            final markerWidth = widget.showLabels ? 120.0 : 44.0;
+            final markerHeight = widget.showLabels
+                ? (widget.selectedVehicleId == data.vehicle.id ? 78.0 : 72.0)
+                : (widget.selectedVehicleId == data.vehicle.id ? 80.0 : 40.0);
 
             final positions = <Widget>[];
 
@@ -564,10 +745,10 @@ class _SmoothVehicleMarkerLayerState extends State<SmoothVehicleMarkerLayer>
                   Offset(pxPoint.dx + xShift, pxPoint.dy) - map.pixelOrigin;
               return Positioned(
                 key: ValueKey('${data.vehicle.id}-$xShift'),
-                width: markerSize,
-                height: markerSize,
-                left: shiftedLocalPoint.dx - markerSize / 2,
-                top: shiftedLocalPoint.dy - markerSize / 2,
+                width: markerWidth,
+                height: markerHeight,
+                left: shiftedLocalPoint.dx - markerWidth / 2,
+                top: shiftedLocalPoint.dy - markerHeight / 2,
                 child: marker,
               );
             }
@@ -606,6 +787,11 @@ class _SmoothVehicleMarkerLayerState extends State<SmoothVehicleMarkerLayer>
         color: vehicle.getStatusColor(),
         isSelected: isSelected,
         heading: vehicle.heading,
+        label: widget.showLabels
+            ? (vehicle.plateNumber.isNotEmpty
+                  ? vehicle.plateNumber
+                  : vehicle.apiVehicleId ?? vehicle.id)
+            : null,
       ),
     );
   }
@@ -615,22 +801,26 @@ class _VehicleMarkerWidget extends StatelessWidget {
   final Color color;
   final bool isSelected;
   final double heading;
+  final String? label;
 
   const _VehicleMarkerWidget({
     required this.color,
     required this.isSelected,
     required this.heading,
+    this.label,
   });
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedRotation(
+    final marker = AnimatedRotation(
       turns: heading / 360,
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
+        width: isSelected ? 44 : 38,
+        height: isSelected ? 44 : 38,
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.9),
           shape: BoxShape.circle,
@@ -650,6 +840,36 @@ class _VehicleMarkerWidget extends StatelessWidget {
         ),
         child: const Icon(Icons.navigation, color: Colors.white, size: 18),
       ),
+    );
+
+    if (label == null || label!.trim().isEmpty) {
+      return marker;
+    }
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        marker,
+        const SizedBox(height: 4),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: const Color(0xE6111B27),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+          ),
+          child: Text(
+            label!,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
