@@ -1,0 +1,67 @@
+{
+  "risk_level": "critical",
+  "risk_score": 81,
+  "headline": "Critical drowsiness risk requires immediate action",
+  "short_summary": "2,939 events detected, 87.7% high severity, only 0.2% reviewed.",
+  "primary_finding": {
+    "title": "Peak risk day",
+    "value": "Monday",
+    "description": "Monday has the highest concentration with 1,039 events, representing 35.4% of total events."
+  },
+  "main_contributor": {
+    "user_id": 1,
+    "driver_name": "User #1",
+    "total_events": 766,
+    "percentage": 73.7,
+    "description": "User #1 is the largest contributor on Monday."
+  },
+  "dominant_behavior": {
+    "key": "drowsiness",
+    "label": "Drowsiness",
+    "description": "Drowsiness is the dominant behavior on the peak risk day."
+  },
+  "review_backlog": {
+    "new_events": 2934,
+    "review_completion_rate": 0.2,
+    "description": "Review backlog is critical. Most events are still unreviewed."
+  },
+  "recommended_actions": [
+    {
+      "priority": "immediate",
+      "title": "Review high-severity backlog",
+      "description": "Prioritize unreviewed high-severity drowsiness events."
+    },
+    {
+      "priority": "high",
+      "title": "Investigate User #1",
+      "description": "User #1 contributes 73.7% of Monday events and should be reviewed first."
+    },
+    {
+      "priority": "medium",
+      "title": "Evaluate Monday operation pattern",
+      "description": "Monday has the highest event concentration and may require shift or route evaluation."
+    }
+  ],
+  "flags": [
+    {
+      "type": "high_severity_rate",
+      "severity": "critical",
+      "label": "High severity dominates total events"
+    },
+    {
+      "type": "review_backlog",
+      "severity": "critical",
+      "label": "Review completion is critically low"
+    },
+    {
+      "type": "peak_day_concentration",
+      "severity": "high",
+      "label": "A single weekday dominates event concentration"
+    },
+    {
+      "type": "driver_concentration",
+      "severity": "high",
+      "label": "A single driver dominates the peak-day contribution"
+    }
+  ]
+}

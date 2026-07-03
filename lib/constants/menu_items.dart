@@ -14,26 +14,18 @@ class MenuItem {
 
 class MenuItems {
   static const List<MenuItem> items = [
-    MenuItem(
-      title: 'Dashboard',
-      icon: Icons.dashboard_rounded,
-      route: '/',
-    ),
+    MenuItem(title: 'Overview', icon: Icons.dashboard_rounded, route: '/'),
     MenuItem(
       title: 'Vehicles',
       icon: Icons.local_shipping_rounded,
       route: '/vehicles',
     ),
     MenuItem(
-      title: 'Drivers',
-      icon: Icons.person_rounded,
+      title: 'Live Tracking',
+      icon: Icons.location_on_rounded,
       route: '/drivers',
     ),
-    MenuItem(
-      title: 'Safety',
-      icon: Icons.security_rounded,
-      route: '/safety',
-    ),
+    MenuItem(title: 'Safety', icon: Icons.security_rounded, route: '/safety'),
     MenuItem(
       title: 'Reports',
       icon: Icons.assessment_rounded,

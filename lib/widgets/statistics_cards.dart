@@ -158,7 +158,7 @@ class StatisticsCards extends StatelessWidget {
                             fontWeight: FontWeight.w600,
                           ),
                         ),
-                        const SizedBox(height: 2  ),
+                        const SizedBox(height: 2),
                         Text(
                           onlineDrivers.toString(),
                           style: const TextStyle(
@@ -174,13 +174,10 @@ class StatisticsCards extends StatelessWidget {
                       width: 48,
                       height: 48,
                       decoration: BoxDecoration(
-                        color: AppTheme.success.withOpacity(0.2),
+                        color: AppTheme.success.withValues(alpha: 0.2),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(
-                        Icons.person,
-                        color: AppTheme.success,
-                      ),
+                      child: const Icon(Icons.person, color: AppTheme.success),
                     ),
                   ],
                 ),
