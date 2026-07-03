@@ -25,7 +25,10 @@ class ReportExecutiveDashboard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final weeklyData = _WeeklyDataset.from(report.weekdayBehaviorSummary);
+    final weeklyData = _WeeklyDataset.fromEvents(
+      events,
+      selectedDriver: selectedDriver,
+    );
     final totalEvents = _resolveTotalEvents(report);
     final isDriverFiltered = selectedDriver?.isAllDrivers == false;
     final contributors = _contributorsForScope(
@@ -88,10 +91,7 @@ class ReportExecutiveDashboard extends StatelessWidget {
           spacing: 14,
           leftFlex: 55,
           rightFlex: 45,
-          left: _WeeklyBehaviorCard(
-            dataset: weeklyData,
-            selectedDriver: selectedDriver,
-          ),
+          left: ReportMapCard(events: events),
           right: _DriverContributionCard(
             contributors: contributors,
             isDriverFiltered: isDriverFiltered,
@@ -102,7 +102,10 @@ class ReportExecutiveDashboard extends StatelessWidget {
           spacing: 14,
           leftFlex: 55,
           rightFlex: 45,
-          left: ReportMapCard(events: events),
+          left: _WeeklyBehaviorCard(
+            dataset: weeklyData,
+            selectedDriver: selectedDriver,
+          ),
           right: _HourlyHeatmapCard(
             report: report,
             events: events,
@@ -431,6 +434,15 @@ class _WeeklyBehaviorCard extends StatelessWidget {
                         fontWeight: FontWeight.w800,
                       ),
                     ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Working days - 07:00-18:00',
+                      style: TextStyle(
+                        color: ReportStyles.textMuted,
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -459,69 +471,65 @@ class _WeeklyBehaviorCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          if (dataset.rows.isEmpty)
-            const _CardEmptyState('No weekly behavior data available')
-          else
-            SizedBox(
-              height: 252,
-              child: Column(
-                children: [
-                  const Row(
+          SizedBox(
+            height: 252,
+            child: Column(
+              children: [
+                const Row(
+                  children: [
+                    _LegendDot(
+                      color: ReportStyles.redSoft,
+                      label: 'Drowsiness',
+                    ),
+                    SizedBox(width: 16),
+                    _LegendDot(
+                      color: Color(0xFFB8BEC8),
+                      label: 'Other Behavior',
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: Row(
                     children: [
-                      _LegendDot(
-                        color: ReportStyles.redSoft,
-                        label: 'Drowsiness',
-                      ),
-                      SizedBox(width: 16),
-                      _LegendDot(
-                        color: Color(0xFFB8BEC8),
-                        label: 'Other Behavior',
+                      _ChartYAxis(maxTotal: dataset.maxTotal),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Stack(
+                          children: [
+                            const Positioned.fill(child: _ChartGridLines()),
+                            Positioned.fill(
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: dataset.rows
+                                    .map(
+                                      (row) => Expanded(
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 6,
+                                          ),
+                                          child: _WeekdayStackBar(
+                                            label: row.shortLabel,
+                                            drowsiness: row.drowsiness.toDouble(),
+                                            others: row.others.toDouble(),
+                                            maxTotal: dataset.maxTotal
+                                                .toDouble(),
+                                          ),
+                                        ),
+                                      ),
+                                    )
+                                    .toList(),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
-                  Expanded(
-                    child: Row(
-                      children: [
-                        _ChartYAxis(maxTotal: dataset.maxTotal),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Stack(
-                            children: [
-                              const Positioned.fill(child: _ChartGridLines()),
-                              Positioned.fill(
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: dataset.rows
-                                      .map(
-                                        (row) => Expanded(
-                                          child: Padding(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 6,
-                                            ),
-                                            child: _WeekdayStackBar(
-                                              label: row.shortLabel,
-                                              drowsiness: row.drowsiness
-                                                  .toDouble(),
-                                              others: row.others.toDouble(),
-                                              maxTotal: dataset.maxTotal
-                                                  .toDouble(),
-                                            ),
-                                          ),
-                                        ),
-                                      )
-                                      .toList(),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
+          ),
         ],
       ),
     );
@@ -619,10 +627,18 @@ class _HourlyHeatmapCard extends StatelessWidget {
                     ),
                     SizedBox(height: 4),
                     Text(
-                      'jam berapa aja sih dia ngantuk',
+                      'Working-hour drowsiness exposure',
                       style: TextStyle(
                         color: ReportStyles.textSecondary,
                         fontSize: 11.5,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Working days only - 07:00-18:00',
+                      style: TextStyle(
+                        color: ReportStyles.textMuted,
+                        fontSize: 10.5,
                       ),
                     ),
                   ],
@@ -641,116 +657,123 @@ class _HourlyHeatmapCard extends StatelessWidget {
           const SizedBox(height: 12),
           SizedBox(
             height: 252,
-            child: maxValue == 0
-                ? const _CardEmptyState('No hourly heatmap data available')
-                : Column(
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(left: 42, bottom: 6),
+                  child: Row(
+                    children: _workingHours
+                        .map(
+                          (hour) => Expanded(
+                            child: Center(
+                              child: Text(
+                                hour.toString().padLeft(2, '0'),
+                                style: const TextStyle(
+                                  color: ReportStyles.textMuted,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ),
+                Expanded(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Padding(
-                        padding: const EdgeInsets.only(left: 42, bottom: 6),
-                        child: Row(
-                          children: List.generate(24, (hour) {
-                            return Expanded(
-                              child: Center(
-                                child: Text(
-                                  hour.toString().padLeft(2, '0'),
-                                  style: const TextStyle(
-                                    color: ReportStyles.textMuted,
-                                    fontSize: 8.5,
-                                    fontWeight: FontWeight.w700,
+                      Column(
+                        children: _weekdayLabels
+                            .map(
+                              (label) => Expanded(
+                                child: Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(
+                                    label,
+                                    style: const TextStyle(
+                                      color: ReportStyles.textMuted,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w700,
+                                    ),
                                   ),
+                                ),
+                              ),
+                            )
+                            .toList(),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          children: List.generate(matrix.length, (row) {
+                            return Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 3),
+                                child: Row(
+                                  children: List.generate(_workingHours.length, (
+                                    hour,
+                                  ) {
+                                    return Expanded(
+                                      child: Container(
+                                        margin: const EdgeInsets.symmetric(
+                                          horizontal: 2,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: _heatColor(
+                                            matrix[row][hour],
+                                            maxValue,
+                                          ),
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                      ),
+                                    );
+                                  }),
                                 ),
                               ),
                             );
                           }),
                         ),
                       ),
-                      Expanded(
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Column(
-                              children: _weekdayLabels
-                                  .map(
-                                    (label) => Expanded(
-                                      child: Align(
-                                        alignment: Alignment.centerLeft,
-                                        child: Text(
-                                          label,
-                                          style: const TextStyle(
-                                            color: ReportStyles.textMuted,
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  )
-                                  .toList(),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Column(
-                                children: List.generate(matrix.length, (row) {
-                                  return Expanded(
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 2,
-                                      ),
-                                      child: Row(
-                                        children: List.generate(24, (hour) {
-                                          return Expanded(
-                                            child: Container(
-                                              margin:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 1.5,
-                                                  ),
-                                              decoration: BoxDecoration(
-                                                color: _heatColor(
-                                                  matrix[row][hour],
-                                                  maxValue,
-                                                ),
-                                                borderRadius:
-                                                    BorderRadius.circular(3),
-                                              ),
-                                            ),
-                                          );
-                                        }),
-                                      ),
-                                    ),
-                                  );
-                                }),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            'Low',
-                            style: TextStyle(
-                              color: ReportStyles.textMuted,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          SizedBox(width: 12),
-                          _HeatLegendBar(),
-                          SizedBox(width: 12),
-                          Text(
-                            'High',
-                            style: TextStyle(
-                              color: ReportStyles.textMuted,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
                     ],
                   ),
+                ),
+                const SizedBox(height: 8),
+                if (maxValue == 0)
+                  const Text(
+                    'No working-hour events in this period',
+                    style: TextStyle(
+                      color: ReportStyles.textMuted,
+                      fontSize: 10.5,
+                    ),
+                  ),
+                if (maxValue == 0) const SizedBox(height: 6),
+                const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'Low',
+                      style: TextStyle(
+                        color: ReportStyles.textMuted,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    SizedBox(width: 12),
+                    _HeatLegendBar(),
+                    SizedBox(width: 12),
+                    Text(
+                      'High',
+                      style: TextStyle(
+                        color: ReportStyles.textMuted,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -815,7 +838,9 @@ class _WeekdayStackBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final total = drowsiness + others;
     final safeMax = maxTotal <= 0 ? 1.0 : maxTotal;
-    final fullHeight = ((total / safeMax) * 150).clamp(8, 150).toDouble();
+    final fullHeight = total <= 0
+        ? 0.0
+        : ((total / safeMax) * 150).clamp(8, 150).toDouble();
     final drowsinessHeight = total <= 0
         ? 0.0
         : fullHeight * (drowsiness / total);
@@ -1302,45 +1327,63 @@ class _WeeklyDataset {
   final int maxTotal;
   final String topContributorLabel;
 
-  factory _WeeklyDataset.from(List<WeekdayBehaviorSummary> summaries) {
-    final normalized =
-        summaries
-            .where((entry) => entry.weekdayIndex > 0 && entry.weekdayIndex <= 7)
-            .toList()
-          ..sort((a, b) => a.weekdayIndex.compareTo(b.weekdayIndex));
+  factory _WeeklyDataset.fromEvents(
+    List<DrowsinessEvent> events, {
+    required DrowsinessDriverOption? selectedDriver,
+  }) {
+    final buckets = List.generate(
+      _weekdayLabels.length,
+      (index) => _WorkingWeekBucket(shortLabel: _weekdayLabels[index]),
+    );
+    final contributorCounts = <int, int>{};
 
-    final rows = normalized
+    for (final event in events) {
+      if (!_isWorkingScopeEvent(event.time)) {
+        continue;
+      }
+
+      final row = event.time.weekday - 1;
+      final bucket = buckets[row];
+      final isDrowsinessEvent = _isDrowsinessBehavior(event);
+      bucket.total += 1;
+      if (isDrowsinessEvent) {
+        bucket.drowsiness += 1;
+      }
+
+      if (event.userId > 0) {
+        contributorCounts[event.userId] =
+            (contributorCounts[event.userId] ?? 0) + 1;
+      }
+    }
+
+    final rows = buckets
         .map(
-          (entry) => _WeeklyRow(
-            shortLabel: _shortWeekday(entry.weekday),
-            total: entry.totalEvents,
-            drowsiness: entry.behaviors.drowsiness,
-            others: math.max(0, entry.totalEvents - entry.behaviors.drowsiness),
+          (bucket) => _WeeklyRow(
+            shortLabel: bucket.shortLabel,
+            total: bucket.total,
+            drowsiness: bucket.drowsiness,
+            others: math.max(0, bucket.total - bucket.drowsiness),
           ),
         )
         .toList();
 
-    final peakDay = normalized.isEmpty
-        ? null
-        : normalized.reduce(
-            (best, current) =>
-                current.totalEvents > best.totalEvents ? current : best,
-          );
-    final topContributor = peakDay == null || peakDay.topDrivers.isEmpty
-        ? null
-        : peakDay.topDrivers.reduce(
-            (best, current) =>
-                current.totalEvents > best.totalEvents ? current : best,
-          );
-
     return _WeeklyDataset(
       rows: rows,
       maxTotal: rows.fold<int>(0, (best, row) => math.max(best, row.total)),
-      topContributorLabel: topContributor == null
-          ? ''
-          : _driverLabel(topContributor),
+      topContributorLabel: _weeklyTopContributorLabel(
+        contributorCounts,
+        selectedDriver: selectedDriver,
+      ),
     );
   }
+}
+
+class _WorkingWeekBucket {
+  _WorkingWeekBucket({required this.shortLabel});
+
+  final String shortLabel;
+  int total = 0;
+  int drowsiness = 0;
 }
 
 class _WeeklyRow {
@@ -1452,22 +1495,33 @@ List<List<int>> _buildHeatmap(
   DrowsinessReport report,
   List<DrowsinessEvent> events,
 ) {
-  final matrix = List.generate(7, (_) => List.filled(24, 0));
+  final matrix = List.generate(
+    _weekdayLabels.length,
+    (_) => List.filled(_workingHours.length, 0),
+  );
 
   if (events.isNotEmpty) {
     for (final event in events) {
       final row = event.time.weekday - 1;
-      if (row >= 0 && row < 7) {
-        matrix[row][event.time.hour] = matrix[row][event.time.hour] + 1;
+      final hour = event.time.hour;
+      if (row >= 0 &&
+          row < _weekdayLabels.length &&
+          hour >= _workingHours.first &&
+          hour <= _workingHours.last) {
+        matrix[row][hour - _workingHours.first] =
+            matrix[row][hour - _workingHours.first] + 1;
       }
     }
     return matrix;
   }
 
   for (final hour in report.eventsByHour) {
-    final eventHour = hour.hour.clamp(0, 23);
+    final eventHour = hour.hour;
+    if (eventHour < _workingHours.first || eventHour > _workingHours.last) {
+      continue;
+    }
     for (var row = 0; row < matrix.length; row++) {
-      matrix[row][eventHour] = hour.totalEvents;
+      matrix[row][eventHour - _workingHours.first] = hour.totalEvents;
     }
   }
 
@@ -1525,11 +1579,39 @@ String _displayRiskLevel(String riskLevel) {
   }
 }
 
-String _shortWeekday(String weekday) {
-  if (weekday.trim().isEmpty) {
-    return '-';
+String _weeklyTopContributorLabel(
+  Map<int, int> contributorCounts, {
+  required DrowsinessDriverOption? selectedDriver,
+}) {
+  if (selectedDriver?.isAllDrivers == false) {
+    return selectedDriver!.driverName;
   }
-  return weekday.trim().substring(0, math.min(3, weekday.trim().length));
+  if (contributorCounts.isEmpty) {
+    return '';
+  }
+
+  final topContributor = contributorCounts.entries.reduce(
+    (best, current) => current.value > best.value ? current : best,
+  );
+  return 'User #${topContributor.key}';
+}
+
+bool _isWorkingScopeEvent(DateTime time) {
+  final weekdayIndex = time.weekday - 1;
+  return weekdayIndex >= 0 &&
+      weekdayIndex < _weekdayLabels.length &&
+      time.hour >= _workingHours.first &&
+      time.hour <= _workingHours.last;
+}
+
+bool _isDrowsinessBehavior(DrowsinessEvent event) {
+  final behavior = event.behaviorType?.trim().toLowerCase();
+  if (behavior != null && behavior.contains('drows')) {
+    return true;
+  }
+
+  final status = event.status.trim().toLowerCase();
+  return status.contains('drows');
 }
 
 String _driverLabel(DriverContributor contributor) {
@@ -1575,6 +1657,6 @@ const List<String> _weekdayLabels = [
   'Wed',
   'Thu',
   'Fri',
-  'Sat',
-  'Sun',
 ];
+
+const List<int> _workingHours = [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
