@@ -36,12 +36,17 @@ class _SafetyContentState extends State<SafetyContent> {
   String _severityFilter = 'All';
   String _eventTypeFilter = 'All';
   String _searchQuery = '';
+  int _batchAiLimit = 5;
+  bool _onlyMissingAi = true;
   List<DrowsinessEvent> _events = const [];
   bool _isVehicleLoading = true;
   bool _isEventsLoading = false;
   bool _isReviewUpdating = false;
+  bool _isBatchAiLoading = false;
+  int? _aiAnalyzingEventId;
   String? _errorMessage;
   String? _vehicleErrorMessage;
+  DrowsinessBatchAiSuggestionResult? _batchAiSummary;
 
   @override
   void initState() {
@@ -324,8 +329,29 @@ class _SafetyContentState extends State<SafetyContent> {
               _searchQuery = value;
             });
           },
+          batchLimit: _batchAiLimit,
+          onlyMissingAi: _onlyMissingAi,
+          onBatchLimitChanged: (value) {
+            setState(() {
+              _batchAiLimit = value;
+            });
+          },
+          onOnlyMissingAiChanged: (value) {
+            setState(() {
+              _onlyMissingAi = value;
+            });
+          },
+          onBatchAnalyze: _handleBatchAiSuggestion,
           isLoading: _isVehicleLoading || _isEventsLoading,
           isVehicleLoading: _isVehicleLoading,
+          isBatchLoading: _isBatchAiLoading,
+          isBatchEnabled:
+              !_isVehicleLoading &&
+              !_isEventsLoading &&
+              !_isBatchAiLoading &&
+              _activeVehicleVin != null &&
+              filteredEvents.isNotEmpty,
+          batchSummaryLabel: _batchSummaryLabel,
         ),
         const SizedBox(height: 16),
         const SafetyWorkflowStepper(),
@@ -390,7 +416,9 @@ class _SafetyContentState extends State<SafetyContent> {
                               child: SafetyEventDetailPanel(
                                 event: selectedEvent,
                                 isUpdatingReview: _isReviewUpdating,
+                                aiAnalyzingEventId: _aiAnalyzingEventId,
                                 onReviewAction: _handleReviewAction,
+                                onAnalyzeWithAi: _handleSingleAiSuggestion,
                               ),
                             ),
                           ],
@@ -416,7 +444,9 @@ class _SafetyContentState extends State<SafetyContent> {
                               child: SafetyEventDetailPanel(
                                 event: selectedEvent,
                                 isUpdatingReview: _isReviewUpdating,
+                                aiAnalyzingEventId: _aiAnalyzingEventId,
                                 onReviewAction: _handleReviewAction,
+                                onAnalyzeWithAi: _handleSingleAiSuggestion,
                               ),
                             ),
                           ],
@@ -513,6 +543,108 @@ class _SafetyContentState extends State<SafetyContent> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Failed to update review')));
+    }
+  }
+
+  Future<void> _handleSingleAiSuggestion(int drowsinessId) async {
+    setState(() {
+      _aiAnalyzingEventId = drowsinessId;
+    });
+
+    try {
+      final suggestion = await _service.generateAiSuggestion(drowsinessId);
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _events = _events
+            .map(
+              (event) => event.id == suggestion.drowsinessId
+                  ? _applyAiSuggestion(event, suggestion)
+                  : event,
+            )
+            .toList();
+        _selectedEventId = suggestion.drowsinessId;
+        _aiAnalyzingEventId = null;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('AI suggestion generated')),
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _aiAnalyzingEventId = null;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_aiSuggestionErrorMessage(error))),
+      );
+    }
+  }
+
+  Future<void> _handleBatchAiSuggestion() async {
+    final vehicleVin = _activeVehicleVin;
+    if (vehicleVin == null || vehicleVin.isEmpty || _isBatchAiLoading) {
+      return;
+    }
+
+    setState(() {
+      _isBatchAiLoading = true;
+    });
+
+    try {
+      final result = await _service.generateBatchAiSuggestion(
+        vehicleId: vehicleVin,
+        startDate: _startDate,
+        endDate: _endDate,
+        limit: _batchAiLimit,
+        onlyMissingAi: _onlyMissingAi,
+        status: _selectedBatchStatuses,
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _batchAiSummary = result;
+        _isBatchAiLoading = false;
+      });
+
+      await _loadEvents();
+
+      if (!mounted) {
+        return;
+      }
+
+      final partialFailure = result.failed > 0;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            partialFailure
+                ? 'Batch AI analysis finished with ${result.failed} failed event(s).'
+                : 'Batch AI analysis completed.',
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _isBatchAiLoading = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_aiSuggestionErrorMessage(error))),
+      );
     }
   }
 
@@ -615,6 +747,71 @@ class _SafetyContentState extends State<SafetyContent> {
     }
 
     return normalized;
+  }
+
+  DrowsinessEvent _applyAiSuggestion(
+    DrowsinessEvent event,
+    DrowsinessAiSuggestion suggestion,
+  ) {
+    return event.copyWith(
+      aiSuggestion: suggestion.aiSuggestion,
+      aiConfidence: suggestion.aiConfidence,
+      aiReason: suggestion.aiReason,
+      aiCorrectedLabel: suggestion.aiCorrectedLabel,
+      aiEvidenceQuality: suggestion.aiEvidenceQuality,
+      aiReviewedAt: suggestion.aiReviewedAt,
+    );
+  }
+
+  List<String>? get _selectedBatchStatuses {
+    final normalized = _normalizedBatchStatus(_eventTypeFilter);
+    if (normalized == null) {
+      return null;
+    }
+    return [normalized];
+  }
+
+  String? _normalizedBatchStatus(String value) {
+    switch (_normalizedEventType(value)) {
+      case 'drowsy':
+        return 'drowsy';
+      case 'yawn':
+        return 'yawn';
+      case 'distraction':
+        return 'distraction';
+      case 'drowsiness episode':
+        return 'drowsy';
+      default:
+        return null;
+    }
+  }
+
+  String _aiSuggestionErrorMessage(Object error) {
+    if (error is ApiRequestException) {
+      switch (error.statusCode) {
+        case 400:
+          return 'Evidence image is missing or invalid.';
+        case 404:
+          return 'Drowsiness event not found.';
+        case 429:
+          return 'AI quota exceeded. Please check API billing or usage limit.';
+        case 503:
+          return 'AI review is currently disabled.';
+        default:
+          return 'Failed to generate AI suggestion.';
+      }
+    }
+
+    return 'Failed to generate AI suggestion.';
+  }
+
+  String? get _batchSummaryLabel {
+    final summary = _batchAiSummary;
+    if (summary == null) {
+      return null;
+    }
+
+    return 'Req ${summary.requested} | Proc ${summary.processed} | Ok ${summary.success} | Fail ${summary.failed} | Skip ${summary.skipped}';
   }
 }
 

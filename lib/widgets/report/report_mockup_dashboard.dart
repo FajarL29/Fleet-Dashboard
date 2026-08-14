@@ -1010,15 +1010,6 @@ class _WeekdayStackBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final total = drowsiness + others;
     final safeMax = maxTotal <= 0 ? 1.0 : maxTotal;
-    const chartColumnHeight = 136.0;
-    final fullHeight = total <= 0
-        ? 0.0
-        : ((total / safeMax) * chartColumnHeight)
-              .clamp(8, chartColumnHeight)
-              .toDouble();
-    final drowsinessHeight = total <= 0
-        ? 0.0
-        : fullHeight * (drowsiness / total);
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.end,
@@ -1032,30 +1023,47 @@ class _WeekdayStackBar extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 5),
-        Container(
-          height: chartColumnHeight,
-          alignment: Alignment.bottomCenter,
-          child: Container(
-            width: 34,
-            height: fullHeight,
-            decoration: BoxDecoration(
-              color: const Color(0xFFB8BEC8),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Align(
-              alignment: Alignment.bottomCenter,
-              child: Container(
-                height: drowsinessHeight.clamp(0.0, fullHeight).toDouble(),
-                width: double.infinity,
-                decoration: const BoxDecoration(
-                  color: ReportStyles.redSoft,
-                  borderRadius: BorderRadius.vertical(
-                    bottom: Radius.circular(8),
-                    top: Radius.circular(6),
+        Expanded(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final chartColumnHeight = constraints.maxHeight;
+              final fullHeight = total <= 0
+                  ? 0.0
+                  : ((total / safeMax) * chartColumnHeight)
+                        .clamp(0.0, chartColumnHeight)
+                        .toDouble();
+              final drowsinessHeight = total <= 0
+                  ? 0.0
+                  : fullHeight * (drowsiness / total);
+
+              return Container(
+                alignment: Alignment.bottomCenter,
+                child: Container(
+                  width: 34,
+                  height: fullHeight,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFB8BEC8),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Align(
+                    alignment: Alignment.bottomCenter,
+                    child: Container(
+                      height: drowsinessHeight
+                          .clamp(0.0, fullHeight)
+                          .toDouble(),
+                      width: double.infinity,
+                      decoration: const BoxDecoration(
+                        color: ReportStyles.redSoft,
+                        borderRadius: BorderRadius.vertical(
+                          bottom: Radius.circular(8),
+                          top: Radius.circular(6),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ),
+              );
+            },
           ),
         ),
         const SizedBox(height: 6),

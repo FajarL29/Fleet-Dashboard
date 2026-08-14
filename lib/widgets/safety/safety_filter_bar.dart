@@ -19,8 +19,16 @@ class SafetyFilterBar extends StatelessWidget {
     required this.onSeverityChanged,
     required this.onEventTypeChanged,
     required this.onSearchChanged,
+    required this.batchLimit,
+    required this.onlyMissingAi,
+    required this.onBatchLimitChanged,
+    required this.onOnlyMissingAiChanged,
+    required this.onBatchAnalyze,
     this.isLoading = false,
     this.isVehicleLoading = false,
+    this.isBatchLoading = false,
+    this.isBatchEnabled = true,
+    this.batchSummaryLabel,
     this.emptyVehicleLabel = 'No registered vehicles available.',
   });
 
@@ -38,9 +46,19 @@ class SafetyFilterBar extends StatelessWidget {
   final ValueChanged<String> onSeverityChanged;
   final ValueChanged<String> onEventTypeChanged;
   final ValueChanged<String> onSearchChanged;
+  final int batchLimit;
+  final bool onlyMissingAi;
+  final ValueChanged<int> onBatchLimitChanged;
+  final ValueChanged<bool> onOnlyMissingAiChanged;
+  final VoidCallback onBatchAnalyze;
   final bool isLoading;
   final bool isVehicleLoading;
+  final bool isBatchLoading;
+  final bool isBatchEnabled;
+  final String? batchSummaryLabel;
   final String emptyVehicleLabel;
+
+  static const List<int> batchLimitOptions = [5, 10, 20];
 
   static const List<String> severityOptions = ['All', 'High', 'Medium', 'Low'];
 
@@ -101,6 +119,30 @@ class SafetyFilterBar extends StatelessWidget {
             tooltip: 'Refresh',
             onTap: onRefresh,
           ),
+          _BatchLimitDropdown(
+            value: batchLimit,
+            options: batchLimitOptions,
+            onChanged: onBatchLimitChanged,
+          ),
+          _OnlyMissingAiToggle(
+            value: onlyMissingAi,
+            onChanged: onOnlyMissingAiChanged,
+          ),
+          FilledButton.icon(
+            onPressed: isBatchEnabled && !isBatchLoading ? onBatchAnalyze : null,
+            icon: isBatchLoading
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.auto_awesome_rounded),
+            label: Text(
+              isBatchLoading ? 'Analyzing...' : 'Analyze Filtered Events',
+            ),
+          ),
+          if (batchSummaryLabel != null && batchSummaryLabel!.trim().isNotEmpty)
+            _CountBadge(label: batchSummaryLabel!),
         ],
       ),
     );
@@ -375,6 +417,124 @@ class _CountBadge extends StatelessWidget {
         style: const TextStyle(
           color: ReportStyles.textPrimary,
           fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
+class _BatchLimitDropdown extends StatelessWidget {
+  const _BatchLimitDropdown({
+    required this.value,
+    required this.options,
+    required this.onChanged,
+  });
+
+  final int value;
+  final List<int> options;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 146,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: ReportStyles.surfaceBackground,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: ReportStyles.border),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<int>(
+          value: value,
+          dropdownColor: ReportStyles.surfaceBackground,
+          borderRadius: BorderRadius.circular(12),
+          iconEnabledColor: ReportStyles.textSecondary,
+          style: const TextStyle(
+            color: ReportStyles.textPrimary,
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+          items: options.map((option) {
+            return DropdownMenuItem<int>(
+              value: option,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text(
+                    'AI Batch Limit',
+                    style: TextStyle(
+                      color: ReportStyles.textMuted,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  Text(option.toString()),
+                ],
+              ),
+            );
+          }).toList(),
+          onChanged: (next) {
+            if (next != null) {
+              onChanged(next);
+            }
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _OnlyMissingAiToggle extends StatelessWidget {
+  const _OnlyMissingAiToggle({
+    required this.value,
+    required this.onChanged,
+  });
+
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () => onChanged(!value),
+      borderRadius: BorderRadius.circular(12),
+      child: Ink(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: ReportStyles.surfaceBackground,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: ReportStyles.border),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Checkbox(
+              value: value,
+              onChanged: (next) => onChanged(next ?? false),
+            ),
+            const SizedBox(width: 4),
+            const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Only Missing AI',
+                  style: TextStyle(
+                    color: ReportStyles.textPrimary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                Text(
+                  'Skip events with existing AI review',
+                  style: TextStyle(
+                    color: ReportStyles.textMuted,
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );

@@ -70,13 +70,17 @@ class SafetyEventDetailPanel extends StatelessWidget {
     super.key,
     required this.event,
     this.isUpdatingReview = false,
+    this.aiAnalyzingEventId,
     this.onReviewAction,
+    this.onAnalyzeWithAi,
   });
 
   final DrowsinessEvent? event;
   final bool isUpdatingReview;
+  final int? aiAnalyzingEventId;
   final Future<void> Function(SafetyReviewActionRequest request)?
   onReviewAction;
+  final Future<void> Function(int drowsinessId)? onAnalyzeWithAi;
 
   @override
   Widget build(BuildContext context) {
@@ -227,6 +231,12 @@ class SafetyEventDetailPanel extends StatelessWidget {
                                   const SizedBox(height: 14),
                                   _ReviewStatusSection(event: event!),
                                   const SizedBox(height: 14),
+                                  _AiSuggestionSection(
+                                    event: event!,
+                                    aiAnalyzingEventId: aiAnalyzingEventId,
+                                    onAnalyzeWithAi: onAnalyzeWithAi,
+                                  ),
+                                  const SizedBox(height: 14),
                                   _ReviewActionsCard(
                                     event: event!,
                                     isUpdatingReview: isUpdatingReview,
@@ -243,6 +253,136 @@ class SafetyEventDetailPanel extends StatelessWidget {
                 ],
               ),
             ),
+    );
+  }
+}
+
+class _AiSuggestionSection extends StatelessWidget {
+  const _AiSuggestionSection({
+    required this.event,
+    required this.aiAnalyzingEventId,
+    required this.onAnalyzeWithAi,
+  });
+
+  final DrowsinessEvent event;
+  final int? aiAnalyzingEventId;
+  final Future<void> Function(int drowsinessId)? onAnalyzeWithAi;
+
+  @override
+  Widget build(BuildContext context) {
+    final isLoading = aiAnalyzingEventId == event.drowsinessId;
+    final canAnalyze = onAnalyzeWithAi != null && !isLoading;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: ReportStyles.surfaceBackground,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: ReportStyles.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'AI Suggestion',
+                      style: TextStyle(
+                        color: ReportStyles.textPrimary,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'AI suggestion is only a reference. Human reviewer must make the final decision.',
+                      style: TextStyle(
+                        color: ReportStyles.textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              FilledButton.icon(
+                onPressed: canAnalyze
+                    ? () => onAnalyzeWithAi!(event.drowsinessId)
+                    : null,
+                icon: isLoading
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.auto_awesome_rounded),
+                label: Text(isLoading ? 'Analyzing...' : 'Analyze with AI'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (!event.hasAiSuggestion)
+            const Text(
+              'No AI suggestion yet.',
+              style: TextStyle(
+                color: ReportStyles.textSecondary,
+                fontSize: 13,
+              ),
+            )
+          else
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    _MetaTile(
+                      icon: Icons.psychology_alt_outlined,
+                      label: 'AI Suggestion',
+                      value: _readableLabel(event.aiSuggestion ?? '-'),
+                      accentColor: _suggestionColor(event.aiSuggestion),
+                    ),
+                    _MetaTile(
+                      icon: Icons.percent_rounded,
+                      label: 'Confidence',
+                      value: _confidenceLabel(event.aiConfidence),
+                    ),
+                    _MetaTile(
+                      icon: Icons.label_outline_rounded,
+                      label: 'Corrected Label',
+                      value: _readableLabel(event.aiCorrectedLabel ?? '-'),
+                    ),
+                    _MetaTile(
+                      icon: Icons.fact_check_outlined,
+                      label: 'Evidence Quality',
+                      value: _readableLabel(event.aiEvidenceQuality ?? '-'),
+                      accentColor: _evidenceQualityColor(
+                        event.aiEvidenceQuality,
+                      ),
+                    ),
+                    _MetaTile(
+                      icon: Icons.smart_toy_outlined,
+                      label: 'AI Reviewed At',
+                      value: event.formattedAiReviewedAt ?? '-',
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                _ReasonCard(
+                  reason: event.aiReason,
+                  suggestion: event.aiSuggestion,
+                ),
+              ],
+            ),
+        ],
+      ),
     );
   }
 }
@@ -1068,11 +1208,13 @@ class _MetaTile extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.value,
+    this.accentColor,
   });
 
   final IconData icon;
   final String label;
   final String value;
+  final Color? accentColor;
 
   @override
   Widget build(BuildContext context) {
@@ -1083,12 +1225,16 @@ class _MetaTile extends StatelessWidget {
         decoration: BoxDecoration(
           color: ReportStyles.surfaceBackground,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: ReportStyles.border),
+          border: Border.all(
+            color: (accentColor ?? ReportStyles.border).withValues(
+              alpha: accentColor == null ? 1 : 0.65,
+            ),
+          ),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, color: ReportStyles.textSecondary, size: 18),
+            Icon(icon, color: accentColor ?? ReportStyles.textSecondary, size: 18),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
@@ -1115,6 +1261,62 @@ class _MetaTile extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ReasonCard extends StatelessWidget {
+  const _ReasonCard({
+    required this.reason,
+    required this.suggestion,
+  });
+
+  final String? reason;
+  final String? suggestion;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF111C31),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: _suggestionColor(suggestion).withValues(alpha: 0.45),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.rule_folder_outlined,
+                size: 18,
+                color: _suggestionColor(suggestion),
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                'AI Reason',
+                style: TextStyle(
+                  color: ReportStyles.textPrimary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            reason?.trim().isNotEmpty == true ? reason! : '-',
+            style: const TextStyle(
+              color: ReportStyles.textSecondary,
+              fontSize: 13,
+              height: 1.45,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1154,6 +1356,44 @@ class _SeverityPill extends StatelessWidget {
         style: TextStyle(color: color, fontWeight: FontWeight.w800),
       ),
     );
+  }
+}
+
+String _confidenceLabel(double? value) {
+  if (value == null) {
+    return '-';
+  }
+
+  return '${(value * 100).round()}%';
+}
+
+Color _suggestionColor(String? value) {
+  switch (value?.trim().toLowerCase()) {
+    case 'confirm':
+      return ReportStyles.green;
+    case 'false positive':
+    case 'false_positive':
+      return ReportStyles.orange;
+    case 'wrong label':
+    case 'wrong_label':
+      return ReportStyles.red;
+    case 'unclear':
+      return ReportStyles.textSecondary;
+    default:
+      return ReportStyles.blue;
+  }
+}
+
+Color _evidenceQualityColor(String? value) {
+  switch (value?.trim().toLowerCase()) {
+    case 'good':
+      return ReportStyles.green;
+    case 'medium':
+      return ReportStyles.orange;
+    case 'poor':
+      return ReportStyles.red;
+    default:
+      return ReportStyles.textSecondary;
   }
 }
 

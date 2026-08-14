@@ -196,6 +196,51 @@ class DrowsinessReportService {
     throw Exception('Unexpected review update response format');
   }
 
+  Future<DrowsinessAiSuggestion> generateAiSuggestion(int drowsinessId) async {
+    final response = await _send(
+      'POST',
+      '/drowsiness/ai-suggestion/$drowsinessId',
+    );
+
+    final data = response['data'];
+    if (data is Map<String, dynamic>) {
+      return DrowsinessAiSuggestion.fromJson(data);
+    }
+
+    throw Exception('Unexpected AI suggestion response format');
+  }
+
+  Future<DrowsinessBatchAiSuggestionResult> generateBatchAiSuggestion({
+    required String vehicleId,
+    required DateTime startDate,
+    required DateTime endDate,
+    required int limit,
+    required bool onlyMissingAi,
+    List<String>? status,
+  }) async {
+    final body = <String, dynamic>{
+      'vehicle_id': vehicleId,
+      'start_date': _dateOnly(startDate),
+      'end_date': _dateOnly(endDate),
+      'limit': limit,
+      'only_missing_ai': onlyMissingAi,
+      if (status != null && status.isNotEmpty) 'status': status,
+    };
+
+    final response = await _send(
+      'POST',
+      '/drowsiness/ai-suggestion/batch',
+      body: body,
+    );
+
+    final data = response['data'];
+    if (data is Map<String, dynamic>) {
+      return DrowsinessBatchAiSuggestionResult.fromJson(data);
+    }
+
+    throw Exception('Unexpected batch AI suggestion response format');
+  }
+
   Future<Map<String, dynamic>> _get(
     String path,
     Map<String, String>? reportQuery, {
@@ -319,6 +364,12 @@ class DrowsinessReportService {
     Map<String, String>? headers,
   }) {
     switch (method.toUpperCase()) {
+      case 'POST':
+        return client.post(
+          uri,
+          headers: headers,
+          body: json.encode(body ?? const <String, dynamic>{}),
+        );
       case 'PATCH':
         return client.patch(
           uri,
@@ -500,4 +551,127 @@ class ApiRequestException implements Exception {
   String toString() {
     return 'Request failed $statusCode: $message';
   }
+}
+
+class DrowsinessAiSuggestion {
+  const DrowsinessAiSuggestion({
+    required this.drowsinessId,
+    this.aiSuggestion,
+    this.aiConfidence,
+    this.aiReason,
+    this.aiCorrectedLabel,
+    this.aiEvidenceQuality,
+    this.aiReviewedAt,
+  });
+
+  final int drowsinessId;
+  final String? aiSuggestion;
+  final double? aiConfidence;
+  final String? aiReason;
+  final String? aiCorrectedLabel;
+  final String? aiEvidenceQuality;
+  final DateTime? aiReviewedAt;
+
+  factory DrowsinessAiSuggestion.fromJson(Map<String, dynamic> json) {
+    return DrowsinessAiSuggestion(
+      drowsinessId: _serviceToInt(json['drowsiness_id']),
+      aiSuggestion: _serviceOptionalString(json['ai_suggestion']),
+      aiConfidence: _serviceToDouble(json['ai_confidence']),
+      aiReason: _serviceOptionalString(json['ai_reason']),
+      aiCorrectedLabel: _serviceOptionalString(json['ai_corrected_label']),
+      aiEvidenceQuality: _serviceOptionalString(json['ai_evidence_quality']),
+      aiReviewedAt: _serviceParseDate(json['ai_reviewed_at']),
+    );
+  }
+}
+
+class DrowsinessBatchAiSuggestionResult {
+  const DrowsinessBatchAiSuggestionResult({
+    required this.requested,
+    required this.processed,
+    required this.success,
+    required this.failed,
+    required this.skipped,
+    required this.results,
+  });
+
+  final int requested;
+  final int processed;
+  final int success;
+  final int failed;
+  final int skipped;
+  final List<DrowsinessBatchAiSuggestionItem> results;
+
+  factory DrowsinessBatchAiSuggestionResult.fromJson(
+    Map<String, dynamic> json,
+  ) {
+    final rawResults = json['results'] as List<dynamic>? ?? const [];
+
+    return DrowsinessBatchAiSuggestionResult(
+      requested: _serviceToInt(json['requested']),
+      processed: _serviceToInt(json['processed']),
+      success: _serviceToInt(json['success']),
+      failed: _serviceToInt(json['failed']),
+      skipped: _serviceToInt(json['skipped']),
+      results: rawResults
+          .whereType<Map<String, dynamic>>()
+          .map(DrowsinessBatchAiSuggestionItem.fromJson)
+          .toList(),
+    );
+  }
+}
+
+class DrowsinessBatchAiSuggestionItem {
+  const DrowsinessBatchAiSuggestionItem({
+    required this.drowsinessId,
+    required this.status,
+    this.aiSuggestion,
+    this.aiConfidence,
+    this.aiCorrectedLabel,
+    this.aiEvidenceQuality,
+  });
+
+  final int drowsinessId;
+  final String status;
+  final String? aiSuggestion;
+  final double? aiConfidence;
+  final String? aiCorrectedLabel;
+  final String? aiEvidenceQuality;
+
+  factory DrowsinessBatchAiSuggestionItem.fromJson(Map<String, dynamic> json) {
+    return DrowsinessBatchAiSuggestionItem(
+      drowsinessId: _serviceToInt(json['drowsiness_id']),
+      status: json['status']?.toString() ?? '',
+      aiSuggestion: _serviceOptionalString(json['ai_suggestion']),
+      aiConfidence: _serviceToDouble(json['ai_confidence']),
+      aiCorrectedLabel: _serviceOptionalString(json['ai_corrected_label']),
+      aiEvidenceQuality: _serviceOptionalString(json['ai_evidence_quality']),
+    );
+  }
+}
+
+int _serviceToInt(dynamic value) {
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  return int.tryParse(value?.toString() ?? '') ?? 0;
+}
+
+double? _serviceToDouble(dynamic value) {
+  if (value == null) return null;
+  if (value is double) return value;
+  if (value is num) return value.toDouble();
+  return double.tryParse(value.toString());
+}
+
+String? _serviceOptionalString(dynamic value) {
+  final stringValue = value?.toString().trim();
+  if (stringValue == null || stringValue.isEmpty) {
+    return null;
+  }
+  return stringValue;
+}
+
+DateTime? _serviceParseDate(dynamic value) {
+  if (value == null) return null;
+  return DateTime.tryParse(value.toString())?.toLocal();
 }

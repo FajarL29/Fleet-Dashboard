@@ -734,6 +734,12 @@ class DrowsinessEvent {
     this.reviewedAt,
     this.followUpNote,
     this.followedUpAt,
+    this.aiSuggestion,
+    this.aiConfidence,
+    this.aiReason,
+    this.aiCorrectedLabel,
+    this.aiEvidenceQuality,
+    this.aiReviewedAt,
   });
 
   final int id;
@@ -759,7 +765,14 @@ class DrowsinessEvent {
   final DateTime? reviewedAt;
   final String? followUpNote;
   final DateTime? followedUpAt;
+  final String? aiSuggestion;
+  final double? aiConfidence;
+  final String? aiReason;
+  final String? aiCorrectedLabel;
+  final String? aiEvidenceQuality;
+  final DateTime? aiReviewedAt;
 
+  int get drowsinessId => id;
   String get driverLabel => userId > 0 ? 'User #$userId' : 'Unknown';
   bool get hasSpeedContext => speedAtEvent != null;
   bool get isReviewed => reviewStatus != 'new';
@@ -773,6 +786,14 @@ class DrowsinessEvent {
       telemetryTimestamp?.toLocal().toIso8601String();
   String? get formattedReviewedAt => _formatDisplayDate(reviewedAt);
   String? get formattedFollowedUpAt => _formatDisplayDate(followedUpAt);
+  String? get formattedAiReviewedAt => _formatDisplayDate(aiReviewedAt);
+  bool get hasAiSuggestion =>
+      aiSuggestion != null ||
+      aiConfidence != null ||
+      aiReason != null ||
+      aiCorrectedLabel != null ||
+      aiEvidenceQuality != null ||
+      aiReviewedAt != null;
 
   DrowsinessEvent copyWith({
     int? id,
@@ -803,6 +824,18 @@ class DrowsinessEvent {
     bool clearFollowUpNote = false,
     DateTime? followedUpAt,
     bool clearFollowedUpAt = false,
+    String? aiSuggestion,
+    bool clearAiSuggestion = false,
+    double? aiConfidence,
+    bool clearAiConfidence = false,
+    String? aiReason,
+    bool clearAiReason = false,
+    String? aiCorrectedLabel,
+    bool clearAiCorrectedLabel = false,
+    String? aiEvidenceQuality,
+    bool clearAiEvidenceQuality = false,
+    DateTime? aiReviewedAt,
+    bool clearAiReviewedAt = false,
   }) {
     return DrowsinessEvent(
       id: id ?? this.id,
@@ -832,6 +865,22 @@ class DrowsinessEvent {
       followedUpAt: clearFollowedUpAt
           ? null
           : (followedUpAt ?? this.followedUpAt),
+      aiSuggestion: clearAiSuggestion
+          ? null
+          : (aiSuggestion ?? this.aiSuggestion),
+      aiConfidence: clearAiConfidence
+          ? null
+          : (aiConfidence ?? this.aiConfidence),
+      aiReason: clearAiReason ? null : (aiReason ?? this.aiReason),
+      aiCorrectedLabel: clearAiCorrectedLabel
+          ? null
+          : (aiCorrectedLabel ?? this.aiCorrectedLabel),
+      aiEvidenceQuality: clearAiEvidenceQuality
+          ? null
+          : (aiEvidenceQuality ?? this.aiEvidenceQuality),
+      aiReviewedAt: clearAiReviewedAt
+          ? null
+          : (aiReviewedAt ?? this.aiReviewedAt),
     );
   }
 
@@ -875,6 +924,12 @@ class DrowsinessEvent {
       reviewedAt: _parseDate(json['reviewed_at']),
       followUpNote: _optionalString(json['follow_up_note']),
       followedUpAt: _parseDate(json['followed_up_at']),
+      aiSuggestion: _optionalString(json['ai_suggestion']),
+      aiConfidence: _toDouble(json['ai_confidence']),
+      aiReason: _optionalString(json['ai_reason']),
+      aiCorrectedLabel: _optionalString(json['ai_corrected_label']),
+      aiEvidenceQuality: _optionalString(json['ai_evidence_quality']),
+      aiReviewedAt: _parseDate(json['ai_reviewed_at']),
     );
   }
 }
