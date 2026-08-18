@@ -27,6 +27,16 @@ class MenuItems {
     ),
     MenuItem(title: 'Safety', icon: Icons.security_rounded, route: '/safety'),
     MenuItem(
+      title: 'Vital Sign',
+      icon: Icons.monitor_heart_rounded,
+      route: '/vital-sign',
+    ),
+    MenuItem(
+      title: 'Air Quality',
+      icon: Icons.air_rounded,
+      route: '/air-quality',
+    ),
+    MenuItem(
       title: 'Reports',
       icon: Icons.assessment_rounded,
       route: '/reports',

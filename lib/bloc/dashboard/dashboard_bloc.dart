@@ -87,7 +87,7 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
 
         final response = await http.get(
           Uri.parse(
-            'http://localhost:3000/api/v1/drowsiness/latest/${Uri.encodeComponent(vin)}',
+            '${_drowsinessReportService.baseUrl}/drowsiness/latest/${Uri.encodeComponent(vin)}',
           ),
           headers: {
             'Authorization': 'Bearer $token',
@@ -302,6 +302,9 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     VehicleSelected event,
     Emitter<DashboardState> emit,
   ) async {
+    debugPrint(
+      '[OverviewSelection] selected vehicle_id=${event.vehicle.id}',
+    );
     emit(state.copyWith(selectedVehicle: event.vehicle));
     await _loadRecentDrowsinessEvents(emit, vehicle: event.vehicle);
   }
@@ -311,7 +314,7 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     Emitter<DashboardState> emit,
   ) {
     debugPrint('🔄 SelectionCleared event received, clearing selectedVehicle');
-    emit(state.copyWith(selectedVehicle: null));
+    emit(state.copyWith(clearSelectedVehicle: true));
   }
 
   void _onAlertCleared(AlertCleared event, Emitter<DashboardState> emit) {
@@ -445,6 +448,11 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
         vehicles: vehicles,
         selectedVehicleId: state.selectedVehicle?.id,
       );
+      if (state.selectedVehicle == null && selectedVehicle != null) {
+        debugPrint(
+          '[OverviewSelection] source=default vehicle_id=${selectedVehicle.id}',
+        );
+      }
       debugPrint(
         '[Overview] vehicleStatus total=${vehicleStatusData.summary.totalVehicles} online=${vehicleStatusData.summary.onlineVehicles} offline=${vehicleStatusData.summary.offline} vehicles=${vehicleStatusData.vehicles.length} markers=${vehicles.length}',
       );
@@ -681,13 +689,11 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
       return null;
     }
 
-    if (selectedVehicleId == null || selectedVehicleId.isEmpty) {
-      return null;
-    }
-
-    for (final vehicle in vehicles) {
-      if (vehicle.id == selectedVehicleId) {
-        return vehicle;
+    if (selectedVehicleId != null && selectedVehicleId.isNotEmpty) {
+      for (final vehicle in vehicles) {
+        if (vehicle.id == selectedVehicleId) {
+          return vehicle;
+        }
       }
     }
 

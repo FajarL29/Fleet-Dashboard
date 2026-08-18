@@ -2,6 +2,8 @@ import 'package:fleet_dashboard/screens/live_tracking_screen.dart';
 import 'package:fleet_dashboard/screens/report_screen.dart';
 import 'package:fleet_dashboard/screens/safety_screen.dart';
 import 'package:fleet_dashboard/screens/vehicles_screen.dart';
+import 'package:fleet_dashboard/screens/vital_sign_screen.dart';
+import 'package:fleet_dashboard/screens/air_quality_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -9,9 +11,9 @@ import '../bloc/dashboard/dashboard_bloc.dart';
 import '../bloc/dashboard/dashboard_event.dart';
 import '../bloc/dashboard/dashboard_state.dart';
 import '../constants/menu_items.dart';
-import '../widgets/driver_monitoring.dart';
 import '../widgets/map_section.dart';
 import '../widgets/overview/overview_dashboard.dart';
+import '../widgets/overview/overview_monitoring_summary.dart';
 import '../widgets/sidebar.dart';
 import '../theme/app_theme.dart';
 import '../utils/responsive_layout.dart';
@@ -66,6 +68,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       backgroundColor: AppTheme.darkNavy,
       body: BlocListener<DashboardBloc, DashboardState>(
         listenWhen: (prev, curr) =>
+            prev.selectedVehicle?.id != curr.selectedVehicle?.id ||
             prev.selectedVehicle?.position != curr.selectedVehicle?.position,
         listener: (context, state) {
           if (state.selectedVehicle != null && _isMapFollowingVehicle) {
@@ -121,6 +124,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       builder: (context) => const SafetyScreen(),
                       settings: settings,
                     );
+                  case '/vital-sign':
+                    return MaterialPageRoute(
+                      builder: (context) => const VitalSignScreen(),
+                      settings: settings,
+                    );
+                  case '/air-quality':
+                    return MaterialPageRoute(
+                      builder: (context) => const AirQualityScreen(),
+                      settings: settings,
+                    );
                   case '/settings':
                     return MaterialPageRoute(
                       builder: (context) =>
@@ -148,7 +161,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
           prev.selectedVehicle != curr.selectedVehicle ||
           prev.driverAlerts != curr.driverAlerts ||
           prev.alertLog != curr.alertLog ||
-          prev.driversHealth != curr.driversHealth ||
           prev.recentDrowsinessEvents != curr.recentDrowsinessEvents ||
           prev.currentDrowsinessReport != curr.currentDrowsinessReport ||
           prev.driverBehaviorSummaries != curr.driverBehaviorSummaries ||
@@ -162,7 +174,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
           selectedVehicle: state.selectedVehicle,
           driverAlerts: state.driverAlerts,
           alertLog: state.alertLog,
-          driversHealth: state.driversHealth,
           recentDrowsinessEvents: state.recentDrowsinessEvents,
           currentDrowsinessReport: state.currentDrowsinessReport,
           driverBehaviorSummaries: state.driverBehaviorSummaries,
@@ -199,10 +210,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: MapSection(
             mapController: _mapController,
             vehicles: state.vehicles,
-            useLocalSelection: true,
             isFullScreen: true,
             showVehicleList: false,
             selectedVehicleId: state.selectedVehicle?.id,
+            onVehicleSelected: (vehicle) =>
+                context.read<DashboardBloc>().add(VehicleSelected(vehicle)),
+            onClearSelection: () =>
+                context.read<DashboardBloc>().add(const SelectionCleared()),
             onFollowModeChanged: _handleFollowModeChanged,
           ),
         ),
@@ -216,67 +230,38 @@ class _DashboardScreenState extends State<DashboardScreen> {
         //     child: const Icon(Icons.close, color: Colors.white),
         //   ),
         // ),
-        // Driver monitoring panel (bottom)
         Positioned(
-          left: 0,
-          right: 0,
-          bottom: 0,
+          left: 16,
+          right: 16,
+          bottom: 16,
           child: Container(
-            margin: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppTheme.slateGrey.withValues(alpha: 0.95),
-              borderRadius: BorderRadius.circular(12),
+              color: AppTheme.darkNavy.withValues(alpha: 0.95),
+              borderRadius: BorderRadius.circular(16),
               border: Border.all(color: Colors.white10),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppTheme.darkNavy.withValues(alpha: 0.5),
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(12),
-                      topRight: Radius.circular(12),
+                Row(
+                  children: [
+                    const Text(
+                      'Selected Vehicle Monitoring',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Driver 1',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: _toggleMapFullScreen,
-                        child: const Text(
-                          'Exit Fullscreen',
-                          style: TextStyle(color: AppTheme.accentBlue),
-                        ),
-                      ),
-                    ],
-                  ),
+                    const Spacer(),
+                    TextButton.icon(
+                      onPressed: _toggleMapFullScreen,
+                      icon: const Icon(Icons.close, color: Colors.white),
+                      label: const Text('Exit Fullscreen'),
+                    ),
+                  ],
                 ),
-                // Scrollable driver monitoring content
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final maxHeight = MediaQuery.of(context).size.height * 0.5;
-                    final panelHeight = constraints.maxWidth > 1200
-                        ? 400.0
-                        : 350.0;
-                    final finalHeight = panelHeight.clamp(200.0, maxHeight);
-                    return SizedBox(
-                      height: finalHeight,
-                      child: DriverMonitoring(
-                        drivers: state.driversHealth,
-                        driverAlerts: state.driverAlerts,
-                      ),
-                    );
-                  },
-                ),
+                OverviewMonitoringSummary(vehicle: state.selectedVehicle),
               ],
             ),
           ),

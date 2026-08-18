@@ -16,7 +16,7 @@ class DrowsinessReportService {
 
   static const String _defaultBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://203.100.57.59:3000/api/v1',
+    defaultValue: 'http://localhost:3000/api/v1',
   );
   static const String _defaultAuthToken = String.fromEnvironment(
     'API_AUTH_TOKEN',

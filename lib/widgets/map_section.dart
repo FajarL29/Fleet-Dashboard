@@ -106,7 +106,6 @@ class _MapSectionState extends State<MapSection> with TickerProviderStateMixin {
       return;
     }
 
-    _clearSelection();
     _setFollowingMode(false);
 
     final points = widget.vehicles.map((vehicle) => vehicle.position).toList();

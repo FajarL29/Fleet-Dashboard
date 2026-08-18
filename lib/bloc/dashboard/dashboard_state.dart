@@ -2,8 +2,6 @@ import 'package:equatable/equatable.dart';
 import '../../models/driver_behavior_summary.dart';
 import '../../models/drowsiness_report.dart';
 import '../../models/vehicle.dart';
-import '../../models/driver_health.dart';
-import '../../models/aqi_data.dart';
 import '../../models/vehicle_status.dart';
 
 /// Represents the status of the dashboard
@@ -27,12 +25,6 @@ class DashboardState extends Equatable {
 
   /// List of all vehicles
   final List<Vehicle> vehicles;
-
-  /// List of driver health data
-  final List<DriverHealth> driversHealth;
-
-  /// AQI data
-  final AQIData aqiData;
 
   /// Number of online drivers
   final int onlineDrivers;
@@ -64,8 +56,6 @@ class DashboardState extends Equatable {
     this.selectedVehicle,
     this.currentAlert,
     this.vehicles = const [],
-    this.driversHealth = const [],
-    this.aqiData = const AQIData(index: 0, pm25: 0, co2: 0, no2: 0),
     this.onlineDrivers = 0,
     this.highRiskAlerts = 0,
     this.alertLog = const [],
@@ -84,39 +74,6 @@ class DashboardState extends Equatable {
     return DashboardState(
       status: DashboardStatus.initial,
       vehicles: const [],
-      driversHealth: [
-        DriverHealth(
-          driverId: '3034',
-          name: 'Budi',
-          imageUrl:
-              'https://th.bing.com/th/id/OIP.3bw4A-iBUi5Pa3PeIGXRZQHaE8?o=7',
-          heartRate: 75,
-          temperature: 36.5,
-          status: HealthStatus.normal,
-          activity: 'inactive',
-        ),
-        DriverHealth(
-          driverId: '999',
-          name: 'Bahrudin',
-          imageUrl:
-              'https://static.vecteezy.com/system/resources/previews/004/975/153/large_2x/driver-color-icon-transportation-service-isolated-illustration-vector.jpg',
-          heartRate: 75,
-          temperature: 36.5,
-          status: HealthStatus.normal,
-          activity: 'inactive',
-        ),
-        DriverHealth(
-          driverId: '1234',
-          name: 'Gito',
-          imageUrl:
-              'https://static.vecteezy.com/system/resources/previews/004/975/153/large_2x/driver-color-icon-transportation-service-isolated-illustration-vector.jpg',
-          heartRate: 75,
-          temperature: 36.5,
-          status: HealthStatus.normal,
-          activity: 'inactive',
-        ),
-      ],
-      aqiData: const AQIData(index: 42, pm25: 72, co2: 22, no2: 15),
       onlineDrivers: 28,
       highRiskAlerts: 3,
       alertLog: [
@@ -141,8 +98,6 @@ class DashboardState extends Equatable {
     Map<String, dynamic>? currentAlert,
     bool clearCurrentAlert = false,
     List<Vehicle>? vehicles,
-    List<DriverHealth>? driversHealth,
-    AQIData? aqiData,
     int? onlineDrivers,
     int? highRiskAlerts,
     List<String>? alertLog,
@@ -170,8 +125,6 @@ class DashboardState extends Equatable {
           ? null
           : (currentAlert ?? this.currentAlert),
       vehicles: vehicles ?? this.vehicles,
-      driversHealth: driversHealth ?? this.driversHealth,
-      aqiData: aqiData ?? this.aqiData,
       onlineDrivers: onlineDrivers ?? this.onlineDrivers,
       highRiskAlerts: highRiskAlerts ?? this.highRiskAlerts,
       alertLog: alertLog ?? this.alertLog,
@@ -204,8 +157,6 @@ class DashboardState extends Equatable {
     selectedVehicle,
     currentAlert,
     vehicles,
-    driversHealth,
-    aqiData,
     onlineDrivers,
     highRiskAlerts,
     alertLog,

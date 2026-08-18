@@ -4,11 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 
 import '../../models/driver_behavior_summary.dart';
-import '../../models/driver_health.dart';
 import '../../models/drowsiness_report.dart';
 import '../../models/vehicle.dart';
 import '../../models/vehicle_status.dart';
 import 'overview_skeleton_loading.dart';
+import 'overview_monitoring_summary.dart';
 import '../map_section.dart';
 import '../report/report_styles.dart';
 
@@ -20,7 +20,6 @@ class OverviewDashboard extends StatelessWidget {
     required this.selectedVehicle,
     required this.driverAlerts,
     required this.alertLog,
-    required this.driversHealth,
     required this.recentDrowsinessEvents,
     required this.currentDrowsinessReport,
     required this.driverBehaviorSummaries,
@@ -38,7 +37,6 @@ class OverviewDashboard extends StatelessWidget {
   final Vehicle? selectedVehicle;
   final Map<int, Map<String, dynamic>> driverAlerts;
   final List<String> alertLog;
-  final List<DriverHealth> driversHealth;
   final List<DrowsinessEvent> recentDrowsinessEvents;
   final DrowsinessReport? currentDrowsinessReport;
   final List<DriverBehaviorSummary> driverBehaviorSummaries;
@@ -94,12 +92,22 @@ class OverviewDashboard extends StatelessWidget {
                   healthColor: overviewData.fleetHealthColor,
                   healthIcon: overviewData.fleetHealthIcon,
                   useWideLayout: useWideHeader,
+                  vehicles: vehicles,
+                  selectedVehicle: selectedVehicle,
+                  onVehicleSelected: (vehicle) {
+                    debugPrint(
+                      '[OverviewSelection] source=selector vehicle_id=${vehicle.id}',
+                    );
+                    onVehicleSelected(vehicle);
+                  },
                 ),
                 const SizedBox(height: 16),
                 _KpiGrid(
                   perRow: kpiPerRow,
                   children: _buildKpiCards(overviewData),
                 ),
+                const SizedBox(height: 16),
+                OverviewMonitoringSummary(vehicle: selectedVehicle),
                 const SizedBox(height: 16),
                 if (useTwoColumns)
                   Column(
@@ -197,11 +205,17 @@ class OverviewDashboard extends StatelessWidget {
       child: MapSection(
         mapController: mapController,
         vehicles: vehicles,
-        useLocalSelection: true,
         isFullScreen: false,
         onFullScreenToggle: onOpenMapFullscreen,
         showVehicleList: false,
         selectedVehicleId: selectedVehicle?.id,
+        onVehicleSelected: (vehicle) {
+          debugPrint(
+            '[OverviewSelection] source=map vehicle_id=${vehicle.id}',
+          );
+          onVehicleSelected(vehicle);
+        },
+        onClearSelection: onClearSelection,
         onFollowModeChanged: onFollowModeChanged,
       ),
     );
@@ -496,24 +510,14 @@ class OverviewDashboard extends StatelessWidget {
   }
 
   Map<String, String> _mapRecentLog(DrowsinessEvent event) {
-    final driver = _driverForEvent(event);
     final vehicle = _vehicleForEvent(event);
     return {
       'time': '${_twoDigits(event.time.hour)}:${_twoDigits(event.time.minute)}',
       'type': _eventLabel(event),
-      'driver': driver?.name ?? event.driverLabel,
+      'driver': event.driverLabel,
       'vehicle': vehicle?.plateNumber ?? event.vehicleId,
       'severity': _severityLabel(event.riskLevel),
     };
-  }
-
-  DriverHealth? _driverForEvent(DrowsinessEvent event) {
-    for (final driver in driversHealth) {
-      if (driver.driverId == event.userId.toString()) {
-        return driver;
-      }
-    }
-    return null;
   }
 
   Vehicle? _vehicleForEvent(DrowsinessEvent event) {
@@ -623,6 +627,9 @@ class _OverviewHeader extends StatelessWidget {
     required this.healthColor,
     required this.healthIcon,
     required this.useWideLayout,
+    required this.vehicles,
+    required this.selectedVehicle,
+    required this.onVehicleSelected,
   });
 
   final String lastUpdatedLabel;
@@ -630,6 +637,9 @@ class _OverviewHeader extends StatelessWidget {
   final Color healthColor;
   final IconData healthIcon;
   final bool useWideLayout;
+  final List<Vehicle> vehicles;
+  final Vehicle? selectedVehicle;
+  final ValueChanged<Vehicle> onVehicleSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -684,15 +694,21 @@ class _OverviewHeader extends StatelessWidget {
       ],
     );
 
+    final selector = _OverviewVehicleSelector(
+      vehicles: vehicles,
+      selectedVehicle: selectedVehicle,
+      onSelected: onVehicleSelected,
+    );
+
     if (useWideLayout) {
       return Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                const Text(
                   'Driver Safety & Telematics Overview',
                   style: TextStyle(
                     color: Colors.white,
@@ -700,14 +716,16 @@ class _OverviewHeader extends StatelessWidget {
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                SizedBox(height: 6),
-                Text(
+                const SizedBox(height: 6),
+                const Text(
                   'Today live monitoring for driver condition, vehicle position, and safety events.',
                   style: TextStyle(
                     color: ReportStyles.textSecondary,
                     fontSize: 12,
                   ),
                 ),
+                const SizedBox(height: 12),
+                selector,
               ],
             ),
           ),
@@ -737,11 +755,91 @@ class _OverviewHeader extends StatelessWidget {
           style: TextStyle(color: ReportStyles.textSecondary, fontSize: 12),
         ),
         const SizedBox(height: 12),
+        selector,
+        const SizedBox(height: 12),
         statusCard,
         const SizedBox(height: 8),
         timestamp,
       ],
     );
+  }
+}
+
+class _OverviewVehicleSelector extends StatelessWidget {
+  const _OverviewVehicleSelector({
+    required this.vehicles,
+    required this.selectedVehicle,
+    required this.onSelected,
+  });
+
+  final List<Vehicle> vehicles;
+  final Vehicle? selectedVehicle;
+  final ValueChanged<Vehicle> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final selectedId = selectedVehicle != null &&
+            vehicles.any((vehicle) => vehicle.id == selectedVehicle!.id)
+        ? selectedVehicle!.id
+        : null;
+
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 360),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: ReportStyles.cardBackground,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: ReportStyles.border),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: selectedId,
+          isExpanded: true,
+          dropdownColor: ReportStyles.surfaceBackground,
+          hint: const Text(
+            'Select Fleet vehicle',
+            style: TextStyle(color: ReportStyles.textMuted, fontSize: 12),
+          ),
+          iconEnabledColor: ReportStyles.textSecondary,
+          items: vehicles
+              .map(
+                (vehicle) => DropdownMenuItem<String>(
+                  value: vehicle.id,
+                  child: Text(
+                    _vehicleSelectorLabel(vehicle),
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                  ),
+                ),
+              )
+              .toList(),
+          onChanged: vehicles.isEmpty
+              ? null
+              : (id) {
+                  if (id == null) return;
+                  for (final vehicle in vehicles) {
+                    if (vehicle.id == id) {
+                      onSelected(vehicle);
+                      return;
+                    }
+                  }
+                },
+        ),
+      ),
+    );
+  }
+
+  String _vehicleSelectorLabel(Vehicle vehicle) {
+    final plate = vehicle.plateNumber.trim();
+    final type = vehicle.type.trim();
+    const statusValues = {'moving', 'idle', 'online', 'offline', 'unknown'};
+    final vin = vehicle.vin;
+    final primary = plate.isNotEmpty ? plate : vehicle.id;
+    final typeSuffix = type.isEmpty || statusValues.contains(type.toLowerCase())
+        ? ''
+        : ' - $type';
+    final vinSuffix = vin.isEmpty || vin == primary ? '' : ' · $vin';
+    return '$primary$typeSuffix$vinSuffix';
   }
 }
 
