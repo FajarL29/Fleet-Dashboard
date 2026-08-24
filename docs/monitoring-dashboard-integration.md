@@ -287,3 +287,107 @@ The monitoring services log their fully resolved GET URI in debug builds. No veh
 On 18 August 2026, direct requests to the configured local backend returned HTTP 200 for all three verification endpoints. `/vehicles/status` included `vehicle_id=11`, VIN `VIN-0001`, and plate `B 7041 UDB`. `/health/latest/11` returned Heart Rate 82, SpO2 98, and Body Temperature 36.6. `/air-monitor/latest/11` returned the existing record including AQI 55, PM2.5 18, and CO2 620. This verifies the service inputs and model fields against the live test data; interactive dropdown/marker behavior still requires launching the Flutter UI.
 
 The focused `flutter test test/monitoring_services_test.dart test/overview_monitoring_summary_test.dart` command was attempted after terminating the formatter process created by the earlier timed-out run, but it again produced no output before the 120-second limit. It is not reported as passing. `git diff --check` and source-level selection/API tracing completed successfully.
+
+## Fleet Management Overview Redesign
+
+### Approved UX objective
+
+The Overview now follows the approved operational hierarchy while retaining FleetSafe's dark navy surfaces, blue accent, typography, card radii, sidebar, and map. Fleet-wide visibility is presented before the selected vehicle context, followed by map/risk detail, safety events, and concise deterministic insights.
+
+### Files modified
+
+- `lib/widgets/overview/overview_dashboard.dart`: new information hierarchy, fleet KPIs, selected-vehicle status/safety cards, vehicle ranking, recent events, status semantics, and insights.
+- `lib/widgets/overview/overview_monitoring_summary.dart`: preserves isolated polling while presenting Vital Sign and Cabin Environment as equal selected-vehicle cards with WIB timestamps.
+- `lib/widgets/overview/overview_skeleton_loading.dart`: adds placeholders for the selected-vehicle divider and monitoring-card tier.
+- `docs/monitoring-dashboard-integration.md`: documents the approved redesign and verification.
+
+No backend, database, multimedia, API contract, detailed monitoring page, route, or sidebar behavior was changed.
+
+### Information hierarchy
+
+The previous Overview mixed online vehicles, selected Drowsiness values, monitoring readings, map content, driver ranking, and logs without a strong fleet/vehicle boundary. The redesigned order is:
+
+1. Fleet Management Overview header and data-derived status.
+2. Fleet Summary: Fleet Online, Offline Vehicles, Safety Events Today, and Vehicles at Risk.
+3. Selected Vehicle bar using the existing root selector and internal `Vehicle.id`.
+4. Equal-priority Vehicle Status, Driver Safety, Vital Sign, and Cabin Environment cards.
+5. Existing Live Map and Vehicle Risk Ranking.
+6. Safety Events Breakdown and selected-context Recent Events.
+7. Key Insights derived deterministically from current counts and telemetry availability.
+
+The selector, map marker, Drowsiness context, and both monitoring services continue to use `DashboardState.selectedVehicle`. Vital Sign and Air Quality remain isolated from `DashboardBloc` and from one another.
+
+### Status and timestamp semantics
+
+- The fleet badge no longer claims that an entirely offline or partially unavailable fleet is healthy. It displays `LIVE DATA LIMITED` when vehicle status is missing or vehicles are offline, `ATTENTION REQUIRED` for current alert/warning data, and `NORMAL` only when current status supports it.
+- Offline vehicle ranking rows use `Unavailable` rather than presenting a fabricated low risk.
+- Selected-vehicle speed is labeled `Last recorded speed` when telemetry is missing or more than 15 minutes old.
+- Empty recent events say that no recent live events were received; they do not claim “All clear”.
+- Dashboard and monitoring timestamps are converted for display to UTC+7 and labeled `WIB`. Backend timestamps are unchanged.
+
+### Reused and new components
+
+Reused components include `MapSection`, the root vehicle selector flow, `_CompactKpiCard`, the live-map card, safety progress rows, event severity chips, `VitalSignService`, `AirQualityService`, and `OverviewMonitoringSummary` polling/failure isolation.
+
+New Overview-local components include the fleet/selected section labels, selected-vehicle bar, Vehicle Status card, Driver Safety card, Vehicle Risk Ranking presentation, and Fleet Insights. They are deliberately local to the Overview rather than a project-wide design-system refactor.
+
+### Checks and limitations
+
+The live backend values previously verified for vehicle 11 continue to map to the unchanged model/service fields; no mock values were added. `dart format` was attempted for the changed Overview/test files but produced no output before the 45-second timeout. `flutter analyze` and `flutter test test/overview_monitoring_summary_test.dart test/monitoring_services_test.dart test/widget_test.dart` likewise produced no output before their 120-second limits. None of those commands is reported as successful. `git diff --check` and source-level reference/semantics checks completed successfully.
+
+Remaining limitations:
+
+- The current Drowsiness Overview state is loaded through the existing selected/fallback vehicle architecture; the Fleet Summary safety count reflects the currently available Overview safety feed rather than a newly aggregated fleet endpoint.
+- Vehicle status data does not expose a true vehicle type, so the selector shows plate and VIN instead of mislabeling movement status as vehicle type.
+- Insights are intentionally simple rules over current frontend data, not AI recommendations.
+
+## One-Screen Overview Layout Correction
+
+The first redesign preserved functionality but its fixed-height stack exceeded a normal desktop viewport. The selected cards were 190 px high, map/ranking panels were 320 px, operational panels were 232 px, insights wrapped as large cards, and repeated 16–24 px gaps pushed the lower sections below the fold.
+
+This visual-fidelity pass changes presentation only:
+
+- desktop content padding is 20 px horizontally and 12 px vertically;
+- fleet KPI cards are 74 px high and remain four-across from 1000 px of content width;
+- the selected-vehicle bar is 48 px high;
+- Vehicle Status, Driver Safety, Vital Sign, and Cabin Environment are 126 px high and remain four-across at the desktop breakpoint;
+- Live Map and Vehicle Risk Ranking are 218 px high and remain in one row;
+- Safety Events Breakdown, Recent Events, and Recent Log are restored as three 148 px panels in one desktop row;
+- ranking and event previews are limited to the three most useful rows;
+- Key Insights use a 52 px horizontal tile strip rather than wrapping large cards;
+- the loading skeleton uses the same compact desktop proportions.
+
+The resulting fixed desktop content budget is approximately 820 px including page padding. `SingleChildScrollView` remains as a fallback for meaningfully smaller windows, but it is no longer required by the normal desktop composition. No service, model, selected-vehicle, map, monitoring, navigation, or API logic changed in this pass.
+
+Source checks confirmed that the old 190/320/232 px Overview panel heights and 1180 px desktop breakpoint are no longer present, every compact tier is wired into the expected desktop row, and `git diff --check` passes. The focused `flutter test test/overview_monitoring_summary_test.dart` command produced no output before its 90-second timeout and is not reported as passing. A literal screenshot-to-mockup overlay was not possible because neither screenshot image was included with the correction brief; final pixel validation remains a runtime review step.
+
+## Approved Image Fidelity Correction
+
+`docs/dashboard_revisi.png` was subsequently supplied and inspected directly. It supersedes the earlier textual assumption that Key Insights belonged in the approved Overview; the image contains five tiers only: Fleet Summary, Selected Vehicle, four monitoring cards, map/ranking, and the three-column operational row. Key Insights were therefore removed from the Overview without removing any underlying data or service.
+
+The image comparison drove these targeted presentation changes:
+
+- Fleet Safety Events now includes a compact Drowsy/Yawn/Distraction breakdown beside the primary total.
+- The selected-vehicle bar now includes previous/next controls. Dropdown, navigation controls, and map markers all call the same existing `onVehicleSelected` callback and retain `DashboardState.selectedVehicle` as the sole selection source.
+- Vehicle Status now uses icon/title hierarchy, a prominent online/offline state, telemetry age, and stale-safe “Last recorded speed” wording.
+- Driver Safety now uses icon/title/context hierarchy and colored metric emphasis matching the reference without adding severity calculations.
+- Vital Sign and Cabin Environment now use vertical label/value rows, strong values, `(Latest)` context, and a bottom WIB timestamp. No trend is drawn because Overview history is not loaded.
+- Map/ranking and Safety Events/Recent Events/Recent Log retain the compact one-screen proportions established in the previous pass.
+
+Files changed for this correction are `overview_dashboard.dart`, `overview_monitoring_summary.dart`, the focused monitoring widget test where reference text is asserted, and this document. The loading skeleton remains structurally compatible with the unchanged five-tier silhouette. No service, BLoC, route, API, backend, database, or multimedia code changed.
+
+Verification commands were bounded because of the existing Flutter tool issue: `dart format` produced no output before 45 seconds, while `flutter analyze` and `flutter test test/overview_monitoring_summary_test.dart` each produced no output before 90 seconds. None is reported as passing. Direct image inspection, source-level hierarchy/selection tracing, and `git diff --check` completed successfully. Capturing a newly rendered runtime screenshot was not possible while the Flutter runner remained blocked, so final pixel comparison in the live application remains outstanding.
+
+## Final Overview Polish
+
+The final polish retains the approved five-tier structure and fixed heights. It adds `assets/images/generic_fleet_van.png`, a local transparent generic silver delivery-van cutout generated for the Vehicle Status card. The asset is registered in `pubspec.yaml`, uses no network dependency or vehicle-specific branding, and is displayed for every selected vehicle as the default fleet visual. The current vehicle model does not provide a reliable vehicle-type field—its `type` value is populated from movement status—so type-specific image mapping would be misleading and was intentionally omitted.
+
+Vehicle Status keeps its 126 px card height. The visual occupies an 88 × 68 px area beside a compact online/offline pill, telemetry age, and current-or-last-recorded speed. This follows the approved hierarchy without introducing additional page height.
+
+The selector’s source list is the coordinate-mapped `vehicles` list produced by `DashboardBloc._mapVehiclesWithCoordinates`, not all items in `VehicleStatusData`. Its count is therefore labeled `Mapped Vehicle X of Y`; Fleet Summary remains the truthful full-fleet count. Dropdown, previous/next controls, and map markers continue to update the same root selection.
+
+Cabin Environment now presents AQI without a unit, PM2.5 in `µg/m³`, and CO2 in `ppm`. Both monitoring cards use the same `Latest: HH:mm WIB` formatter. The current monitoring backend emits its intended WIB wall-clock components with a `Z` suffix; the frontend preserves those clock components rather than applying UTC+7 a second time. Backend timestamps and API contracts are unchanged.
+
+Files modified in this pass are `pubspec.yaml`, `assets/images/generic_fleet_van.png`, `overview_dashboard.dart`, `overview_monitoring_summary.dart`, `overview_monitoring_summary_test.dart`, and this document.
+
+Asset validation confirmed a 1536 × 1024 `Format32bppArgb` PNG with transparent corner pixels (`alpha=0`). `git diff --check` passed. The requested tooling remained blocked without output: `dart format` timed out after 45 seconds, and `flutter analyze` plus `flutter test test/overview_monitoring_summary_test.dart` each timed out after 90 seconds. None is reported as passing.

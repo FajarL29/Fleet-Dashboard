@@ -5,11 +5,11 @@ import 'package:http/http.dart' as http;
 import '../models/driver_behavior_summary.dart';
 import '../models/drowsiness_driver_option.dart';
 import '../models/drowsiness_report.dart';
+import 'authenticated_http_client.dart';
 
 class DrowsinessReportService {
   const DrowsinessReportService({
     this.baseUrl = _defaultBaseUrl,
-    this.authToken = _defaultAuthToken,
     this.defaultHeaders = const <String, String>{},
     http.Client? client,
   }) : _client = client;
@@ -18,15 +18,21 @@ class DrowsinessReportService {
     'API_BASE_URL',
     defaultValue: 'http://localhost:3000/api/v1',
   );
-  static const String _defaultAuthToken = String.fromEnvironment(
-    'API_AUTH_TOKEN',
-    defaultValue: '',
-  );
-
   final String baseUrl;
-  final String authToken;
   final Map<String, String> defaultHeaders;
   final http.Client? _client;
+
+  Future<Map<String, dynamic>?> getLatestByVehicle(String vehicleId) async {
+    final response = await _get(
+      '/drowsiness/latest/${Uri.encodeComponent(vehicleId)}',
+      null,
+      logLabel: 'Fetch latest drowsiness',
+    );
+    final data = response['data'];
+    if (data == null) return null;
+    if (data is Map<String, dynamic>) return data;
+    throw const FormatException('Unexpected latest drowsiness response');
+  }
 
   Future<DrowsinessReport> getReport({
     required String vehicleId,
@@ -275,8 +281,9 @@ class DrowsinessReportService {
         userId: userId,
       ),
     );
-    final client = _client ?? http.Client();
-    final shouldCloseClient = _client == null;
+    final client = _client ?? AuthenticatedHttpClient.instance;
+    final shouldCloseClient =
+        _client == null && client is! AuthenticatedHttpClient;
 
     try {
       _logRequest(
@@ -317,8 +324,9 @@ class DrowsinessReportService {
     String? logLabel,
   }) async {
     final uri = _buildUri(path, query: query);
-    final client = _client ?? http.Client();
-    final shouldCloseClient = _client == null;
+    final client = _client ?? AuthenticatedHttpClient.instance;
+    final shouldCloseClient =
+        _client == null && client is! AuthenticatedHttpClient;
 
     try {
       if (logLabel != null) {
@@ -405,12 +413,6 @@ class DrowsinessReportService {
 
   Map<String, String> _headers({bool includeJsonContentType = false}) {
     final headers = <String, String>{...defaultHeaders};
-
-    final trimmedToken = authToken.trim();
-    if (trimmedToken.isNotEmpty &&
-        !headers.keys.any((key) => key.toLowerCase() == 'authorization')) {
-      headers['Authorization'] = 'Bearer $trimmedToken';
-    }
 
     if (includeJsonContentType &&
         !headers.keys.any((key) => key.toLowerCase() == 'content-type')) {

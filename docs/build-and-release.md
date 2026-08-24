@@ -18,11 +18,13 @@ flutter analyze
 flutter run -d windows
 ```
 
-If your backend requires an explicit base URL or token, include Dart defines:
+If your backend requires an explicit base URL, include the Dart define:
 
 ```bash
-flutter run -d windows --dart-define=API_BASE_URL=http://localhost:3000/api/v1 --dart-define=API_AUTH_TOKEN=YOUR_TOKEN
+flutter run -d windows --dart-define=API_BASE_URL=http://localhost:3000/api/v1
 ```
+
+Authentication tokens are obtained through Login and must not be supplied as build-time values.
 
 ## Build Windows Release
 

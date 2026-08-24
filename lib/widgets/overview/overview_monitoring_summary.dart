@@ -10,12 +10,10 @@ import '../../services/air_quality_service.dart';
 import '../../services/vital_sign_service.dart';
 import '../report/report_styles.dart';
 
-typedef LatestVitalSignLoader = Future<VitalSignReading?> Function(
-  String vehicleId,
-);
-typedef LatestAirQualityLoader = Future<AirQualityReading?> Function(
-  String vehicleId,
-);
+typedef LatestVitalSignLoader =
+    Future<VitalSignReading?> Function(String vehicleId);
+typedef LatestAirQualityLoader =
+    Future<AirQualityReading?> Function(String vehicleId);
 
 class OverviewMonitoringSummary extends StatefulWidget {
   OverviewMonitoringSummary({
@@ -152,7 +150,7 @@ class _OverviewMonitoringSummaryState extends State<OverviewMonitoringSummary> {
       if (!mounted || generation != _requestGeneration) return;
       setState(() {
         _airError = _airQuality == null
-            ? 'Unable to load Air Quality data.'
+            ? 'Unable to load Cabin Environment data.'
             : 'Refresh failed. Showing the previous reading.';
         _airLoading = false;
       });
@@ -182,23 +180,23 @@ class _OverviewMonitoringSummaryState extends State<OverviewMonitoringSummary> {
             ],
           ),
           _MonitoringCard(
-            title: 'Air Quality',
+            title: 'Cabin Environment',
             icon: Icons.air_rounded,
             loading: _airLoading,
             error: _airError,
             empty: _airQuality == null,
-            emptyMessage: _emptyMessage('Air Quality'),
+            emptyMessage: _emptyMessage('Cabin Environment'),
             onRetry: _loadAirQuality,
             timestamp: _airQuality?.timestamp,
             metrics: [
               ('AQI', _value(_airQuality?.aqi)),
-              ('PM2.5', _value(_airQuality?.pm25)),
-              ('CO2', _value(_airQuality?.co2)),
+              ('PM2.5', _value(_airQuality?.pm25, 'µg/m³')),
+              ('CO2', _value(_airQuality?.co2, 'ppm')),
             ],
           ),
         ];
 
-        if (constraints.maxWidth >= 760) {
+        if (constraints.maxWidth >= 480) {
           return Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -246,8 +244,8 @@ class _MonitoringCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      constraints: const BoxConstraints(minHeight: 164),
-      padding: const EdgeInsets.all(18),
+      height: 140,
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
       decoration: BoxDecoration(
         color: ReportStyles.cardBackground,
         borderRadius: BorderRadius.circular(16),
@@ -258,69 +256,79 @@ class _MonitoringCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(icon, color: ReportStyles.blue, size: 20),
-              const SizedBox(width: 8),
-              Text(
-                title,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
+              Icon(icon, color: ReportStyles.blue, size: 18),
+              const SizedBox(width: 7),
+              Expanded(
+                child: Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        title,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    const Text(
+                      '(Latest)',
+                      style: TextStyle(color: ReportStyles.blue, fontSize: 10),
+                    ),
+                  ],
                 ),
               ),
-              const Spacer(),
-              if (timestamp != null)
-                Text(
-                  DateFormat('HH:mm:ss').format(timestamp!.toLocal()),
-                  style: const TextStyle(
-                    color: ReportStyles.textMuted,
-                    fontSize: 11,
-                  ),
-                ),
             ],
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 5),
           if (loading)
             const Center(child: CircularProgressIndicator(strokeWidth: 2))
           else if (empty)
             _Message(message: error ?? emptyMessage, onRetry: onRetry)
           else ...[
-            Row(
-              children: metrics
-                  .map(
-                    (metric) => Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            metric.$1,
-                            style: const TextStyle(
-                              color: ReportStyles.textMuted,
-                              fontSize: 11,
-                            ),
-                          ),
-                          const SizedBox(height: 5),
-                          Text(
-                            metric.$2,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
+            ...metrics.map(
+              (metric) => Padding(
+                padding: const EdgeInsets.only(bottom: 3),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        metric.$1,
+                        style: const TextStyle(
+                          color: ReportStyles.textMuted,
+                          fontSize: 10,
+                        ),
                       ),
                     ),
-                  )
-                  .toList(),
-            ),
-            if (error != null) ...[
-              const SizedBox(height: 12),
-              Text(
-                error!,
-                style: const TextStyle(color: ReportStyles.orange, fontSize: 11),
+                    Text(
+                      metric.$2,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ],
+            ),
+            const Spacer(),
+            Text(
+              error ??
+                  (timestamp == null
+                      ? 'Latest: time unavailable'
+                      : 'Latest: ${_wibTime(timestamp!)}'),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: error == null
+                    ? ReportStyles.textMuted
+                    : ReportStyles.orange,
+                fontSize: 9,
+              ),
+            ),
           ],
         ],
       ),
@@ -356,4 +364,11 @@ String _value(double? value, [String? unit]) {
       ? value.toStringAsFixed(0)
       : value.toStringAsFixed(1);
   return unit == null ? number : '$number $unit';
+}
+
+String _wibTime(DateTime value) {
+  // Monitoring timestamps are emitted as WIB wall-clock values with a `Z`
+  // suffix by the current backend. Preserve those clock components here to
+  // avoid applying UTC+7 a second time in presentation.
+  return '${DateFormat('HH:mm').format(value.toUtc())} WIB';
 }

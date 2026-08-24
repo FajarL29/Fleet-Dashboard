@@ -4,11 +4,11 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../models/air_quality_reading.dart';
+import 'authenticated_http_client.dart';
 
 class AirQualityService {
   const AirQualityService({
     this.baseUrl = _defaultBaseUrl,
-    this.authToken = _defaultAuthToken,
     this.defaultHeaders = const <String, String>{},
     http.Client? client,
   }) : _client = client;
@@ -17,13 +17,7 @@ class AirQualityService {
     'API_BASE_URL',
     defaultValue: 'http://localhost:3000/api/v1',
   );
-  static const String _defaultAuthToken = String.fromEnvironment(
-    'API_AUTH_TOKEN',
-    defaultValue: '',
-  );
-
   final String baseUrl;
-  final String authToken;
   final Map<String, String> defaultHeaders;
   final http.Client? _client;
 
@@ -48,11 +42,11 @@ class AirQualityService {
   }
 
   Future<dynamic> _get(String path, {Map<String, String>? query}) async {
-    final uri = Uri.parse('$baseUrl$path').replace(
-      queryParameters: query == null || query.isEmpty ? null : query,
-    );
-    final client = _client ?? http.Client();
-    final shouldClose = _client == null;
+    final uri = Uri.parse(
+      '$baseUrl$path',
+    ).replace(queryParameters: query == null || query.isEmpty ? null : query);
+    final client = _client ?? AuthenticatedHttpClient.instance;
+    final shouldClose = _client == null && client is! AuthenticatedHttpClient;
 
     try {
       if (kDebugMode) debugPrint('[AirQuality] GET $uri');
@@ -66,7 +60,9 @@ class AirQualityService {
       if (decoded is Map<String, dynamic>) {
         final status = decoded['status']?.toString().toLowerCase();
         if (status != null && status != 'success') {
-          throw FormatException(decoded['message']?.toString() ?? 'Invalid API response');
+          throw FormatException(
+            decoded['message']?.toString() ?? 'Invalid API response',
+          );
         }
         return decoded.containsKey('data') ? decoded['data'] : decoded;
       }
@@ -84,10 +80,6 @@ class AirQualityService {
 
   Map<String, String> _headers() {
     final headers = <String, String>{...defaultHeaders};
-    if (authToken.trim().isNotEmpty &&
-        !headers.keys.any((key) => key.toLowerCase() == 'authorization')) {
-      headers['Authorization'] = 'Bearer ${authToken.trim()}';
-    }
     headers.putIfAbsent('Accept', () => 'application/json');
     return headers;
   }
@@ -131,7 +123,9 @@ Map<String, dynamic>? _singleItem(dynamic data) {
 
 List<Map<String, dynamic>> _itemList(dynamic data) {
   if (data == null) return const [];
-  if (data is List<dynamic>) return data.whereType<Map<String, dynamic>>().toList();
+  if (data is List<dynamic>) {
+    return data.whereType<Map<String, dynamic>>().toList();
+  }
   if (data is Map<String, dynamic>) {
     final nested = data['items'] ?? data['history'] ?? data['records'];
     if (nested is List<dynamic>) {

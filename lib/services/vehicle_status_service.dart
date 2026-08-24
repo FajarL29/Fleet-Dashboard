@@ -4,11 +4,11 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../models/vehicle_status.dart';
+import 'authenticated_http_client.dart';
 
 class VehicleStatusService {
   const VehicleStatusService({
     this.baseUrl = _defaultBaseUrl,
-    this.authToken = _defaultAuthToken,
     this.defaultHeaders = const <String, String>{},
     http.Client? client,
   }) : _client = client;
@@ -17,20 +17,15 @@ class VehicleStatusService {
     'API_BASE_URL',
     defaultValue: 'http://localhost:3000/api/v1',
   );
-  static const String _defaultAuthToken = String.fromEnvironment(
-    'API_AUTH_TOKEN',
-    defaultValue: '',
-  );
-
   final String baseUrl;
-  final String authToken;
   final Map<String, String> defaultHeaders;
   final http.Client? _client;
 
   Future<VehicleStatusData> getVehicleStatus() async {
     final uri = Uri.parse('$baseUrl/vehicles/status');
-    final client = _client ?? http.Client();
-    final shouldCloseClient = _client == null;
+    final client = _client ?? AuthenticatedHttpClient.instance;
+    final shouldCloseClient =
+        _client == null && client is! AuthenticatedHttpClient;
 
     try {
       if (kDebugMode) {
@@ -77,13 +72,6 @@ class VehicleStatusService {
 
   Map<String, String> _headers() {
     final headers = <String, String>{...defaultHeaders};
-    final trimmedToken = authToken.trim();
-
-    if (trimmedToken.isNotEmpty &&
-        !headers.keys.any((key) => key.toLowerCase() == 'authorization')) {
-      headers['Authorization'] = 'Bearer $trimmedToken';
-    }
-
     if (!headers.keys.any((key) => key.toLowerCase() == 'content-type')) {
       headers['Content-Type'] = 'application/json';
     }

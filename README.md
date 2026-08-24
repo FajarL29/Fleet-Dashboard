@@ -62,10 +62,9 @@ flutter pub get
 
 ### Configure Backend Dependency
 
-The frontend reads API settings from compile-time Dart defines used by the service layer.
+The frontend reads the API base URL from a compile-time Dart define. Authentication tokens are obtained at runtime through the Login page and stored with platform secure storage.
 
 - `API_BASE_URL`
-- `API_AUTH_TOKEN`
 
 Examples:
 
@@ -73,15 +72,11 @@ Examples:
 flutter run -d windows --dart-define=API_BASE_URL=http://localhost:3000/api/v1
 ```
 
-```bash
-flutter run -d windows --dart-define=API_BASE_URL=http://203.100.57.59:3000/api/v1 --dart-define=API_AUTH_TOKEN=YOUR_TOKEN
-```
-
 Notes:
 
-- `VehicleStatusService` and `VehicleManagementService` default to `http://localhost:3000/api/v1`
-- `DrowsinessReportService` currently defaults to `http://203.100.57.59:3000/api/v1`
-- The overview flow also polls a hardcoded latest drowsiness endpoint on `http://localhost:3000/api/v1/drowsiness/latest/:vin`
+- All REST services default to `http://localhost:3000/api/v1`
+- Protected requests use the access token from the active authenticated session
+- Do not supply access or refresh tokens through Dart defines
 - The reports page currently loads report data for the fixed vehicle ID `VIN-0001`
 
 ## How to Run
@@ -90,10 +85,10 @@ Notes:
 flutter run -d windows
 ```
 
-Optionally include backend defines:
+Optionally include the backend base URL:
 
 ```bash
-flutter run -d windows --dart-define=API_BASE_URL=http://localhost:3000/api/v1 --dart-define=API_AUTH_TOKEN=YOUR_TOKEN
+flutter run -d windows --dart-define=API_BASE_URL=http://localhost:3000/api/v1
 ```
 
 ## How to Analyze

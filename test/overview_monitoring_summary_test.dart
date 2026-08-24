@@ -28,7 +28,12 @@ void main() {
           },
           loadAirQuality: (id) async {
             airIds.add(id);
-            return const AirQualityReading(aqi: 31, pm25: 8, co2: 425);
+            return AirQualityReading(
+              aqi: 31,
+              pm25: 8,
+              co2: 425,
+              timestamp: DateTime.utc(2026, 8, 18, 13, 40),
+            );
           },
         ),
       ),
@@ -40,7 +45,10 @@ void main() {
     expect(find.text('72 bpm'), findsOneWidget);
     expect(find.text('98 %'), findsOneWidget);
     expect(find.text('31'), findsOneWidget);
-    expect(find.text('425'), findsOneWidget);
+    expect(find.text('8 µg/m³'), findsOneWidget);
+    expect(find.text('425 ppm'), findsOneWidget);
+    expect(find.text('Cabin Environment'), findsOneWidget);
+    expect(find.text('Latest: 13:40 WIB'), findsOneWidget);
   });
 
   testWidgets('isolates a Vital Sign failure from Air Quality data', (

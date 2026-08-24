@@ -1,6 +1,7 @@
 import 'package:fleet_dashboard/screens/live_tracking_screen.dart';
 import 'package:fleet_dashboard/screens/report_screen.dart';
 import 'package:fleet_dashboard/screens/safety_screen.dart';
+import 'package:fleet_dashboard/screens/setting_screen.dart';
 import 'package:fleet_dashboard/screens/vehicles_screen.dart';
 import 'package:fleet_dashboard/screens/vital_sign_screen.dart';
 import 'package:fleet_dashboard/screens/air_quality_screen.dart';
@@ -136,8 +137,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     );
                   case '/settings':
                     return MaterialPageRoute(
-                      builder: (context) =>
-                          _buildPlaceholderContent('Settings'),
+                      builder: (context) => const SettingScreen(),
                       settings: settings,
                     );
                   default:

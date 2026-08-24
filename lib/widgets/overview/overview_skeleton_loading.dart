@@ -26,18 +26,24 @@ class OverviewDashboardSkeleton extends StatelessWidget {
             builder: (context, constraints) {
               final width = constraints.maxWidth;
               final useWideHeader = width >= 960;
-              final kpiPerRow = width >= 1200
+              final kpiPerRow = width >= 1000
                   ? 4
-                  : width >= 900
+                  : width >= 700
                   ? 2
                   : 1;
-              final useTwoColumns = width >= 1180;
+              final useTwoColumns = width >= 1000;
 
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _SkeletonHeader(useWideLayout: useWideHeader),
                   const SizedBox(height: 16),
+                  _SkeletonKpiGrid(perRow: kpiPerRow),
+                  const SizedBox(height: 16),
+                  const SkeletonLine(width: 130, height: 12),
+                  const SizedBox(height: 10),
+                  const _SkeletonSelectedVehicleBar(),
+                  const SizedBox(height: 12),
                   _SkeletonKpiGrid(perRow: kpiPerRow),
                   const SizedBox(height: 16),
                   if (useTwoColumns)
@@ -82,6 +88,24 @@ class OverviewDashboardSkeleton extends StatelessWidget {
       ),
     );
   }
+}
+
+class _SkeletonSelectedVehicleBar extends StatelessWidget {
+  const _SkeletonSelectedVehicleBar();
+
+  @override
+  Widget build(BuildContext context) => _OverviewPanel(
+    height: 48,
+    child: const Row(
+      children: [
+        SkeletonLine(width: 120, height: 11),
+        SizedBox(width: 18),
+        Expanded(child: SkeletonLine(width: double.infinity, height: 26)),
+        SizedBox(width: 18),
+        SkeletonLine(width: 80, height: 10),
+      ],
+    ),
+  );
 }
 
 class _SkeletonHeader extends StatelessWidget {
@@ -191,30 +215,28 @@ class _SkeletonCompactKpiCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _OverviewPanel(
-      height: 116,
+      height: 74,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: const [
           SkeletonLine(width: 92, height: 11),
-          Spacer(),
           Row(
             children: [
-              SkeletonCircle(size: 42),
+              SkeletonCircle(size: 28),
               SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SkeletonLine(width: 88, height: 20),
-                    SizedBox(height: 8),
+                    SkeletonLine(width: 88, height: 14),
+                    SizedBox(height: 4),
                     SkeletonLine(width: 74, height: 10),
                   ],
                 ),
               ),
-              SkeletonCircle(size: 42),
+              SkeletonCircle(size: 28),
             ],
           ),
-          Spacer(),
         ],
       ),
     );
@@ -227,7 +249,7 @@ class _SkeletonMapCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _OverviewPanel(
-      height: 320,
+      height: 218,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -292,7 +314,7 @@ class _SkeletonRankingCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _OverviewPanel(
-      height: 320,
+      height: 218,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -371,7 +393,7 @@ class _SkeletonSnapshotCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _OverviewPanel(
-      height: 232,
+      height: 148,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -431,7 +453,7 @@ class _SkeletonRecentLogCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _OverviewPanel(
-      height: 232,
+      height: 148,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -498,7 +520,7 @@ class _OverviewPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: height,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: ReportStyles.cardBackground,
         gradient: ReportStyles.cardGradient,

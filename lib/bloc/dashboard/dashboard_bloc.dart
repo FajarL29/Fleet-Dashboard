@@ -1,10 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:http/http.dart' as http; // Tambahkan http
 import '../../models/driver_behavior_summary.dart';
 import '../../models/drowsiness_report.dart';
 import '../../models/vehicle.dart';
@@ -48,24 +46,14 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     // 1. Jalankan GPS WebSocket
     _initRealtimeGps();
 
-    // 2. Jalankan Polling Drowsiness (Misal setiap 10 detik)
-    // Asumsi: Token dan UserID didapat dari session/auth
-    _startDrowsinessPolling(
-      userId: Null,
-      // VehicleID:
-      token:
-          "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6ImRyaXZlcl9wcm9fMDEiLCJmdWxsbmFtZSI6IlJlaW5lciBQcmFrb3NvIiwiZW1haWwiOiJyZWluZXJAZXhhbXBsZS5jb20iLCJjcmVhdGVkX2J5IjoiU1lTVEVNIiwiY3JlYXRlZF9kdCI6IjIwMjYtMDMtMzBUMTA6MTk6MzYuMDAwWiIsImFkZHJlc3MiOiJCZWthc2ssIEluZG9uZXNpYSIsImlhdCI6MTc3NDg0MDkwOSwiZXhwIjoxNzc0ODQ0NTA5fQ.XWOT48IaoQWCCaQjfzYBabv6QSjiRKLdd0E6QJoQot0",
-    );
-    // _startDrowsinessPolling(userId: event.userID, token: event.token);
+    // 2. Jalankan polling melalui shared authenticated HTTP client.
+    _startDrowsinessPolling();
 
     await _loadOverviewData(emit);
   }
 
   /// --- LOGIKA DROWSINESS POLLING (HTTP) ---
-  void _startDrowsinessPolling({
-    required dynamic userId,
-    required String token,
-  }) {
+  void _startDrowsinessPolling() {
     _drowsinessTimer?.cancel();
     _drowsinessTimer = Timer.periodic(const Duration(seconds: 10), (
       timer,
@@ -85,22 +73,8 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
           debugPrint('[DrowsinessLatest] Fetch latest for vin=$vin');
         }
 
-        final response = await http.get(
-          Uri.parse(
-            '${_drowsinessReportService.baseUrl}/drowsiness/latest/${Uri.encodeComponent(vin)}',
-          ),
-          headers: {
-            'Authorization': 'Bearer $token',
-            'Content-Type': 'application/json',
-          },
-        );
-
-        if (response.statusCode == 200) {
-          final decoded = json.decode(response.body);
-          if (decoded['status'] == 'success' && decoded['data'] != null) {
-            add(DrowsinessDataReceived(decoded['data']));
-          }
-        }
+        final data = await _drowsinessReportService.getLatestByVehicle(vin);
+        if (data != null) add(DrowsinessDataReceived(data));
       } catch (e) {
         debugPrint("❌ Drowsiness Polling Error: $e");
       }
@@ -302,9 +276,7 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     VehicleSelected event,
     Emitter<DashboardState> emit,
   ) async {
-    debugPrint(
-      '[OverviewSelection] selected vehicle_id=${event.vehicle.id}',
-    );
+    debugPrint('[OverviewSelection] selected vehicle_id=${event.vehicle.id}');
     emit(state.copyWith(selectedVehicle: event.vehicle));
     await _loadRecentDrowsinessEvents(emit, vehicle: event.vehicle);
   }

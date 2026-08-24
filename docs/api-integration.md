@@ -132,6 +132,7 @@ This page documents how the frontend currently uses backend APIs in the Flutter 
 
 - API base URL is supplied through `API_BASE_URL` in most services
 - Vehicle services default to `http://localhost:3000/api/v1`
-- Drowsiness report service currently defaults to `http://203.100.57.59:3000/api/v1`
-- Authorization is attached as a bearer token when `API_AUTH_TOKEN` is provided
+- All REST services default to `http://localhost:3000/api/v1`
+- Protected requests receive the active session's `Authorization: Bearer <access token>` header through the shared authenticated client
+- HTTP 401 triggers one coordinated refresh and a single retry; failed refresh clears the session
 - Live status quality depends on backend telemetry freshness and coordinate availability

@@ -72,3 +72,41 @@ class AppTheme {
     ),
   );
 }
+
+abstract final class AuthTheme {
+  static const primaryBlue = Color(0xFF2563EB);
+  static const darkBlue = Color(0xFF0D234A);
+
+  static const textSecondary = Color(0xFF526786);
+  static const mutedText = Color(0xFF8193AE);
+
+  static const border = Color(0xFFD9E2EF);
+  static const divider = Color(0xFFE8EDF5);
+
+  static const fieldBackground = Color(0xFFFBFDFF);
+  static const panelBackground = Color(0xFFF8FBFF);
+
+  static const error = Color(0xFFDC2626);
+
+  static const leftGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [
+      Color(0xFFF8FBFF),
+      Color(0xFFF1F6FF),
+    ],
+  );
+
+  static OutlineInputBorder fieldBorder({
+    Color color = border,
+    double width = 1,
+  }) {
+    return OutlineInputBorder(
+      borderRadius: BorderRadius.circular(8),
+      borderSide: BorderSide(
+        color: color,
+        width: width,
+      ),
+    );
+  }
+}

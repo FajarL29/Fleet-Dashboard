@@ -71,17 +71,17 @@ class OverviewDashboard extends StatelessWidget {
         ),
       ),
       child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
         child: LayoutBuilder(
           builder: (context, constraints) {
             final width = constraints.maxWidth;
             final useWideHeader = width >= 960;
-            final kpiPerRow = width >= 1200
+            final kpiPerRow = width >= 1000
                 ? 4
-                : width >= 900
+                : width >= 700
                 ? 2
                 : 1;
-            final useTwoColumns = width >= 1180;
+            final useTwoColumns = width >= 1000;
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -92,6 +92,16 @@ class OverviewDashboard extends StatelessWidget {
                   healthColor: overviewData.fleetHealthColor,
                   healthIcon: overviewData.fleetHealthIcon,
                   useWideLayout: useWideHeader,
+                ),
+                const SizedBox(height: 10),
+                const _SectionLabel('FLEET SUMMARY'),
+                const SizedBox(height: 6),
+                _KpiGrid(
+                  perRow: kpiPerRow,
+                  children: _buildKpiCards(overviewData),
+                ),
+                const SizedBox(height: 10),
+                _SelectedVehicleHeader(
                   vehicles: vehicles,
                   selectedVehicle: selectedVehicle,
                   onVehicleSelected: (vehicle) {
@@ -101,14 +111,12 @@ class OverviewDashboard extends StatelessWidget {
                     onVehicleSelected(vehicle);
                   },
                 ),
-                const SizedBox(height: 16),
-                _KpiGrid(
-                  perRow: kpiPerRow,
-                  children: _buildKpiCards(overviewData),
+                const SizedBox(height: 10),
+                _SelectedVehicleCards(
+                  vehicle: selectedVehicle,
+                  data: overviewData,
                 ),
-                const SizedBox(height: 16),
-                OverviewMonitoringSummary(vehicle: selectedVehicle),
-                const SizedBox(height: 16),
+                const SizedBox(height: 30),
                 if (useTwoColumns)
                   Column(
                     children: [
@@ -127,23 +135,29 @@ class OverviewDashboard extends StatelessWidget {
                           const SizedBox(width: 16),
                           Expanded(
                             flex: 10,
-                            child: _HighRiskRankingCard(
-                              drivers: overviewData.highRiskDrivers,
+                            child: _VehicleRiskRankingCard(
+                              vehicles: overviewData.rankedVehicles,
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 8),
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Expanded(
                             child: _SafetySnapshotCard(data: overviewData),
                           ),
-                          const SizedBox(width: 16),
+                          const SizedBox(width: 10),
                           Expanded(
-                            child: _RecentLogCard(
+                            child: _RecentEventsCard(
                               recentLog: overviewData.recentLog,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: _RecentStatusLogCard(
+                              entries: overviewData.statusLog,
                             ),
                           ),
                         ],
@@ -159,14 +173,16 @@ class OverviewDashboard extends StatelessWidget {
                         mapStateMessage: overviewData.mapStateMessage,
                         onViewFullMap: onOpenMapFullscreen,
                       ),
-                      const SizedBox(height: 16),
-                      _HighRiskRankingCard(
-                        drivers: overviewData.highRiskDrivers,
+                      const SizedBox(height: 8),
+                      _VehicleRiskRankingCard(
+                        vehicles: overviewData.rankedVehicles,
                       ),
                       const SizedBox(height: 16),
                       _SafetySnapshotCard(data: overviewData),
                       const SizedBox(height: 16),
-                      _RecentLogCard(recentLog: overviewData.recentLog),
+                      _RecentEventsCard(recentLog: overviewData.recentLog),
+                      const SizedBox(height: 8),
+                      _RecentStatusLogCard(entries: overviewData.statusLog),
                     ],
                   ),
               ],
@@ -210,9 +226,7 @@ class OverviewDashboard extends StatelessWidget {
         showVehicleList: false,
         selectedVehicleId: selectedVehicle?.id,
         onVehicleSelected: (vehicle) {
-          debugPrint(
-            '[OverviewSelection] source=map vehicle_id=${vehicle.id}',
-          );
+          debugPrint('[OverviewSelection] source=map vehicle_id=${vehicle.id}');
           onVehicleSelected(vehicle);
         },
         onClearSelection: onClearSelection,
@@ -229,12 +243,14 @@ class OverviewDashboard extends StatelessWidget {
 
     return [
       _CompactKpiCard(
-        title: 'Online Vehicles',
+        title: 'Fleet Online',
         value: data.hasVehicleStatus
             ? '${data.onlineVehicles} / $totalVehicles'
             : 'Unavailable',
         subtitle: data.hasVehicleStatus
-            ? (totalVehicles == 0 ? 'No vehicles available' : 'Live status')
+            ? (totalVehicles == 0
+                  ? 'No vehicles available'
+                  : '$onlinePercent% available')
             : (data.vehicleStatusMessage ?? 'Vehicle status unavailable'),
         icon: Icons.local_shipping_rounded,
         accentColor: ReportStyles.green,
@@ -244,43 +260,37 @@ class OverviewDashboard extends StatelessWidget {
         ),
       ),
       _CompactKpiCard(
-        title: 'Drowsy Events Today',
-        value: '${data.drowsyCount}',
-        subtitle: 'Today only',
-        icon: Icons.mood_bad_rounded,
-        accentColor: ReportStyles.blue,
-        footer: _StatusPill(
-          label: data.drowsyCount == 0 ? 'Clear' : 'Alert',
-          color: data.drowsyCount == 0
-              ? ReportStyles.green
-              : ReportStyles.orange,
-        ),
+        title: 'Offline Vehicles',
+        value: data.hasVehicleStatus
+            ? '${data.offlineVehicles}'
+            : 'Unavailable',
+        subtitle: data.offlineVehicles > 0
+            ? 'No live telemetry'
+            : 'All vehicles reporting',
+        icon: Icons.cloud_off_outlined,
+        accentColor: ReportStyles.textMuted,
       ),
       _CompactKpiCard(
-        title: 'Distraction Today',
-        value: '${data.distractionCount}',
-        subtitle: 'Today only',
-        icon: Icons.phonelink_lock_rounded,
-        accentColor: ReportStyles.blue,
-        footer: _StatusPill(
-          label: data.distractionCount == 0 ? 'Clear' : 'Alert',
-          color: data.distractionCount == 0
-              ? ReportStyles.green
-              : ReportStyles.orange,
-        ),
+        title: 'Safety Events Today',
+        value: '${data.safetyEventCount}',
+        subtitle: 'Total events',
+        icon: Icons.shield_outlined,
+        accentColor: ReportStyles.orange,
+        trailing: _SafetyEventBreakdown(data: data),
       ),
       _CompactKpiCard(
-        title: 'High-Risk Drivers',
+        title: 'Vehicles at Risk',
         value: data.hasVehicleStatus
             ? '${data.highRiskDriverCount}'
             : 'Unavailable',
-        subtitle: data.highRiskSubtitle,
-        icon: Icons.person_rounded,
+        subtitle: data.riskSubtitle,
+        icon: Icons.local_shipping_outlined,
         accentColor: ReportStyles.purple,
-        footer: const _StatusPill(
-          label: 'LIVE',
-          color: ReportStyles.purple,
-          withDot: true,
+        footer: _StatusPill(
+          label: data.highRiskDriverCount > 0 ? 'Need attention' : 'No flags',
+          color: data.highRiskDriverCount > 0
+              ? ReportStyles.red
+              : ReportStyles.textMuted,
         ),
       ),
     ];
@@ -298,10 +308,15 @@ class OverviewDashboard extends StatelessWidget {
           ..sort((a, b) => b.time.compareTo(a.time));
 
     final behaviorByName = _buildBehaviorCountMap(todayEvents);
-    final highRiskDrivers = _buildHighRiskDrivers();
-    final recentLog = todayEvents.take(5).map(_mapRecentLog).toList();
+    final rankedVehicles = _buildRankedVehicles();
+    final recentLog = todayEvents.take(3).map(_mapRecentLog).toList();
     final totalVehicles = summary?.totalVehicles ?? vehicleItems.length;
     final onlineVehicles = summary?.onlineVehicles ?? 0;
+    final offlineVehicles =
+        summary?.offline ??
+        vehicleItems
+            .where((item) => item.displayStatus.toLowerCase() == 'offline')
+            .length;
     final highRiskDriverCount =
         summary?.alert ??
         vehicleItems
@@ -320,11 +335,15 @@ class OverviewDashboard extends StatelessWidget {
       behaviorByName['distraction'] ?? 0,
       behaviorByName['one_hand_off_wheel'] ?? 0,
     ].fold<int>(0, math.max);
+    final safetyEventCount = behaviorByName.values.fold<int>(
+      0,
+      (sum, count) => sum + count,
+    );
     final hasVehicleStatus = vehicleStatusData != null;
-    final highRiskSubtitle = !hasVehicleStatus
+    final riskSubtitle = !hasVehicleStatus
         ? (vehicleStatusError ?? 'Awaiting vehicle status')
         : highRiskDriverCount == 0
-        ? 'No high-risk drivers today'
+        ? 'No vehicles currently flagged'
         : '$highRiskDriverCount vehicle${highRiskDriverCount == 1 ? '' : 's'} need attention';
     final mapStateMessage = vehicleStatusError != null && !hasVehicleStatus
         ? vehicleStatusError!
@@ -333,25 +352,34 @@ class OverviewDashboard extends StatelessWidget {
         : vehicles.isEmpty
         ? 'No vehicle coordinates available'
         : null;
-    final fleetHealthLabel = highRiskDriverCount > 0
+    final fleetHealthLabel =
+        highRiskDriverCount > 0 || warningCount > 0 || safetyEventCount > 0
         ? 'ATTENTION REQUIRED'
-        : warningCount > 0
-        ? 'WARNING - CHECK DEVICE STATUS'
-        : 'GREEN - FLEET HEALTHY';
-    final fleetHealthColor = highRiskDriverCount > 0
+        : !hasVehicleStatus || totalVehicles == 0 || offlineVehicles > 0
+        ? 'LIVE DATA LIMITED'
+        : 'NORMAL';
+    final fleetHealthColor = highRiskDriverCount > 0 || safetyEventCount > 0
         ? ReportStyles.red
         : warningCount > 0
         ? ReportStyles.yellow
+        : !hasVehicleStatus || totalVehicles == 0 || offlineVehicles > 0
+        ? ReportStyles.textMuted
         : ReportStyles.green;
-    final fleetHealthIcon = highRiskDriverCount > 0 || warningCount > 0
+    final fleetHealthIcon =
+        highRiskDriverCount > 0 || warningCount > 0 || safetyEventCount > 0
         ? Icons.warning_rounded
+        : !hasVehicleStatus || totalVehicles == 0 || offlineVehicles > 0
+        ? Icons.cloud_off_outlined
         : Icons.check_rounded;
 
     return _OverviewData(
       totalVehicles: totalVehicles,
       onlineVehicles: onlineVehicles,
+      offlineVehicles: offlineVehicles,
       drowsyCount: behaviorByName['drowsy'] ?? 0,
+      yawnCount: behaviorByName['yawn'] ?? 0,
       distractionCount: behaviorByName['distraction'] ?? 0,
+      safetyEventCount: safetyEventCount,
       snapshotRows: [
         _SnapshotRowData(
           icon: Icons.mood_bad_rounded,
@@ -390,15 +418,31 @@ class OverviewDashboard extends StatelessWidget {
       hasVehicleStatus: hasVehicleStatus,
       vehicleStatusMessage: vehicleStatusError,
       highRiskDriverCount: highRiskDriverCount,
-      highRiskDrivers: highRiskDrivers,
-      highRiskSubtitle: highRiskSubtitle,
+      rankedVehicles: rankedVehicles,
+      riskSubtitle: riskSubtitle,
       recentLog: recentLog,
+      statusLog: _buildStatusLog(
+        totalVehicles,
+        onlineVehicles,
+        offlineVehicles,
+      ),
       mapStateMessage: mapStateMessage,
       fleetHealthLabel: fleetHealthLabel,
       fleetHealthColor: fleetHealthColor,
       fleetHealthIcon: fleetHealthIcon,
-      lastUpdatedLabel: '${_twoDigits(now.hour)}:${_twoDigits(now.minute)} WIB',
+      lastUpdatedLabel: _wibTime(now),
     );
+  }
+
+  List<String> _buildStatusLog(int total, int online, int offline) {
+    if (vehicleStatusData == null) {
+      return [vehicleStatusError ?? 'Fleet status data unavailable'];
+    }
+    return [
+      '$total fleet vehicles loaded',
+      '$online reporting live telemetry',
+      if (offline > 0) '$offline vehicles currently offline',
+    ];
   }
 
   Map<String, int> _buildBehaviorCountMap(List<DrowsinessEvent> events) {
@@ -457,7 +501,7 @@ class OverviewDashboard extends StatelessWidget {
     return null;
   }
 
-  List<Map<String, String>> _buildHighRiskDrivers() {
+  List<Map<String, String>> _buildRankedVehicles() {
     final items = vehicleStatusData?.vehicles ?? const <VehicleStatusItem>[];
     if (items.isEmpty) {
       return const [];
@@ -487,10 +531,7 @@ class OverviewDashboard extends StatelessWidget {
         return a.driverName.compareTo(b.driverName);
       });
 
-    return ranked.take(5).map((item) {
-      final driverName = item.driverName.isNotEmpty
-          ? item.driverName
-          : 'Unknown Driver';
+    return ranked.take(3).map((item) {
       final vehicleLabel = item.plateNumber.isNotEmpty
           ? item.plateNumber
           : (item.vehicleIdentificationNumber.isNotEmpty
@@ -498,13 +539,10 @@ class OverviewDashboard extends StatelessWidget {
                 : item.vehicleId);
 
       return {
-        'driver': driverName,
         'vehicle': vehicleLabel.isNotEmpty ? vehicleLabel : '-',
         'risk': _vehicleRiskLabel(item),
-        'issue': item.statusReason.isNotEmpty
-            ? item.statusReason
-            : 'No issues detected',
-        'initials': _initials(driverName),
+        'issue': _vehicleIssue(item),
+        'telemetry': _telemetryAge(item.lastSeenMinutes),
       };
     }).toList();
   }
@@ -512,12 +550,37 @@ class OverviewDashboard extends StatelessWidget {
   Map<String, String> _mapRecentLog(DrowsinessEvent event) {
     final vehicle = _vehicleForEvent(event);
     return {
-      'time': '${_twoDigits(event.time.hour)}:${_twoDigits(event.time.minute)}',
+      'time': _wibTime(event.time),
       'type': _eventLabel(event),
-      'driver': event.driverLabel,
+      'description': _eventDescription(event),
       'vehicle': vehicle?.plateNumber ?? event.vehicleId,
       'severity': _severityLabel(event.riskLevel),
     };
+  }
+
+  String _eventDescription(DrowsinessEvent event) {
+    final label = _eventLabel(event).toLowerCase();
+    return label == 'safety event'
+        ? 'Safety event received'
+        : '$label detected';
+  }
+
+  String _vehicleIssue(VehicleStatusItem item) {
+    if (item.lastSeenMinutes == null) return 'No Live Data';
+    if (item.lastSeenMinutes! > 15) return 'Stale Telemetry';
+    if (item.safetyStatus.trim().toLowerCase() == 'alert')
+      return 'Safety Alert';
+    return item.statusReason.trim().isEmpty
+        ? 'No issue reported'
+        : item.statusReason;
+  }
+
+  String _telemetryAge(int? minutes) {
+    if (minutes == null) return 'No data';
+    if (minutes < 1) return 'Just now';
+    if (minutes < 60) return '$minutes min ago';
+    if (minutes < 1440) return '${minutes ~/ 60} hr ago';
+    return '${minutes ~/ 1440} days ago';
   }
 
   Vehicle? _vehicleForEvent(DrowsinessEvent event) {
@@ -563,18 +626,12 @@ class OverviewDashboard extends StatelessWidget {
         .join(' ');
   }
 
-  String _initials(String value) {
-    final parts = value
-        .trim()
-        .split(RegExp(r'\s+'))
-        .where((part) => part.isNotEmpty)
-        .toList();
-    if (parts.isEmpty) return '?';
-    if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
-    return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
-  }
-
   String _twoDigits(int value) => value.toString().padLeft(2, '0');
+
+  String _wibTime(DateTime value) {
+    final wib = value.toUtc().add(const Duration(hours: 7));
+    return '${_twoDigits(wib.hour)}:${_twoDigits(wib.minute)} WIB';
+  }
 
   int _isAlertVehicle(VehicleStatusItem item) {
     return item.safetyStatus.trim().toLowerCase() == 'alert' ? 1 : 0;
@@ -609,6 +666,8 @@ class OverviewDashboard extends StatelessWidget {
       return 'Medium';
     }
 
+    if (displayStatus == 'offline') return 'Unavailable';
+
     return 'Low';
   }
 
@@ -627,9 +686,6 @@ class _OverviewHeader extends StatelessWidget {
     required this.healthColor,
     required this.healthIcon,
     required this.useWideLayout,
-    required this.vehicles,
-    required this.selectedVehicle,
-    required this.onVehicleSelected,
   });
 
   final String lastUpdatedLabel;
@@ -637,9 +693,6 @@ class _OverviewHeader extends StatelessWidget {
   final Color healthColor;
   final IconData healthIcon;
   final bool useWideLayout;
-  final List<Vehicle> vehicles;
-  final Vehicle? selectedVehicle;
-  final ValueChanged<Vehicle> onVehicleSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -694,12 +747,6 @@ class _OverviewHeader extends StatelessWidget {
       ],
     );
 
-    final selector = _OverviewVehicleSelector(
-      vehicles: vehicles,
-      selectedVehicle: selectedVehicle,
-      onSelected: onVehicleSelected,
-    );
-
     if (useWideLayout) {
       return Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -709,7 +756,7 @@ class _OverviewHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Driver Safety & Telematics Overview',
+                  'Fleet Management Overview',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 24,
@@ -718,14 +765,12 @@ class _OverviewHeader extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 const Text(
-                  'Today live monitoring for driver condition, vehicle position, and safety events.',
+                  'Real-time visibility of fleet safety, vehicle status, and driver wellbeing.',
                   style: TextStyle(
                     color: ReportStyles.textSecondary,
                     fontSize: 12,
                   ),
                 ),
-                const SizedBox(height: 12),
-                selector,
               ],
             ),
           ),
@@ -742,7 +787,7 @@ class _OverviewHeader extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Driver Safety & Telematics Overview',
+          'Fleet Management Overview',
           style: TextStyle(
             color: Colors.white,
             fontSize: 24,
@@ -751,11 +796,9 @@ class _OverviewHeader extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         const Text(
-          'Today live monitoring for driver condition, vehicle position, and safety events.',
+          'Real-time visibility of fleet safety, vehicle status, and driver wellbeing.',
           style: TextStyle(color: ReportStyles.textSecondary, fontSize: 12),
         ),
-        const SizedBox(height: 12),
-        selector,
         const SizedBox(height: 12),
         statusCard,
         const SizedBox(height: 8),
@@ -763,6 +806,422 @@ class _OverviewHeader extends StatelessWidget {
       ],
     );
   }
+}
+
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel(this.label);
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Text(
+    label,
+    style: const TextStyle(
+      color: ReportStyles.textMuted,
+      fontSize: 11,
+      fontWeight: FontWeight.w700,
+      letterSpacing: 1.2,
+    ),
+  );
+}
+
+class _SelectedVehicleHeader extends StatelessWidget {
+  const _SelectedVehicleHeader({
+    required this.vehicles,
+    required this.selectedVehicle,
+    required this.onVehicleSelected,
+  });
+
+  final List<Vehicle> vehicles;
+  final Vehicle? selectedVehicle;
+  final ValueChanged<Vehicle> onVehicleSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final index = selectedVehicle == null
+        ? -1
+        : vehicles.indexWhere((vehicle) => vehicle.id == selectedVehicle!.id);
+    return Container(
+      height: 30,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: ReportStyles.surfaceBackground,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: ReportStyles.borderStrong),
+      ),
+      child: Row(
+        children: [
+          const _SectionLabel('SELECTED VEHICLE'),
+          const SizedBox(width: 10),
+          Expanded(
+            child: _OverviewVehicleSelector(
+              vehicles: vehicles,
+              selectedVehicle: selectedVehicle,
+              onSelected: onVehicleSelected,
+            ),
+          ),
+          if (index >= 0) ...[
+            const SizedBox(width: 14),
+            Text(
+              'Mapped Vehicle ${index + 1} of ${vehicles.length}',
+              style: const TextStyle(
+                color: ReportStyles.textMuted,
+                fontSize: 11,
+              ),
+            ),
+            const SizedBox(width: 7),
+            _VehicleNavButton(
+              icon: Icons.chevron_left_rounded,
+              enabled: vehicles.length > 1,
+              onPressed: () => onVehicleSelected(
+                vehicles[(index - 1 + vehicles.length) % vehicles.length],
+              ),
+            ),
+            const SizedBox(width: 5),
+            _VehicleNavButton(
+              icon: Icons.chevron_right_rounded,
+              enabled: vehicles.length > 1,
+              onPressed: () =>
+                  onVehicleSelected(vehicles[(index + 1) % vehicles.length]),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _VehicleNavButton extends StatelessWidget {
+  const _VehicleNavButton({
+    required this.icon,
+    required this.enabled,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final bool enabled;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    width: 28,
+    height: 28,
+    child: IconButton(
+      padding: EdgeInsets.zero,
+      onPressed: enabled ? onPressed : null,
+      icon: Icon(icon, size: 18),
+      color: Colors.white,
+      disabledColor: ReportStyles.textFaint,
+      style: IconButton.styleFrom(
+        backgroundColor: Colors.white.withValues(alpha: 0.04),
+        side: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
+      ),
+    ),
+  );
+}
+
+class _SelectedVehicleCards extends StatelessWidget {
+  const _SelectedVehicleCards({required this.vehicle, required this.data});
+
+  final Vehicle? vehicle;
+  final _OverviewData data;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final first = _VehicleStatusCard(vehicle: vehicle);
+        final second = _DriverSafetyCard(data: data);
+        final monitoring = OverviewMonitoringSummary(vehicle: vehicle);
+        if (constraints.maxWidth >= 1000) {
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: first),
+              const SizedBox(width: 12),
+              Expanded(child: second),
+              const SizedBox(width: 12),
+              Expanded(flex: 2, child: monitoring),
+            ],
+          );
+        }
+        return Column(
+          children: [
+            Row(
+              children: [
+                Expanded(child: first),
+                const SizedBox(width: 12),
+                Expanded(child: second),
+              ],
+            ),
+            const SizedBox(height: 12),
+            monitoring,
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _VehicleStatusCard extends StatelessWidget {
+  const _VehicleStatusCard({required this.vehicle});
+
+  final Vehicle? vehicle;
+
+  @override
+  Widget build(BuildContext context) {
+    final item = vehicle;
+    if (item == null)
+      return const _SelectedDataCard(
+        title: 'Vehicle Status',
+        icon: Icons.bar_chart_rounded,
+        child: Text(
+          'No vehicle selected',
+          style: TextStyle(color: ReportStyles.textMuted),
+        ),
+      );
+    final stale =
+        item.statusLabel.toLowerCase() == 'offline' ||
+        item.lastSeenMinutes == null ||
+        item.lastSeenMinutes! > 15;
+    return _SelectedDataCard(
+      title: 'Vehicle Status',
+      icon: Icons.bar_chart_rounded,
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 7,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: (stale ? ReportStyles.textMuted : ReportStyles.green)
+                        .withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color:
+                          (stale ? ReportStyles.textMuted : ReportStyles.green)
+                              .withValues(alpha: 0.35),
+                    ),
+                  ),
+                  child: Text(
+                    item.statusLabel.toUpperCase(),
+                    style: TextStyle(
+                      color: stale
+                          ? ReportStyles.textSecondary
+                          : ReportStyles.green,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.4,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                _StatusDetail(
+                  label: 'Last telemetry',
+                  value: _freshness(item.lastSeenMinutes),
+                ),
+                _StatusDetail(
+                  label: stale ? 'Last recorded speed' : 'Current speed',
+                  value: '${item.speed.toStringAsFixed(0)} km/h',
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          SizedBox(
+            width: 120,
+            height: 120,
+            child: Image.asset(
+              'assets/images/generic_fleet_van.png',
+              fit: BoxFit.contain,
+              filterQuality: FilterQuality.medium,
+              semanticLabel: 'Generic fleet vehicle illustration',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _freshness(int? minutes) {
+    if (minutes == null) return 'No live data';
+    if (minutes < 1) return 'Just now';
+    if (minutes < 60) return '$minutes min ago';
+    if (minutes < 1440) return '${minutes ~/ 60} hr ago';
+    return '${minutes ~/ 1440} days ago';
+  }
+}
+
+class _StatusDetail extends StatelessWidget {
+  const _StatusDetail({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 3),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(color: ReportStyles.textMuted, fontSize: 12),
+        ),
+        Text(
+          value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _DriverSafetyCard extends StatelessWidget {
+  const _DriverSafetyCard({required this.data});
+
+  final _OverviewData data;
+
+  @override
+  Widget build(BuildContext context) => _SelectedDataCard(
+    title: 'Driver Safety',
+    icon: Icons.shield_outlined,
+    context: 'Today',
+    child: Column(
+      children: data.snapshotRows
+          .map(
+            (row) => _MetricLine(
+              label: row.label,
+              count: row.count,
+              progress: row.progress,
+              value: '${row.count}',
+              valueColor: _metricColor(row.label),
+            ),
+          )
+          .toList(),
+    ),
+  );
+
+  Color _metricColor(String label) {
+    switch (label) {
+      case 'Drowsy':
+        return ReportStyles.red;
+      case 'Yawn':
+        return ReportStyles.yellow;
+      case 'Distraction':
+        return ReportStyles.orange;
+      default:
+        return ReportStyles.blue;
+    }
+  }
+}
+
+class _SelectedDataCard extends StatelessWidget {
+  const _SelectedDataCard({
+    required this.title,
+    required this.icon,
+    required this.child,
+    this.context,
+  });
+  final String title;
+  final IconData icon;
+  final String? context;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    height: 160,
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+    decoration: BoxDecoration(
+      color: ReportStyles.cardBackground,
+      borderRadius: BorderRadius.circular(14),
+      border: Border.all(color: ReportStyles.border),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, color: ReportStyles.blue, size: 17),
+            const SizedBox(width: 7),
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            if (this.context != null)
+              Text(
+                '(${this.context!})',
+                style: const TextStyle(
+                  color: ReportStyles.textMuted,
+                  fontSize: 10,
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Expanded(child: child),
+      ],
+    ),
+  );
+}
+
+class _MetricLine extends StatelessWidget {
+  const _MetricLine({
+    required this.label,
+    required this.value,
+    this.valueColor,
+    required int count,
+    required double progress,
+  });
+  final String label;
+  final String value;
+  final Color? valueColor;
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 3),
+    child: Row(
+      children: [
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(color: ReportStyles.textMuted, fontSize: 12),
+          ),
+        ),
+        Flexible(
+          child: Text(
+            value,
+            textAlign: TextAlign.end,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: valueColor ?? Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _OverviewVehicleSelector extends StatelessWidget {
@@ -778,7 +1237,8 @@ class _OverviewVehicleSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final selectedId = selectedVehicle != null &&
+    final selectedId =
+        selectedVehicle != null &&
             vehicles.any((vehicle) => vehicle.id == selectedVehicle!.id)
         ? selectedVehicle!.id
         : null;
@@ -893,8 +1353,8 @@ class _CompactKpiCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 96,
-      padding: const EdgeInsets.all(14),
+      height: 74,
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
       decoration: BoxDecoration(
         color: ReportStyles.cardBackground,
         gradient: ReportStyles.cardGradient,
@@ -905,16 +1365,16 @@ class _CompactKpiCard extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            width: 46,
-            height: 46,
+            width: 38,
+            height: 38,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: accentColor.withValues(alpha: 0.12),
               border: Border.all(color: accentColor.withValues(alpha: 0.32)),
             ),
-            child: Icon(icon, color: accentColor, size: 22),
+            child: Icon(icon, color: accentColor, size: 19),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 9),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -930,19 +1390,19 @@ class _CompactKpiCard extends StatelessWidget {
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 3),
                 Text(
                   value,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 16,
+                    fontSize: 15,
                     fontWeight: FontWeight.w700,
                     height: 1,
                   ),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 3),
                 Text(
                   subtitle,
                   maxLines: 1,
@@ -964,6 +1424,76 @@ class _CompactKpiCard extends StatelessWidget {
   }
 }
 
+class _SafetyEventBreakdown extends StatelessWidget {
+  const _SafetyEventBreakdown({required this.data});
+
+  final _OverviewData data;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    mainAxisAlignment: MainAxisAlignment.center,
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      _BreakdownLine(
+        label: 'Drowsy',
+        value: data.drowsyCount,
+        color: ReportStyles.red,
+      ),
+      _BreakdownLine(
+        label: 'Yawn',
+        value: data.yawnCount,
+        color: ReportStyles.yellow,
+      ),
+      _BreakdownLine(
+        label: 'Distraction',
+        value: data.distractionCount,
+        color: ReportStyles.orange,
+      ),
+    ],
+  );
+}
+
+class _BreakdownLine extends StatelessWidget {
+  const _BreakdownLine({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+  final String label;
+  final int value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    width: 82,
+    height: 15,
+    child: Row(
+      children: [
+        Container(
+          width: 6,
+          height: 6,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 5),
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(color: ReportStyles.textMuted, fontSize: 8),
+          ),
+        ),
+        Text(
+          '$value',
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 9,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
 class _LiveMapCard extends StatelessWidget {
   const _LiveMapCard({
     required this.map,
@@ -980,7 +1510,7 @@ class _LiveMapCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _DashboardCard(
-      height: 320,
+      height: 218,
       child: Column(
         children: [
           Row(
@@ -1003,10 +1533,10 @@ class _LiveMapCard extends StatelessWidget {
                   foregroundColor: Colors.white,
                   backgroundColor: Colors.white.withValues(alpha: 0.05),
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
+                    horizontal: 7,
+                    vertical: 3,
                   ),
-                  textStyle: const TextStyle(fontSize: 12),
+                  textStyle: const TextStyle(fontSize: 11),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
                     side: BorderSide(
@@ -1018,7 +1548,7 @@ class _LiveMapCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 2),
           Expanded(
             child: ClipRRect(
               borderRadius: BorderRadius.circular(16),
@@ -1098,15 +1628,15 @@ class _LiveMapCard extends StatelessWidget {
   }
 }
 
-class _HighRiskRankingCard extends StatelessWidget {
-  const _HighRiskRankingCard({required this.drivers});
+class _VehicleRiskRankingCard extends StatelessWidget {
+  const _VehicleRiskRankingCard({required this.vehicles});
 
-  final List<Map<String, String>> drivers;
+  final List<Map<String, String>> vehicles;
 
   @override
   Widget build(BuildContext context) {
     return _DashboardCard(
-      height: 320,
+      height: 218,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1119,7 +1649,7 @@ class _HighRiskRankingCard extends StatelessWidget {
               const SizedBox(width: 8),
               const Expanded(
                 child: Text(
-                  'High-Risk Driver Ranking Today',
+                  'Vehicle Risk Ranking',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 15,
@@ -1140,13 +1670,13 @@ class _HighRiskRankingCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 5),
           Expanded(
-            child: drivers.isEmpty
+            child: vehicles.isEmpty
                 ? const _CenteredEmptyState(
-                    title: 'No driver risk data available',
+                    title: 'No vehicle risk data available',
                     subtitle:
-                        'Driver ranking will appear when risk data is received.',
+                        'Vehicle ranking will appear when fleet status is received.',
                   )
                 : Column(
                     children: [
@@ -1154,27 +1684,26 @@ class _HighRiskRankingCard extends StatelessWidget {
                       Expanded(
                         child: ListView.separated(
                           padding: EdgeInsets.zero,
-                          itemCount: drivers.length,
+                          itemCount: vehicles.length,
                           separatorBuilder: (context, index) => Divider(
                             color: Colors.white.withValues(alpha: 0.08),
                             height: 1,
                           ),
                           itemBuilder: (context, index) {
-                            final item = drivers[index];
+                            final item = vehicles[index];
                             return _RankingRow(
                               rank: index + 1,
-                              driver: item['driver'] ?? '-',
                               vehicle: item['vehicle'] ?? '-',
                               risk: item['risk'] ?? 'Low',
                               issue: item['issue'] ?? '-',
-                              initials: item['initials'] ?? '?',
+                              telemetry: item['telemetry'] ?? '-',
                             );
                           },
                         ),
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Showing top ${drivers.length} drivers',
+                        'Showing top ${vehicles.length} vehicles',
                         style: const TextStyle(
                           color: ReportStyles.textMuted,
                           fontSize: 11,
@@ -1197,7 +1726,7 @@ class _SafetySnapshotCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _DashboardCard(
-      height: 232,
+      height: 148,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1206,7 +1735,7 @@ class _SafetySnapshotCard extends StatelessWidget {
               _TitleIcon(icon: Icons.shield_outlined, color: ReportStyles.blue),
               SizedBox(width: 8),
               Text(
-                "Today's Safety Snapshot",
+                'Safety Events Breakdown',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 15,
@@ -1215,12 +1744,12 @@ class _SafetySnapshotCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 5),
           Expanded(
             child: Column(
               children: data.snapshotRows.map((row) {
                 return Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.only(bottom: 3),
                   child: _SnapshotRow(row: row),
                 );
               }).toList(),
@@ -1232,15 +1761,15 @@ class _SafetySnapshotCard extends StatelessWidget {
   }
 }
 
-class _RecentLogCard extends StatelessWidget {
-  const _RecentLogCard({required this.recentLog});
+class _RecentEventsCard extends StatelessWidget {
+  const _RecentEventsCard({required this.recentLog});
 
   final List<Map<String, String>> recentLog;
 
   @override
   Widget build(BuildContext context) {
     return _DashboardCard(
-      height: 232,
+      height: 148,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1253,7 +1782,7 @@ class _RecentLogCard extends StatelessWidget {
               const SizedBox(width: 8),
               const Expanded(
                 child: Text(
-                  'Recent Log',
+                  'Recent Events',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 15,
@@ -1274,12 +1803,12 @@ class _RecentLogCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 3),
           Expanded(
             child: recentLog.isEmpty
                 ? const _CenteredEmptyState(
-                    title: 'All clear!',
-                    subtitle: 'No recent safety events to display.',
+                    title: 'No recent live events',
+                    subtitle: 'No recent telemetry or safety events received.',
                   )
                 : ListView.separated(
                     padding: EdgeInsets.zero,
@@ -1291,7 +1820,7 @@ class _RecentLogCard extends StatelessWidget {
                     itemBuilder: (context, index) {
                       final item = recentLog[index];
                       return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        padding: const EdgeInsets.symmetric(vertical: 3),
                         child: Row(
                           children: [
                             SizedBox(
@@ -1319,7 +1848,8 @@ class _RecentLogCard extends StatelessWidget {
                                   ),
                                   const SizedBox(height: 3),
                                   Text(
-                                    '${item['driver'] ?? '-'} - ${item['vehicle'] ?? '-'}',
+                                    item['description'] ??
+                                        'Safety event received',
                                     style: const TextStyle(
                                       color: ReportStyles.textSecondary,
                                       fontSize: 11,
@@ -1353,7 +1883,7 @@ class _DashboardCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: height,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
       decoration: BoxDecoration(
         color: ReportStyles.cardBackground,
         gradient: ReportStyles.cardGradient,
@@ -1364,6 +1894,81 @@ class _DashboardCard extends StatelessWidget {
       child: child,
     );
   }
+}
+
+class _RecentStatusLogCard extends StatelessWidget {
+  const _RecentStatusLogCard({required this.entries});
+
+  final List<String> entries;
+
+  @override
+  Widget build(BuildContext context) => _DashboardCard(
+    height: 148,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Row(
+          children: [
+            _TitleIcon(
+              icon: Icons.receipt_long_outlined,
+              color: ReportStyles.blue,
+            ),
+            SizedBox(width: 7),
+            Text(
+              'Recent Log',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 7),
+        Expanded(
+          child: entries.isEmpty
+              ? const Text(
+                  'No recent live-data updates.',
+                  style: TextStyle(color: ReportStyles.textMuted, fontSize: 11),
+                )
+              : Column(
+                  children: entries
+                      .take(3)
+                      .map(
+                        (entry) => Padding(
+                          padding: const EdgeInsets.only(bottom: 7),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 6,
+                                height: 6,
+                                decoration: const BoxDecoration(
+                                  color: ReportStyles.blue,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  entry,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: ReportStyles.textSecondary,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                      .toList(),
+                ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _RingPercent extends StatelessWidget {
@@ -1490,16 +2095,16 @@ class _RankingHeader extends StatelessWidget {
           ),
           Expanded(
             flex: 3,
-            child: Text('Driver', style: _TableHeaderStyle.text),
-          ),
-          Expanded(
-            flex: 2,
             child: Text('Vehicle', style: _TableHeaderStyle.text),
           ),
           Expanded(flex: 2, child: Text('Risk', style: _TableHeaderStyle.text)),
           Expanded(
             flex: 3,
-            child: Text('Issue Summary', style: _TableHeaderStyle.text),
+            child: Text('Main Issue', style: _TableHeaderStyle.text),
+          ),
+          Expanded(
+            flex: 2,
+            child: Text('Last Telemetry', style: _TableHeaderStyle.text),
           ),
         ],
       ),
@@ -1510,19 +2115,17 @@ class _RankingHeader extends StatelessWidget {
 class _RankingRow extends StatelessWidget {
   const _RankingRow({
     required this.rank,
-    required this.driver,
     required this.vehicle,
     required this.risk,
     required this.issue,
-    required this.initials,
+    required this.telemetry,
   });
 
   final int rank;
-  final String driver;
   final String vehicle;
   final String risk;
   final String issue;
-  final String initials;
+  final String telemetry;
 
   @override
   Widget build(BuildContext context) {
@@ -1543,33 +2146,6 @@ class _RankingRow extends StatelessWidget {
           ),
           Expanded(
             flex: 3,
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 13,
-                  backgroundColor: ReportStyles.blue.withValues(alpha: 0.7),
-                  child: Text(
-                    initials,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    driver,
-                    style: const TextStyle(color: Colors.white, fontSize: 12),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            flex: 2,
             child: Text(
               vehicle,
               style: const TextStyle(color: Colors.white, fontSize: 12),
@@ -1587,6 +2163,17 @@ class _RankingRow extends StatelessWidget {
             flex: 3,
             child: Text(
               issue,
+              style: const TextStyle(
+                color: ReportStyles.textSecondary,
+                fontSize: 11,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Text(
+              telemetry,
               style: const TextStyle(
                 color: ReportStyles.textSecondary,
                 fontSize: 11,
@@ -1612,6 +2199,8 @@ class _RiskChip extends StatelessWidget {
         ? ReportStyles.red
         : lower.contains('medium')
         ? ReportStyles.orange
+        : lower.contains('unavailable')
+        ? ReportStyles.textMuted
         : ReportStyles.green;
 
     return Container(
@@ -1701,8 +2290,8 @@ class _CenteredEmptyState extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 72,
-            height: 72,
+            width: 34,
+            height: 34,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: LinearGradient(
@@ -1715,20 +2304,20 @@ class _CenteredEmptyState extends StatelessWidget {
             child: const Icon(
               Icons.assignment_turned_in_outlined,
               color: ReportStyles.textSecondary,
-              size: 34,
+              size: 18,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 5),
           Text(
             title,
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 14,
+              fontSize: 12,
               fontWeight: FontWeight.w700,
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 3),
           Text(
             subtitle,
             style: const TextStyle(
@@ -1797,15 +2386,19 @@ class _OverviewData {
   const _OverviewData({
     required this.totalVehicles,
     required this.onlineVehicles,
+    required this.offlineVehicles,
     required this.drowsyCount,
+    required this.yawnCount,
     required this.distractionCount,
+    required this.safetyEventCount,
     required this.snapshotRows,
     required this.hasVehicleStatus,
     required this.vehicleStatusMessage,
     required this.highRiskDriverCount,
-    required this.highRiskDrivers,
-    required this.highRiskSubtitle,
+    required this.rankedVehicles,
+    required this.riskSubtitle,
     required this.recentLog,
+    required this.statusLog,
     required this.mapStateMessage,
     required this.fleetHealthLabel,
     required this.fleetHealthColor,
@@ -1815,15 +2408,19 @@ class _OverviewData {
 
   final int totalVehicles;
   final int onlineVehicles;
+  final int offlineVehicles;
   final int drowsyCount;
+  final int yawnCount;
   final int distractionCount;
+  final int safetyEventCount;
   final List<_SnapshotRowData> snapshotRows;
   final bool hasVehicleStatus;
   final String? vehicleStatusMessage;
   final int highRiskDriverCount;
-  final List<Map<String, String>> highRiskDrivers;
-  final String highRiskSubtitle;
+  final List<Map<String, String>> rankedVehicles;
+  final String riskSubtitle;
   final List<Map<String, String>> recentLog;
+  final List<String> statusLog;
   final String? mapStateMessage;
   final String fleetHealthLabel;
   final Color fleetHealthColor;
