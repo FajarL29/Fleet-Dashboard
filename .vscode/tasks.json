@@ -1,0 +1,37 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      // Started automatically by the Chrome launch configuration, so there is
+      // nothing to run by hand. It forwards every request to the real API and
+      // adds the CORS headers that API does not send, which is what lets the
+      // browser build talk to it at all.
+      //
+      // Reusing the port is harmless: if a proxy is already listening the new
+      // one exits immediately and the existing one keeps serving.
+      "label": "cors-proxy",
+      "type": "shell",
+      "command": "API_PROXY=http://203.100.57.59:3000 PORT=4000 node tool/mock_api/server.js",
+      "isBackground": true,
+      "presentation": {
+        "reveal": "silent",
+        "panel": "dedicated"
+      },
+      "problemMatcher": {
+        // VS Code needs to know when a background task is "ready", or F5 sits
+        // waiting for a process that never exits. These patterns match the
+        // proxy's own startup line.
+        "pattern": {
+          "regexp": "^(ERROR): (.*)$",
+          "severity": 1,
+          "message": 2
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".",
+          "endsPattern": "CORS proxy on|EADDRINUSE"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,107 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Telematics Drowsiness API",
+    "version": "1.0.0",
+    "description": "Dokumentasi API untuk deteksi kantuk (Drowsiness Detection)"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000/api/v1"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  },
+  "paths": {
+    "/drowsiness/": {
+      "post": {
+        "summary": "Add new drowsiness event",
+        "tags": ["Drowsiness"],
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "vehicle_identification_number": { "type": "string", "example": "VIN-0001" },
+                  "status": { "type": "string", "example": "drowsy" },
+                  "user_id": { "type": "integer", "example": 1 },
+                  "img_drowsiness": { "type": "string", "description": "Base64 image string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Success" } }
+      }
+    },
+    "/drowsiness/events/{vehicle_id}": {
+      "get": {
+        "summary": "Get all events by vehicle",
+        "tags": ["Drowsiness"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "in": "path", "name": "vehicle_id", "required": true, "schema": { "type": "string" } },
+          { "in": "query", "name": "start_date", "schema": { "type": "string" } },
+          { "in": "query", "name": "end_date", "schema": { "type": "string" } },
+          { "in": "query", "name": "limit", "schema": { "type": "integer", "default": 100 } }
+        ],
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/drowsiness/latest/{vehicle_id}": {
+      "get": {
+        "summary": "Get latest event by vehicle",
+        "tags": ["Drowsiness"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "in": "path", "name": "vehicle_id", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/drowsiness/report/{vehicle_id}": {
+      "get": {
+        "summary": "Get drowsiness statistical report",
+        "tags": ["Drowsiness"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "in": "path", "name": "vehicle_id", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/drowsiness/get/{drowsiness_id}": {
+      "get": {
+        "summary": "Get specific drowsiness event details",
+        "tags": ["Drowsiness"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "in": "path", "name": "drowsiness_id", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/drowsiness/driver-behavior": {
+      "get": {
+        "summary": "Get overall driver behavior monitoring",
+        "tags": ["Drowsiness"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "in": "query", "name": "vehicle_id", "schema": { "type": "string" } },
+          { "in": "query", "name": "limit", "schema": { "type": "integer", "default": 100 } }
+        ],
+        "responses": { "200": { "description": "OK" } }
+      }
+    }
+  }
+}

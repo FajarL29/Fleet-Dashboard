@@ -1,0 +1,28 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      // Default, and the only one that talks to 203.100.57.59 with nothing in
+      // between. CORS is a browser rule, so a native build is not subject to
+      // it — no proxy, no flags, no localhost.
+      "name": "FleetSafe (macOS) — direct to server",
+      "request": "launch",
+      "type": "dart",
+      "deviceId": "macos"
+    },
+    {
+      // Chrome cannot reach that server directly: it sends no Access-Control-*
+      // headers, so the browser blocks every request before it is sent. This
+      // starts a relay on localhost:4000 that forwards to the same server and
+      // adds the missing headers — the data is identical, only the address the
+      // browser sees differs. api_config.dart points debug web builds there.
+      //
+      // Delete this once the API sends CORS headers.
+      "name": "FleetSafe (Chrome) — via CORS relay",
+      "request": "launch",
+      "type": "dart",
+      "deviceId": "chrome",
+      "preLaunchTask": "cors-proxy"
+    }
+  ]
+}
