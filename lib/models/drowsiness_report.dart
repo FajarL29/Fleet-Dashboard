@@ -947,24 +947,19 @@ double? _toDouble(dynamic value) {
 
 /// Reads an API timestamp as the wall clock the device actually recorded.
 ///
-/// The API stamps `Z` on values it never converted: the Raspberry Pi posts
-/// `2026-09-23 19:17:14` in local time and it comes back as
-/// `2026-09-23T19:17:14.000Z`. Honouring that `Z` adds the UTC+7 offset on top,
-/// putting every event seven hours late and rolling anything after 17:00 onto
-/// the next day. Dropping the marker keeps the recorded wall clock.
-///
-/// Verified against the sample responses in `docs/api`: for all 100 events the
-/// epoch embedded in `img_path` — a real `Date.now()` from the server — sits
-/// exactly seven hours before `event_time`.
+/// The API stamps `Z` on values it never converted: the device posts
+/// `2026-09-23 19:17:14` local and it comes back as `2026-09-23T19:17:14.000Z`.
+/// Honouring that `Z` adds UTC+7 on top, putting every event seven hours late
+/// and rolling anything after 17:00 onto the next day. In `docs/api` all 100
+/// sample events confirm it: the epoch in `img_path`, a real server
+/// `Date.now()`, sits exactly seven hours before `event_time`.
 ///
 /// Delete this once the API sends a genuine offset, or the correction inverts.
 DateTime? _parseDate(dynamic value) {
   if (value == null) return null;
 
   final raw = value.toString().trim();
-  final unlabelled = raw.endsWith('Z')
-      ? raw.substring(0, raw.length - 1)
-      : raw;
+  final unlabelled = raw.endsWith('Z') ? raw.substring(0, raw.length - 1) : raw;
 
   return DateTime.tryParse(unlabelled) ?? DateTime.tryParse(raw)?.toLocal();
 }

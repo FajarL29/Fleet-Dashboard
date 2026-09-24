@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:latlong2/latlong.dart';
 
+import 'package:fleet_dashboard/models/drowsiness_report.dart';
 import 'package:fleet_dashboard/models/live_gps_fix.dart';
 import 'package:fleet_dashboard/models/vehicle_status.dart';
 import 'package:fleet_dashboard/services/live_fix_merge.dart';
@@ -38,6 +39,18 @@ VehicleStatusItem _row(String id, {String plate = '', String vin = ''}) {
     safetyStatus: 'normal',
     displayStatus: 'offline',
     statusReason: '',
+  );
+}
+
+/// A detection the camera posted for [vehicle] at [time].
+DrowsinessEvent _event(String vehicle, DateTime time) {
+  return DrowsinessEvent(
+    id: 1,
+    vehicleId: vehicle,
+    userId: 12,
+    time: time,
+    status: 'drowsy',
+    riskLevel: 'high',
   );
 }
 
@@ -121,11 +134,9 @@ void main() {
     // A device off the socket but still posting telemetry: the endpoint knows
     // more than the socket does, so its row must survive the merge intact.
     final reported = DateTime.now().subtract(const Duration(minutes: 2));
-    final row = _row('11').copyWith(
-      latitude: -6.2,
-      longitude: 106.8,
-      lastTelemetryTime: reported,
-    );
+    final row = _row(
+      '11',
+    ).copyWith(latitude: -6.2, longitude: 106.8, lastTelemetryTime: reported);
 
     final merged = applyLiveFixes(
       [row],
@@ -276,11 +287,9 @@ void main() {
     });
 
     test('a rig that has gone quiet stays on the map where it was', () {
-      final merged = applyLiveFixes(
-        [],
-        {'1210': _fix('1210', '1210', age: const Duration(hours: 2))},
-        includeUnregistered: true,
-      );
+      final merged = applyLiveFixes([], {
+        '1210': _fix('1210', '1210', age: const Duration(hours: 2)),
+      }, includeUnregistered: true);
       final rig = merged.single;
 
       expect(rig.vehicleId, '1210');
@@ -294,11 +303,9 @@ void main() {
     test('a remembered rig is listed once, not twice', () {
       // It is both a known tracker and a configured standalone device; only
       // one of those may produce a row.
-      final merged = applyLiveFixes(
-        [],
-        {'1210': _fix('1210', '1210', age: const Duration(days: 1))},
-        includeUnregistered: true,
-      );
+      final merged = applyLiveFixes([], {
+        '1210': _fix('1210', '1210', age: const Duration(days: 1)),
+      }, includeUnregistered: true);
 
       expect(merged.where((r) => r.vehicleId == '1210'), hasLength(1));
     });
@@ -334,6 +341,86 @@ void main() {
       expect(merged.summary.totalVehicles, 2);
       expect(merged.summary.onlineVehicles, 0);
       expect(merged.summary.offline, 2);
+    });
+  });
+
+  group('a camera that is still reporting', () {
+    // Real now, because _fix stamps its arrival off the wall clock: pinning
+    // this to a fixed date would age every fix out by however far apart the
+    // two happened to be.
+    final at = DateTime.now();
+
+    test('brings its vehicle online even with no fix of its own', () {
+      final merged = mergeVehicleStatus(
+        _statusOf([_row('5', vin: 'VIN-0001'), _row('6', vin: 'VIN-0002')]),
+        const {},
+        safetyEvents: [
+          _event('VIN-0001', at.subtract(const Duration(minutes: 2))),
+        ],
+        now: at,
+      );
+
+      final reporting = merged.vehicles.firstWhere((r) => r.vehicleId == '5');
+      expect(reporting.deviceStatus, 'online');
+      // No fix, so nothing is claimed about where it is or whether it moves.
+      expect(reporting.displayStatus, 'idle');
+      expect(reporting.latitude, isNull);
+      expect(reporting.statusReason, kSafetyReportReason);
+
+      expect(merged.summary.onlineVehicles, 1);
+      expect(merged.summary.offline, 1);
+    });
+
+    test('is matched by vehicle id when the row carries no VIN', () {
+      final merged = mergeVehicleStatus(
+        _statusOf([_row('5')]),
+        const {},
+        safetyEvents: [_event('5', at)],
+        now: at,
+      );
+
+      expect(merged.summary.onlineVehicles, 1);
+    });
+
+    test('stops counting once its last detection has aged out', () {
+      final merged = mergeVehicleStatus(
+        _statusOf([_row('5', vin: 'VIN-0001')]),
+        const {},
+        safetyEvents: [
+          _event('VIN-0001', at.subtract(kSafetyReportMaxAge * 2)),
+        ],
+        now: at,
+      );
+
+      expect(merged.summary.onlineVehicles, 0);
+      expect(merged.vehicles.single.deviceStatus, 'offline');
+    });
+
+    test('never overrides what a live fix already knows', () {
+      final merged = mergeVehicleStatus(
+        _statusOf([_row('11', vin: 'VIN-0001')]),
+        {'11': _fix('1210', '11', speed: 42)},
+        safetyEvents: [_event('VIN-0001', at)],
+        now: at,
+      );
+
+      // The fix says it is driving; a detection must not talk it down to idle.
+      final row = merged.vehicles.single;
+      expect(row.displayStatus, 'moving');
+      expect(row.statusReason, 'Live GPS');
+    });
+
+    test('leaves the GPS feed honest about having gone quiet', () {
+      final merged = mergeVehicleStatus(
+        _statusOf([_row('5', vin: 'VIN-0001')]),
+        const {},
+        safetyEvents: [_event('VIN-0001', at)],
+        now: at,
+      );
+
+      // Online because the camera is reachable — not because a position
+      // arrived. Claiming one would put a stale marker on the map.
+      expect(merged.vehicles.single.lastTelemetryTime, isNull);
     });
   });
 }

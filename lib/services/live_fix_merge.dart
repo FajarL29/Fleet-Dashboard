@@ -1,4 +1,5 @@
 import 'api_config.dart';
+import '../models/drowsiness_report.dart';
 import '../models/live_gps_fix.dart';
 import '../models/vehicle_status.dart';
 import '../utils/last_seen_format.dart';
@@ -10,6 +11,18 @@ import '../utils/last_seen_format.dart';
 /// becomes "where it was last seen" — it is still shown, but as a last known
 /// position rather than a live one.
 const Duration kLiveFixMaxAge = Duration(minutes: 1);
+
+/// How long a safety event keeps counting as proof the camera is reporting.
+///
+/// Longer than [kLiveFixMaxAge] because the two feeds behave differently: the
+/// tracker reports on a timer, the camera only when it detects something. A
+/// driver who stays alert produces no events at all, so a window as tight as
+/// the GPS one would flip a plainly working device back to offline between
+/// detections.
+const Duration kSafetyReportMaxAge = Duration(minutes: 5);
+
+/// The reason text a row carries when only its camera is still reporting.
+const String kSafetyReportReason = 'Reporting safety events';
 
 /// The reason text a row carries once its fix has gone stale.
 ///
@@ -244,6 +257,52 @@ bool isVehicleOnline(VehicleStatusItem item) {
       liveStates.contains(item.movementStatus.trim().toLowerCase());
 }
 
+/// Marks rows online when their camera is still posting safety events, even
+/// though their GPS feed has gone quiet.
+///
+/// Positions and detections are separate feeds. A vehicle can stop reporting
+/// telemetry while the driver-monitoring camera keeps sending events, and
+/// counting only telemetry left the KPI reading "0/8 online" while events from
+/// those very vehicles were landing on the Safety page.
+///
+/// Only the device state moves. [lastTelemetryTime] is deliberately left alone:
+/// the GPS feed really has gone quiet, and overwriting it would claim a
+/// position fix that never arrived.
+List<VehicleStatusItem> _applySafetyReports(
+  List<VehicleStatusItem> rows,
+  Iterable<DrowsinessEvent> events,
+  DateTime at,
+) {
+  final reporting = <String>{};
+  for (final event in events) {
+    if (at.difference(event.time) > kSafetyReportMaxAge) continue;
+    final vin = event.vehicleId.trim();
+    if (vin.isNotEmpty) reporting.add(vin);
+  }
+  if (reporting.isEmpty) return rows;
+
+  return rows.map((row) {
+    // A row with its own live fix already knows it is online, and knows more
+    // about what the vehicle is doing than a detection can say.
+    if (isVehicleOnline(row)) return row;
+    if (!reporting.contains(row.vehicleIdentificationNumber.trim()) &&
+        !reporting.contains(row.vehicleId.trim())) {
+      return row;
+    }
+
+    // Reachable, but with no fix of its own there is nothing to say about
+    // movement — so it reads idle rather than claiming it is driving.
+    final display = row.displayStatus.trim().toLowerCase();
+    return row.copyWith(
+      deviceStatus: 'online',
+      displayStatus: display == 'offline' || display.isEmpty
+          ? 'idle'
+          : row.displayStatus,
+      statusReason: kSafetyReportReason,
+    );
+  }).toList();
+}
+
 /// The status payload with live fixes applied and its summary recomputed.
 ///
 /// The server's own summary is a snapshot taken when it answered, so it does
@@ -255,13 +314,19 @@ VehicleStatusData mergeVehicleStatus(
   VehicleStatusData? raw,
   Map<String, LiveGpsFix> fixes, {
   bool includeUnregistered = false,
+  Iterable<DrowsinessEvent> safetyEvents = const [],
   DateTime? now,
 }) {
-  final rows = applyLiveFixes(
-    raw?.vehicles ?? const <VehicleStatusItem>[],
-    fixes,
-    includeUnregistered: includeUnregistered,
-    now: now,
+  final at = now ?? DateTime.now();
+  final rows = _applySafetyReports(
+    applyLiveFixes(
+      raw?.vehicles ?? const <VehicleStatusItem>[],
+      fixes,
+      includeUnregistered: includeUnregistered,
+      now: at,
+    ),
+    safetyEvents,
+    at,
   );
 
   var online = 0;

@@ -329,6 +329,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           state.vehicleStatusData,
           state.liveFixes,
           includeUnregistered: true,
+          safetyEvents: state.recentDrowsinessEvents,
         );
 
         return OverviewDashboard(

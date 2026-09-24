@@ -49,7 +49,16 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
   /// coalesced write every [_fixPersistInterval] keeps it current enough.
   Timer? _fixPersistTimer;
   static const Duration _fixPersistInterval = Duration(seconds: 10);
+
+  /// Newest detection already folded into the state, so the ten-second poll
+  /// can tell a fresh event from the one it just re-read.
   int? _lastDrowsinessId;
+
+  /// Driver the monitoring cards attribute every alert to.
+  ///
+  /// The `user_id` the API sends does not line up with the ids those cards are
+  /// keyed by, so alerts are parked on this one until it does.
+  static const int _alertDriverId = 3034;
 
   DashboardBloc() : super(DashboardState.initial()) {
     on<DashboardInitialized>(_onDashboardInitialized);
@@ -181,8 +190,10 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
             add(DrowsinessDataReceived(decoded['data']));
           }
         }
-      } catch (e) {
-        debugPrint("❌ Drowsiness Polling Error: $e");
+      } catch (error) {
+        if (kDebugMode) {
+          debugPrint('[DrowsinessLatest] Poll failed: $error');
+        }
       }
     });
   }
@@ -191,72 +202,48 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     DrowsinessDataReceived event,
     Emitter<DashboardState> emit,
   ) {
-    final data = event.data;
-    final int currentId = data['drowsiness_id'];
-    //final int userId = data['user_id']; // Ambil ID driver dari API
-    final int userId =
-        3034; // Hardcoded untuk testing, ganti dengan data sebenarnya nanti
+    final latest = DrowsinessEvent.fromJson(event.data);
 
-    debugPrint("📥 Drowsiness Data Received: $data");
-    debugPrint("📥 Current ID: $currentId, Last ID: $_lastDrowsinessId");
-    debugPrint("📥 User ID dari data: ${data['user_id']}");
-    debugPrint("📥 User ID yang digunakan: $userId");
+    // The poll re-reads the same endpoint every ten seconds, so the detection
+    // already on screen keeps coming back until a newer one replaces it.
+    if (_lastDrowsinessId != null && latest.id <= _lastDrowsinessId!) return;
+    _lastDrowsinessId = latest.id;
 
-    // 1. Cek apakah ini benar-benar data baru (ID lebih besar dari sebelumnya)
-    if (_lastDrowsinessId == null || currentId > _lastDrowsinessId!) {
-      _lastDrowsinessId = currentId;
+    final alert = <String, dynamic>{
+      'vehicle_id': latest.vehicleId,
+      'image': latest.imageUrl,
+      'type': latest.status,
+      'time': latest.time,
+    };
 
-      // 2. Siapkan data alert baru
-      final newAlertData = {
-        'vehicle_id': data['vehicle_identification_number'],
-        'image': data['img_path'], // URL Foto dari Server
-        'type': data['status'],
-        'time': DateTime.parse(data['time']),
-      };
+    // Overview loads the event list once when the page opens. Without topping
+    // it up here, a vehicle whose camera is plainly still reporting drops out
+    // of the online count as soon as its last loaded event passes
+    // [kSafetyReportMaxAge].
+    final events = <DrowsinessEvent>[
+      latest,
+      for (final existing in state.recentDrowsinessEvents)
+        if (existing.id != latest.id) existing,
+    ]..sort((a, b) => b.time.compareTo(a.time));
 
-      debugPrint("📥 New Alert Data: $newAlertData");
-      debugPrint("📥 User ID untuk alert: $userId");
-
-      // 3. Update MAP driverAlerts (Agar Card Budi & Fajar punya data terpisah)
-      final updatedDriverAlerts = Map<int, Map<String, dynamic>>.from(
-        state.driverAlerts,
-      );
-      updatedDriverAlerts[userId] =
-          newAlertData; // Masukkan alert ke slot Driver yang bersangkutan
-
-      debugPrint("📥 Updated DriverAlerts: $updatedDriverAlerts");
+    if (kDebugMode) {
       debugPrint(
-        "📥 Updated DriverAlerts type: ${updatedDriverAlerts.runtimeType}",
+        '[DrowsinessLatest] New event ${latest.id} for ${latest.vehicleId}',
       );
-      debugPrint(
-        "📥 Updated DriverAlerts keys: ${updatedDriverAlerts.keys.toList()}",
-      );
-      debugPrint("📥 Updated DriverAlerts[3034]: ${updatedDriverAlerts[3034]}");
-
-      // 4. Update Alert Log (History)
-      final newAlertLog = List<String>.from(state.alertLog);
-      newAlertLog.insert(
-        0,
-        "Alert: ${data['status']} - Unit ${data['vehicle_identification_number']}",
-      );
-
-      // 5. EMIT State Baru
-      debugPrint("📥 Emitting state dengan driverAlerts: $updatedDriverAlerts");
-      emit(
-        state.copyWith(
-          currentAlert: newAlertData, // Alert paling terakhir secara global
-          driverAlerts:
-              updatedDriverAlerts, // Data per-driver untuk monitoring cards
-          alertLog: newAlertLog.take(20).toList(),
-        ),
-      );
-
-      debugPrint("🔔 New Drowsiness for User $userId: ID $currentId");
-      debugPrint("img_path: ${data['img_path']}");
-      debugPrint("📥 State emitted, driverAlerts: ${state.driverAlerts}");
-    } else {
-      debugPrint("📥 Data drowsiness bukan data baru, diabaikan");
     }
+
+    emit(
+      state.copyWith(
+        currentAlert: alert,
+        driverAlerts: Map<int, Map<String, dynamic>>.from(state.driverAlerts)
+          ..[_alertDriverId] = alert,
+        alertLog: [
+          'Alert: ${latest.status} - Unit ${latest.vehicleId}',
+          ...state.alertLog,
+        ].take(20).toList(),
+        recentDrowsinessEvents: events.take(50).toList(),
+      ),
+    );
   }
 
   /// --- LOGIKA GPS WEBSOCKET (EXISTING) ---
