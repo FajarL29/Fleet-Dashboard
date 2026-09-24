@@ -1,3 +1,5 @@
+import '../utils/api_timestamp.dart';
+
 class DrowsinessDriverOption {
   const DrowsinessDriverOption({
     required this.userId,
@@ -36,7 +38,7 @@ class DrowsinessDriverOption {
       driverName: _driverName(json['driver_name'], userId),
       totalEvents: _toInt(json['total_events']),
       highRiskEvents: _toInt(json['high_risk_events']),
-      lastEventTime: _parseDate(json['last_event_time']),
+      lastEventTime: parseApiTimestamp(json['last_event_time']),
     );
   }
 }
@@ -60,9 +62,4 @@ int? _toNullableInt(dynamic value) {
   if (value is int) return value;
   if (value is num) return value.toInt();
   return int.tryParse(value.toString());
-}
-
-DateTime? _parseDate(dynamic value) {
-  if (value == null) return null;
-  return DateTime.tryParse(value.toString())?.toLocal();
 }

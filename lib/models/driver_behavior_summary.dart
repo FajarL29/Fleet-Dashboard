@@ -1,3 +1,5 @@
+import '../utils/api_timestamp.dart';
+
 class DriverBehaviorSummary {
   const DriverBehaviorSummary({
     required this.userId,
@@ -73,7 +75,7 @@ class DriverBehaviorSummary {
       vehicleId: _optionalString(json['vehicle_id']),
       internalVehicleId: _optionalString(json['internal_vehicle_id']),
       totalEvents: _toInt(json['total_events']),
-      latestEventTime: _parseDate(json['latest_event_time']),
+      latestEventTime: parseApiTimestamp(json['latest_event_time']),
       behaviors: DriverBehaviorCounts.fromJson(
         json['behaviors'] as Map<String, dynamic>? ?? const {},
       ),
@@ -149,9 +151,4 @@ String? _optionalString(dynamic value) {
     return null;
   }
   return text;
-}
-
-DateTime? _parseDate(dynamic value) {
-  if (value == null) return null;
-  return DateTime.tryParse(value.toString())?.toLocal();
 }

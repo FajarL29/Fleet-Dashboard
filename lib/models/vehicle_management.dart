@@ -1,4 +1,5 @@
 import 'vehicle_status.dart';
+import '../utils/api_timestamp.dart';
 
 class VehicleRegistryResponse {
   const VehicleRegistryResponse({
@@ -183,8 +184,8 @@ class VehicleRegistryItem {
       imei: _toString(json['imei']),
       isActive: _toBool(json['is_active']),
       notes: _toString(json['notes']),
-      createdDt: _toDateTime(json['created_dt']),
-      updatedDt: _toDateTime(json['updated_dt']),
+      createdDt: parseApiTimestamp(json['created_dt']),
+      updatedDt: parseApiTimestamp(json['updated_dt']),
       // Accepts either key; empty when the API sends neither.
       imageUrl: _toString(json['image_url'] ?? json['photo_url']),
     );
@@ -337,14 +338,4 @@ bool _toBool(dynamic value) {
     return normalized == 'true' || normalized == '1' || normalized == 'yes';
   }
   return false;
-}
-
-DateTime? _toDateTime(dynamic value) {
-  if (value is DateTime) return value;
-  if (value is String) {
-    final trimmed = value.trim();
-    if (trimmed.isEmpty) return null;
-    return DateTime.tryParse(trimmed);
-  }
-  return null;
 }

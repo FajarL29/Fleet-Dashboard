@@ -1,3 +1,5 @@
+import '../utils/api_timestamp.dart';
+
 class VehicleStatusResponse {
   const VehicleStatusResponse({
     required this.status,
@@ -161,7 +163,7 @@ class VehicleStatusItem {
       ),
       plateNumber: _toString(json['plate_number']),
       driverName: _toString(json['driver_name']),
-      lastTelemetryTime: _parseDate(json['last_telemetry_time']),
+      lastTelemetryTime: parseApiTimestamp(json['last_telemetry_time']),
       lastSeenMinutes: _toNullableInt(json['last_seen_minutes']),
       latitude: _toDouble(json['latitude']),
       longitude: _toDouble(json['longitude']),
@@ -209,16 +211,6 @@ double? _toDouble(dynamic value) {
     final trimmed = value.trim();
     if (trimmed.isEmpty) return null;
     return double.tryParse(trimmed);
-  }
-  return null;
-}
-
-DateTime? _parseDate(dynamic value) {
-  if (value is DateTime) return value;
-  if (value is String) {
-    final trimmed = value.trim();
-    if (trimmed.isEmpty) return null;
-    return DateTime.tryParse(trimmed);
   }
   return null;
 }

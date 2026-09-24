@@ -1,3 +1,5 @@
+import '../../utils/api_timestamp.dart';
+
 /// One row of the Driver Vital Sign Overview table.
 ///
 /// One reading per driver, as `/drivers/vitals` returns them: the wearable's
@@ -52,7 +54,9 @@ VitalSignReading vitalSignReadingFromJson(Map<String, dynamic> json) {
     heartRate: _toInt(json['heart_rate']),
     spo2: _toInt(json['spo2']),
     workDuration: minutes == null ? null : Duration(minutes: minutes),
-    lastTelemetry: _toDate(json['timestamp'] ?? json['last_telemetry_time']),
+    lastTelemetry: parseApiTimestamp(
+      json['timestamp'] ?? json['last_telemetry_time'],
+    ),
     // Absent means "we do not know", and an unknown driver is not on shift.
     isActive:
         json['is_active'] == true ||
@@ -66,12 +70,5 @@ int? _toInt(dynamic value) {
   if (value is int) return value;
   if (value is double) return value.round();
   if (value is String) return int.tryParse(value.trim());
-  return null;
-}
-
-DateTime? _toDate(dynamic value) {
-  if (value is String && value.trim().isNotEmpty) {
-    return DateTime.tryParse(value)?.toLocal();
-  }
   return null;
 }

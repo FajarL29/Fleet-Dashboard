@@ -1,4 +1,5 @@
 import 'package:intl/intl.dart';
+import '../utils/api_timestamp.dart';
 
 class DrowsinessReport {
   const DrowsinessReport({
@@ -328,7 +329,7 @@ class DrowsinessReportSummary {
       totalEvents: _toInt(json['total_events']),
       highRiskEvents: _toInt(json['high_risk_events']),
       peakHour: _toInt(json['peak_hour']),
-      peakDate: _parseDate(json['peak_date']),
+      peakDate: parseApiTimestamp(json['peak_date']),
     );
   }
 }
@@ -342,7 +343,7 @@ class DrowsinessEventsByDay {
   factory DrowsinessEventsByDay.fromJson(Map<String, dynamic> json) {
     return DrowsinessEventsByDay(
       date:
-          _parseDate(json['event_date']) ??
+          parseApiTimestamp(json['event_date']) ??
           DateTime.fromMillisecondsSinceEpoch(0),
       totalEvents: _toInt(json['total_events']),
     );
@@ -858,7 +859,7 @@ class DrowsinessEvent {
               .toString(),
       userId: _toInt(json['user_id']),
       time:
-          _parseDate(json['event_time'] ?? json['time']) ??
+          parseApiTimestamp(json['event_time'] ?? json['time']) ??
           DateTime.fromMillisecondsSinceEpoch(0),
       status: (json['status'] ?? '').toString(),
       riskLevel: (json['risk_level'] ?? '').toString(),
@@ -886,16 +887,16 @@ class DrowsinessEvent {
             locationMap?['lon'],
       ),
       speedAtEvent: _toDouble(json['speed_at_event']),
-      telemetryTimestamp: _parseDate(json['telemetry_timestamp']),
+      telemetryTimestamp: parseApiTimestamp(json['telemetry_timestamp']),
       tripId: _toNullableInt(json['trip_id']),
       telemetryStatusId: _toNullableInt(json['telemetry_status_id']),
       speedSource: _optionalString(json['speed_source']),
       reviewStatus: _reviewStatus(json['review_status']),
       reviewNote: _optionalString(json['review_note']),
       reviewedBy: _optionalString(json['reviewed_by']),
-      reviewedAt: _parseDate(json['reviewed_at']),
+      reviewedAt: parseApiTimestamp(json['reviewed_at']),
       followUpNote: _optionalString(json['follow_up_note']),
-      followedUpAt: _parseDate(json['followed_up_at']),
+      followedUpAt: parseApiTimestamp(json['followed_up_at']),
     );
   }
 }
@@ -943,25 +944,6 @@ double? _toDouble(dynamic value) {
   if (value is double) return value;
   if (value is num) return value.toDouble();
   return double.tryParse(value.toString());
-}
-
-/// Reads an API timestamp as the wall clock the device actually recorded.
-///
-/// The API stamps `Z` on values it never converted: the device posts
-/// `2026-09-23 19:17:14` local and it comes back as `2026-09-23T19:17:14.000Z`.
-/// Honouring that `Z` adds UTC+7 on top, putting every event seven hours late
-/// and rolling anything after 17:00 onto the next day. In `docs/api` all 100
-/// sample events confirm it: the epoch in `img_path`, a real server
-/// `Date.now()`, sits exactly seven hours before `event_time`.
-///
-/// Delete this once the API sends a genuine offset, or the correction inverts.
-DateTime? _parseDate(dynamic value) {
-  if (value == null) return null;
-
-  final raw = value.toString().trim();
-  final unlabelled = raw.endsWith('Z') ? raw.substring(0, raw.length - 1) : raw;
-
-  return DateTime.tryParse(unlabelled) ?? DateTime.tryParse(raw)?.toLocal();
 }
 
 String _reviewStatus(dynamic value) {

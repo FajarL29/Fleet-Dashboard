@@ -1,6 +1,7 @@
 import 'package:latlong2/latlong.dart';
 
 import 'air_quality_level.dart';
+import '../../utils/api_timestamp.dart';
 
 /// One cabin air sample from a vehicle.
 ///
@@ -48,8 +49,8 @@ class AirQualityReading {
 AirQualityReading airQualityReadingFromJson(Map<String, dynamic> json) {
   return AirQualityReading(
     recordedAt:
-        _parseDate(json['timestamp']) ??
-        _parseDate(json['created_dt']) ??
+        parseApiTimestamp(json['timestamp']) ??
+        parseApiTimestamp(json['created_dt']) ??
         DateTime.fromMillisecondsSinceEpoch(0),
     vehicleId: _optionalString(json['vehicle_id']),
     // Without these the page's Vehicle filter matches nothing: it compares
@@ -71,13 +72,6 @@ LatLng? _parsePosition(Map<String, dynamic> json) {
   final longitude = _toDouble(json['longitude'] ?? json['lng'] ?? json['lon']);
   if (latitude == null || longitude == null) return null;
   return LatLng(latitude, longitude);
-}
-
-DateTime? _parseDate(dynamic value) {
-  if (value is String && value.trim().isNotEmpty) {
-    return DateTime.tryParse(value)?.toLocal();
-  }
-  return null;
 }
 
 String? _optionalString(dynamic value) {

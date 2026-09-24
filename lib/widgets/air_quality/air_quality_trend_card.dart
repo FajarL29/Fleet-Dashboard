@@ -117,9 +117,14 @@ class AirQualityTrendCard extends StatelessWidget {
     // Aim for about six labels regardless of how many days arrived.
     final step = math.max(1, (plotted.length / 6).ceil()).toDouble();
 
+    // A lone day has no neighbour to draw a line to, so the chart came out
+    // blank — axes and gridlines, no data. It gets a dot and an axis centred
+    // on it instead.
+    final isSingleDay = plotted.length == 1;
+
     return LineChartData(
-      minX: 0,
-      maxX: (plotted.length - 1).toDouble().clamp(1.0, 1e9),
+      minX: isSingleDay ? -1 : 0,
+      maxX: isSingleDay ? 1 : (plotted.length - 1).toDouble(),
       minY: 0,
       maxY: topY,
       gridData: FlGridData(
@@ -197,8 +202,8 @@ class AirQualityTrendCard extends StatelessWidget {
           barWidth: 2.5,
           // One dot per day turned a month into a row of circles; the line
           // carries the shape on its own, and the tooltip still gives exact
-          // numbers on hover.
-          dotData: const FlDotData(show: false),
+          // numbers on hover. A single day has no line, so it keeps its dot.
+          dotData: FlDotData(show: isSingleDay),
           belowBarData: BarAreaData(
             show: true,
             color: _line.withValues(alpha: 0.12),

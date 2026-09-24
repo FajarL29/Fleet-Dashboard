@@ -46,6 +46,12 @@ void main() {
     // AQI 55 sits in the Moderate band.
     expect(reading.level, AirQualityLevel.moderate);
 
+    // `timestamp` is stamped `Z` but never converted — the same row's
+    // `created_time` reads 13:41:40, so 13:40 is already local. Honouring the
+    // `Z` added UTC+7 and slid evening samples into the next day's bucket.
+    expect(reading.recordedAt, DateTime(2026, 8, 18, 13, 40));
+    expect(reading.recordedAt.isUtc, isFalse);
+
     // The payload has no coordinates, so the map has nothing to plot.
     expect(reading.position, isNull);
   });

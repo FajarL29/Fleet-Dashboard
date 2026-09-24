@@ -164,18 +164,54 @@ class _AirQualityContentState extends State<AirQualityContent> {
         '${format.format(today)}';
   }
 
+  /// What the Vehicle filter calls a row, and the only handle it has on it.
+  static String _plateLabel(VehicleStatusItem item) {
+    final plate = item.plateNumber.trim();
+    return plate.isNotEmpty ? plate : item.vehicleIdentificationNumber.trim();
+  }
+
   List<String> get _vehiclePlates {
     final query = _searchQuery.toLowerCase();
     return _vehicles
-        .map(
-          (item) => item.plateNumber.trim().isNotEmpty
-              ? item.plateNumber.trim()
-              : item.vehicleIdentificationNumber.trim(),
-        )
+        .map(_plateLabel)
         .where((plate) => plate.isNotEmpty)
         .where((plate) => query.isEmpty || plate.toLowerCase().contains(query))
         .toSet()
         .toList();
+  }
+
+  /// The fleet row behind the plate currently picked in the filter.
+  ///
+  /// Labelled by plate, but the readings are not — so the row is what makes it
+  /// possible to line the two up at all.
+  VehicleStatusItem? get _selectedVehicleItem {
+    final plate = _selectedVehicle;
+    if (plate == null) return null;
+
+    for (final item in _vehicles) {
+      if (_plateLabel(item) == plate) return item;
+    }
+    return null;
+  }
+
+  /// Whether a reading belongs to the vehicle the filter is set to.
+  ///
+  /// `/air-monitor/get-air-by-date` sends `vehicle_id` but no plate and no VIN,
+  /// so matching the picked plate against [AirQualityReading.plateNumber] alone
+  /// never hit: choosing any vehicle silently emptied the whole page. The id is
+  /// what the two sides actually share.
+  bool _matchesSelectedVehicle(
+    AirQualityReading reading,
+    VehicleStatusItem? selected,
+  ) {
+    final plate = _selectedVehicle;
+    if (plate == null) return true;
+    if (reading.plateNumber == plate) return true;
+    if (selected == null) return false;
+
+    return reading.vehicleId == selected.vehicleId ||
+        (reading.vin != null &&
+            reading.vin == selected.vehicleIdentificationNumber);
   }
 
   /// Readings inside the vehicle filter and the chosen dates.
@@ -184,11 +220,10 @@ class _AirQualityContentState extends State<AirQualityContent> {
   /// trim the edges of the first and last day and apply the vehicle filter.
   List<AirQualityReading> get _filteredReadings {
     final dates = _dateRange;
+    final selected = _selectedVehicleItem;
 
     return _readings.where((reading) {
-      if (_selectedVehicle != null && reading.plateNumber != _selectedVehicle) {
-        return false;
-      }
+      if (!_matchesSelectedVehicle(reading, selected)) return false;
       if (dates != null) {
         if (reading.recordedAt.isBefore(dates.start) ||
             reading.recordedAt.isAfter(
